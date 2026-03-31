@@ -1,50 +1,97 @@
-// Lobby background hex animation
+// Lobby background — static 3D hex tiles matching the reference image
 (function() {
   const canvas = document.getElementById('bg-canvas');
   const ctx = canvas.getContext('2d');
   let W, H;
+  const HEX_R = 38;
+  const gap = 2;
+  const drawR = HEX_R - gap;
 
-  function resize() {
-    W = canvas.width = window.innerWidth;
-    H = canvas.height = window.innerHeight;
-  }
-  resize();
-  window.addEventListener('resize', resize);
-
-  const HEX_R = 35;
-  function drawHex(cx, cy, t) {
-    ctx.beginPath();
+  function hexVerts(r) {
+    const v = [];
     for (let i = 0; i < 6; i++) {
-      const a = (i * Math.PI) / 3 - Math.PI / 6;
-      const x = cx + HEX_R * Math.cos(a);
-      const y = cy + HEX_R * Math.sin(a);
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      const a = (i * Math.PI) / 3;
+      v.push({ x: r * Math.cos(a), y: r * Math.sin(a) });
     }
+    return v;
+  }
+  const verts = hexVerts(drawR);
+
+  function hexPath(cx, cy) {
+    ctx.beginPath();
+    ctx.moveTo(cx + verts[0].x, cy + verts[0].y);
+    for (let i = 1; i < 6; i++) ctx.lineTo(cx + verts[i].x, cy + verts[i].y);
     ctx.closePath();
-    const pulse = (Math.sin(t + cx * 0.01 + cy * 0.01) + 1) / 2;
-    ctx.strokeStyle = `rgba(255,100,0,${0.15 + pulse * 0.25})`;
-    ctx.lineWidth = 1;
+  }
+
+  function drawHex(cx, cy) {
+    // Base fill
+    hexPath(cx, cy);
+    ctx.fillStyle = '#0d1e35';
+    ctx.fill();
+
+    // Radial depth gradient
+    const grad = ctx.createRadialGradient(
+      cx - drawR * 0.25, cy - drawR * 0.25, 0,
+      cx, cy, drawR * 1.1
+    );
+    grad.addColorStop(0,   'rgba(30,60,100,0.2)');
+    grad.addColorStop(0.6, 'rgba(0,0,0,0)');
+    grad.addColorStop(1,   'rgba(0,0,0,0.5)');
+    hexPath(cx, cy);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Top-left highlight edges
+    ctx.beginPath();
+    ctx.moveTo(cx + verts[4].x, cy + verts[4].y);
+    ctx.lineTo(cx + verts[5].x, cy + verts[5].y);
+    ctx.lineTo(cx + verts[0].x, cy + verts[0].y);
+    ctx.lineTo(cx + verts[1].x, cy + verts[1].y);
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Bottom-right shadow edges
+    ctx.beginPath();
+    ctx.moveTo(cx + verts[1].x, cy + verts[1].y);
+    ctx.lineTo(cx + verts[2].x, cy + verts[2].y);
+    ctx.lineTo(cx + verts[3].x, cy + verts[3].y);
+    ctx.lineTo(cx + verts[4].x, cy + verts[4].y);
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Gap stroke (dark separator between tiles)
+    hexPath(cx, cy);
+    ctx.strokeStyle = '#07101e';
+    ctx.lineWidth = gap * 2;
     ctx.stroke();
   }
 
-  let t = 0;
-  function animate() {
-    ctx.clearRect(0, 0, W, H);
-    t += 0.008;
-    const colSpacing = HEX_R * 1.5;
+  function draw() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+
+    ctx.fillStyle = '#07101e';
+    ctx.fillRect(0, 0, W, H);
+
+    const colSpacing = HEX_R * 3;
     const rowSpacing = HEX_R * Math.sqrt(3);
     const cols = Math.ceil(W / colSpacing) + 2;
     const rows = Math.ceil(H / rowSpacing) + 2;
+
     for (let c = -1; c < cols; c++) {
       for (let r = -1; r < rows; r++) {
-        const x = c * colSpacing * 2;
-        const y = r * rowSpacing + (c % 2) * rowSpacing / 2;
-        drawHex(x, y, t);
+        const cx = c * colSpacing;
+        const cy = r * rowSpacing + (c % 2) * rowSpacing / 2;
+        drawHex(cx, cy);
       }
     }
-    requestAnimationFrame(animate);
   }
-  animate();
+
+  draw();
+  window.addEventListener('resize', draw);
 })();
 
 // Socket

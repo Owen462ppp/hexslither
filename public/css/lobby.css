@@ -1,7 +1,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  background: #0a0e1a;
+  background: #07101e;
   color: #fff;
   font-family: 'Segoe UI', sans-serif;
   min-height: 100vh;
@@ -16,7 +16,7 @@ body {
   position: fixed;
   inset: 0;
   z-index: 0;
-  opacity: 0.15;
+  opacity: 1;
 }
 
 .lobby-container {
