@@ -3,32 +3,32 @@
   const canvas = document.getElementById('bg-canvas');
   const ctx = canvas.getContext('2d');
 
-  // Pointy-top hexagons (like the reference image)
-  // R = circumradius
-  const R = 36;
-  // Center-to-center spacing for pointy-top hex grid:
-  //   horizontal (same row): sqrt(3) * R
-  //   vertical (row to row): 1.5 * R
-  //   odd rows offset right by: sqrt(3)/2 * R
-  const COL_W = Math.sqrt(3) * R;   // horizontal spacing
-  const ROW_H = R * 1.5;            // vertical spacing
+  // Flat-top hexagons sized to match reference image
+  const R = 42;                          // circumradius (center to vertex)
+  const GAP = 5;                         // groove width between tiles
+  const INNER_R = R - GAP;
 
-  // Pointy-top vertices (angle starts at -90deg = top)
-  const VERTS = [];
-  for (let i = 0; i < 6; i++) {
-    const a = (Math.PI / 180) * (60 * i - 90);
-    VERTS.push({ x: R * Math.cos(a), y: R * Math.sin(a) });
+  // Flat-top hex spacing:
+  //   col spacing = 3/2 * R  (horizontal, same row)
+  //   row spacing = sqrt(3) * R (vertical)
+  //   odd cols offset down by rowSpacing/2
+  const COL_STEP = R * 1.5;
+  const ROW_STEP = Math.sqrt(3) * R;
+
+  function buildVerts(r, angleOffset) {
+    const v = [];
+    for (let i = 0; i < 6; i++) {
+      const a = (Math.PI / 3) * i + angleOffset;
+      v.push({ x: r * Math.cos(a), y: r * Math.sin(a) });
+    }
+    return v;
   }
 
-  // Inner draw radius slightly smaller to create gap between tiles
-  const INNER_R = R - 1.5;
-  const INNER_V = [];
-  for (let i = 0; i < 6; i++) {
-    const a = (Math.PI / 180) * (60 * i - 90);
-    INNER_V.push({ x: INNER_R * Math.cos(a), y: INNER_R * Math.sin(a) });
-  }
+  // Flat-top: first vertex points right (angleOffset = 0)
+  const OUTER_V = buildVerts(R,       0);
+  const INNER_V = buildVerts(INNER_R, 0);
 
-  function hexPath(verts, cx, cy) {
+  function path(verts, cx, cy) {
     ctx.beginPath();
     ctx.moveTo(cx + verts[0].x, cy + verts[0].y);
     for (let i = 1; i < 6; i++) ctx.lineTo(cx + verts[i].x, cy + verts[i].y);
@@ -36,46 +36,55 @@
   }
 
   function drawHex(cx, cy) {
-    // 1. Dark background fill (the gap colour)
-    hexPath(VERTS, cx, cy);
-    ctx.fillStyle = '#060e1a';
+    // 1. Outer gap area — very dark, creates the deep groove
+    path(OUTER_V, cx, cy);
+    ctx.fillStyle = '#03080f';
     ctx.fill();
 
-    // 2. Main hex face (slightly inset)
-    hexPath(INNER_V, cx, cy);
-    ctx.fillStyle = '#0c1c30';
+    // 2. Hex face base colour — dark navy
+    path(INNER_V, cx, cy);
+    ctx.fillStyle = '#0b1929';
     ctx.fill();
 
-    // 3. Radial gradient — lighter centre, darker rim (gives the raised look)
-    const grad = ctx.createRadialGradient(
-      cx - INNER_R * 0.2, cy - INNER_R * 0.2, 0,
-      cx, cy, INNER_R
-    );
-    grad.addColorStop(0,   'rgba(50, 100, 160, 0.22)');
-    grad.addColorStop(0.5, 'rgba(20,  50, 100, 0.08)');
-    grad.addColorStop(1,   'rgba(0,    0,   0, 0.55)');
-    hexPath(INNER_V, cx, cy);
+    // 3. Radial gradient: top-left lighter teal, bottom-right very dark
+    //    This matches the lighting in the reference image
+    const gx = cx - INNER_R * 0.3;
+    const gy = cy - INNER_R * 0.3;
+    const grad = ctx.createRadialGradient(gx, gy, 0, gx, gy, INNER_R * 1.6);
+    grad.addColorStop(0,    'rgba(25, 65, 110, 0.85)');
+    grad.addColorStop(0.45, 'rgba(12, 28,  55, 0.6)');
+    grad.addColorStop(1,    'rgba(0,   0,   0, 0.75)');
+    path(INNER_V, cx, cy);
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // 4. Top-left highlight edge (vertices 5→0→1)
+    // 4. Inner shadow along bottom-right edges (vertices 1→2→3→4)
+    ctx.save();
+    path(INNER_V, cx, cy);
+    ctx.clip();
     ctx.beginPath();
-    ctx.moveTo(cx + INNER_V[5].x, cy + INNER_V[5].y);
-    ctx.lineTo(cx + INNER_V[0].x, cy + INNER_V[0].y);
-    ctx.lineTo(cx + INNER_V[1].x, cy + INNER_V[1].y);
-    ctx.strokeStyle = 'rgba(130, 180, 255, 0.12)';
-    ctx.lineWidth = 1.5;
-    ctx.lineJoin = 'round';
-    ctx.stroke();
-
-    // 5. Bottom-right shadow edge (vertices 2→3→4)
-    ctx.beginPath();
-    ctx.moveTo(cx + INNER_V[2].x, cy + INNER_V[2].y);
+    ctx.moveTo(cx + INNER_V[1].x, cy + INNER_V[1].y);
+    ctx.lineTo(cx + INNER_V[2].x, cy + INNER_V[2].y);
     ctx.lineTo(cx + INNER_V[3].x, cy + INNER_V[3].y);
     ctx.lineTo(cx + INNER_V[4].x, cy + INNER_V[4].y);
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.lineWidth = GAP * 2;
     ctx.stroke();
+    ctx.restore();
+
+    // 5. Subtle top-left highlight (vertices 4→5→0→1)
+    ctx.save();
+    path(INNER_V, cx, cy);
+    ctx.clip();
+    ctx.beginPath();
+    ctx.moveTo(cx + INNER_V[4].x, cy + INNER_V[4].y);
+    ctx.lineTo(cx + INNER_V[5].x, cy + INNER_V[5].y);
+    ctx.lineTo(cx + INNER_V[0].x, cy + INNER_V[0].y);
+    ctx.lineTo(cx + INNER_V[1].x, cy + INNER_V[1].y);
+    ctx.strokeStyle = 'rgba(80, 140, 220, 0.13)';
+    ctx.lineWidth = GAP * 2;
+    ctx.stroke();
+    ctx.restore();
   }
 
   function draw() {
@@ -84,18 +93,16 @@
     const W = canvas.width;
     const H = canvas.height;
 
-    // Fill background with gap colour first
-    ctx.fillStyle = '#060e1a';
+    ctx.fillStyle = '#03080f';
     ctx.fillRect(0, 0, W, H);
 
-    const cols = Math.ceil(W / COL_W) + 3;
-    const rows = Math.ceil(H / ROW_H) + 3;
+    const cols = Math.ceil(W / COL_STEP) + 3;
+    const rows = Math.ceil(H / ROW_STEP) + 3;
 
-    for (let row = -1; row < rows; row++) {
-      for (let col = -1; col < cols; col++) {
-        // Odd rows are offset to the right by half a column width
-        const cx = col * COL_W + (row % 2) * (COL_W / 2);
-        const cy = row * ROW_H;
+    for (let col = -1; col < cols; col++) {
+      for (let row = -1; row < rows; row++) {
+        const cx = col * COL_STEP;
+        const cy = row * ROW_STEP + (col % 2 === 0 ? 0 : ROW_STEP / 2);
         drawHex(cx, cy);
       }
     }

@@ -31,7 +31,7 @@ class Renderer {
 
     // Clear
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = '#07101e';
+    ctx.fillStyle = '#03080f';
     ctx.fillRect(0, 0, W, H);
 
     // Apply camera

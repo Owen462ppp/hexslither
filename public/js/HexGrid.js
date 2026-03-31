@@ -1,124 +1,107 @@
 class HexGrid {
-  constructor(hexRadius) {
-    this.hexRadius = hexRadius || CONSTANTS.HEX_RADIUS;
-    // Flat-top hexagons, tightly packed with tiny gap
-    this.gap = 2;
-    this.drawRadius = this.hexRadius - this.gap;
-    this.colSpacing = this.hexRadius * 1.5;
-    this.rowSpacing = this.hexRadius * Math.sqrt(3);
-    this._verts = this._buildVerts(this.drawRadius);
+  constructor() {
+    this.R = 42;
+    this.GAP = 5;
+    this.INNER_R = this.R - this.GAP;
+    this.COL_STEP = this.R * 1.5;
+    this.ROW_STEP = Math.sqrt(3) * this.R;
+    this.OUTER_V = this._buildVerts(this.R, 0);
+    this.INNER_V = this._buildVerts(this.INNER_R, 0);
   }
 
-  _buildVerts(r) {
+  _buildVerts(r, offset) {
     const v = [];
     for (let i = 0; i < 6; i++) {
-      const a = (i * Math.PI) / 3;
+      const a = (Math.PI / 3) * i + offset;
       v.push({ x: r * Math.cos(a), y: r * Math.sin(a) });
     }
     return v;
   }
 
-  _hexPath(ctx, hx, hy) {
-    const v = this._verts;
+  _path(ctx, verts, cx, cy) {
     ctx.beginPath();
-    ctx.moveTo(hx + v[0].x, hy + v[0].y);
-    for (let i = 1; i < 6; i++) ctx.lineTo(hx + v[i].x, hy + v[i].y);
+    ctx.moveTo(cx + verts[0].x, cy + verts[0].y);
+    for (let i = 1; i < 6; i++) ctx.lineTo(cx + verts[i].x, cy + verts[i].y);
     ctx.closePath();
   }
 
-  draw(ctx, camera, worldRadius) {
-    const { x: cx, y: cy, scale } = camera;
-    const W = ctx.canvas.width;
-    const H = ctx.canvas.height;
+  _drawOne(ctx, cx, cy) {
+    const { OUTER_V, INNER_V, INNER_R, GAP } = this;
 
-    const left   = -cx / scale - W / (2 * scale);
-    const right  = -cx / scale + W / (2 * scale);
-    const top    = -cy / scale - H / (2 * scale);
-    const bottom = -cy / scale + H / (2 * scale);
-
-    const colStart = Math.floor(left  / (this.colSpacing * 2)) - 1;
-    const colEnd   = Math.ceil (right / (this.colSpacing * 2)) + 1;
-    const rowStart = Math.floor(top    / this.rowSpacing) - 1;
-    const rowEnd   = Math.ceil (bottom / this.rowSpacing) + 1;
-
-    for (let c = colStart; c <= colEnd; c++) {
-      for (let r = rowStart; r <= rowEnd; r++) {
-        const hx = c * this.colSpacing * 2;
-        const hy = r * this.rowSpacing + (c % 2) * this.rowSpacing / 2;
-
-        const dist = Math.sqrt(hx * hx + hy * hy);
-        if (dist > worldRadius + this.hexRadius * 2) continue;
-
-        this._drawStyledHex(ctx, hx, hy, scale);
-      }
-    }
-  }
-
-  _drawStyledHex(ctx, hx, hy, scale) {
-    const r = this.drawRadius;
-    const v = this._verts;
-
-    ctx.save();
-    this._hexPath(ctx, hx, hy);
-
-    // Base fill — dark navy
-    ctx.fillStyle = '#0d1e35';
+    // Gap fill
+    this._path(ctx, OUTER_V, cx, cy);
+    ctx.fillStyle = '#03080f';
     ctx.fill();
 
-    // Top-left highlight bevel (lighter edge on top 3 vertices)
-    ctx.beginPath();
-    ctx.moveTo(hx + v[5].x, hy + v[5].y); // top-right of top-left edge
-    ctx.lineTo(hx + v[0].x, hy + v[0].y); // right
-    ctx.lineTo(hx + v[1].x, hy + v[1].y); // bottom-right
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.lineWidth = 2 / (scale || 1);
-    ctx.stroke();
+    // Base face
+    this._path(ctx, INNER_V, cx, cy);
+    ctx.fillStyle = '#0b1929';
+    ctx.fill();
 
-    ctx.beginPath();
-    ctx.moveTo(hx + v[2].x, hy + v[2].y);
-    ctx.lineTo(hx + v[3].x, hy + v[3].y);
-    ctx.lineTo(hx + v[4].x, hy + v[4].y);
-    ctx.lineTo(hx + v[5].x, hy + v[5].y);
-    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-    ctx.lineWidth = 2 / (scale || 1);
-    ctx.stroke();
-
-    // Inner shadow — radial gradient for depth
-    const grad = ctx.createRadialGradient(
-      hx - r * 0.25, hy - r * 0.25, 0,
-      hx, hy, r * 1.1
-    );
-    grad.addColorStop(0,   'rgba(30, 60, 100, 0.18)');
-    grad.addColorStop(0.6, 'rgba(0,  0,  0,   0)');
-    grad.addColorStop(1,   'rgba(0,  0,  0,   0.45)');
-
-    this._hexPath(ctx, hx, hy);
+    // Radial gradient
+    const gx = cx - INNER_R * 0.3;
+    const gy = cy - INNER_R * 0.3;
+    const grad = ctx.createRadialGradient(gx, gy, 0, gx, gy, INNER_R * 1.6);
+    grad.addColorStop(0,    'rgba(25, 65, 110, 0.85)');
+    grad.addColorStop(0.45, 'rgba(12, 28,  55, 0.6)');
+    grad.addColorStop(1,    'rgba(0,   0,   0, 0.75)');
+    this._path(ctx, INNER_V, cx, cy);
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // Outer gap stroke (background colour — creates the separation)
-    this._hexPath(ctx, hx, hy);
-    ctx.strokeStyle = '#070f1c';
-    ctx.lineWidth = this.gap * 2 / (scale || 1);
+    // Bottom-right shadow
+    ctx.save();
+    this._path(ctx, INNER_V, cx, cy);
+    ctx.clip();
+    ctx.beginPath();
+    ctx.moveTo(cx + INNER_V[1].x, cy + INNER_V[1].y);
+    ctx.lineTo(cx + INNER_V[2].x, cy + INNER_V[2].y);
+    ctx.lineTo(cx + INNER_V[3].x, cy + INNER_V[3].y);
+    ctx.lineTo(cx + INNER_V[4].x, cy + INNER_V[4].y);
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.lineWidth = GAP * 2;
     ctx.stroke();
+    ctx.restore();
 
+    // Top-left highlight
+    ctx.save();
+    this._path(ctx, INNER_V, cx, cy);
+    ctx.clip();
+    ctx.beginPath();
+    ctx.moveTo(cx + INNER_V[4].x, cy + INNER_V[4].y);
+    ctx.lineTo(cx + INNER_V[5].x, cy + INNER_V[5].y);
+    ctx.lineTo(cx + INNER_V[0].x, cy + INNER_V[0].y);
+    ctx.lineTo(cx + INNER_V[1].x, cy + INNER_V[1].y);
+    ctx.strokeStyle = 'rgba(80, 140, 220, 0.13)';
+    ctx.lineWidth = GAP * 2;
+    ctx.stroke();
     ctx.restore();
   }
 
-  // Static version for lobby canvas (no camera/world needed)
-  drawStatic(ctx, W, H) {
-    ctx.fillStyle = '#070f1c';
-    ctx.fillRect(0, 0, W, H);
+  draw(ctx, camera, worldRadius) {
+    const { COL_STEP, ROW_STEP } = this;
+    const { x: camX, y: camY, scale } = camera;
+    const W = ctx.canvas.width;
+    const H = ctx.canvas.height;
 
-    const colSpacing = this.colSpacing * 2;
-    const cols = Math.ceil(W / colSpacing) + 2;
-    const rows = Math.ceil(H / this.rowSpacing) + 2;
+    // Viewport bounds in world space
+    const left   = (-camX) / scale - W / (2 * scale);
+    const right  = (-camX) / scale + W / (2 * scale);
+    const top    = (-camY) / scale - H / (2 * scale);
+    const bottom = (-camY) / scale + H / (2 * scale);
 
-    for (let c = -1; c < cols; c++) {
-      for (let r = -1; r < rows; r++) {
-        const hx = c * colSpacing;
-        const hy = r * this.rowSpacing + (c % 2) * this.rowSpacing / 2;
-        this._drawStyledHex(ctx, hx, hy, 1);
+    const colStart = Math.floor(left   / COL_STEP) - 1;
+    const colEnd   = Math.ceil (right  / COL_STEP) + 1;
+    const rowStart = Math.floor(top    / ROW_STEP) - 1;
+    const rowEnd   = Math.ceil (bottom / ROW_STEP) + 1;
+
+    for (let col = colStart; col <= colEnd; col++) {
+      for (let row = rowStart; row <= rowEnd; row++) {
+        const cx = col * COL_STEP;
+        const cy = row * ROW_STEP + (col % 2 === 0 ? 0 : ROW_STEP / 2);
+        const dist = Math.sqrt(cx * cx + cy * cy);
+        if (dist > worldRadius + this.R * 2) continue;
+        this._drawOne(ctx, cx, cy);
       }
     }
   }
