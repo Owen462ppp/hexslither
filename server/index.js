@@ -1,18 +1,79 @@
-const express = require('express');
-const http = require('http');
+const express    = require('express');
+const http       = require('http');
 const { Server } = require('socket.io');
-const path = require('path');
-const C = require('../shared/constants');
+const path       = require('path');
+const session    = require('express-session');
+const passport   = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const C    = require('../shared/constants');
 const GameRoom = require('./GameRoom');
 const Auth = require('./Auth');
 
-const app = express();
+const app    = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: '*' },
+const io     = new Server(server, { cors: { origin: '*' } });
+
+// ─── Session & Passport ───────────────────────────────────────────────────────
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'hexslither-dev-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 }, // 7 days
+}));
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.use(new GoogleStrategy({
+  clientID:     process.env.GOOGLE_CLIENT_ID     || 'PLACEHOLDER',
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'PLACEHOLDER',
+  callbackURL:  process.env.GOOGLE_CALLBACK_URL  || 'http://localhost:3000/auth/google/callback',
+}, (accessToken, refreshToken, profile, done) => {
+  const account = Auth.getOrCreateAccount({
+    googleId: profile.id,
+    email:    profile.emails?.[0]?.value || '',
+    name:     profile.displayName || 'Player',
+    avatar:   profile.photos?.[0]?.value || '',
+  });
+  done(null, account);
+}));
+
+passport.serializeUser((user, done)   => done(null, user.googleId));
+passport.deserializeUser((id, done)   => done(null, Auth.getAccountByGoogleId(id) || false));
+
+// ─── Auth routes ──────────────────────────────────────────────────────────────
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] })
+);
+
+app.get('/auth/google/callback',
+  passport.authenticate('google', { failureRedirect: '/?error=auth' }),
+  (req, res) => res.redirect('/')
+);
+
+app.get('/auth/logout', (req, res) => {
+  req.logout(() => res.redirect('/'));
 });
 
-// No-cache headers so browser always loads latest JS/CSS
+// Current user endpoint — lobby JS calls this on load
+app.get('/auth/me', (req, res) => {
+  if (req.isAuthenticated()) {
+    res.json({ loggedIn: true, account: req.user });
+  } else {
+    res.json({ loggedIn: false });
+  }
+});
+
+// Update display name
+app.use(express.json());
+app.post('/auth/update-name', (req, res) => {
+  if (!req.isAuthenticated()) return res.status(401).json({ error: 'Not logged in' });
+  const name = (req.body.name || '').slice(0, 20).trim();
+  if (!name) return res.status(400).json({ error: 'Invalid name' });
+  const acc = Auth.saveAccount(req.user.googleId, { name });
+  res.json({ account: acc });
+});
+
+// ─── Static files ─────────────────────────────────────────────────────────────
 app.use((req, res, next) => {
   res.setHeader('Cache-Control', 'no-store');
   next();
@@ -20,60 +81,49 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, '../public')));
 app.use('/shared', express.static(path.join(__dirname, '../shared')));
 
-// Single global game room for simplicity
+// ─── Game ─────────────────────────────────────────────────────────────────────
 const gameRoom = new GameRoom(io);
 gameRoom.start();
 
-// In-memory wallet ledger: walletAddress -> balance (in SOL/tokens)
 const walletLedger = new Map();
 
 io.on('connection', (socket) => {
   console.log(`[+] Connected: ${socket.id}`);
 
-  // Lobby state on connect
   socket.emit(C.EVENTS.LOBBY_STATE, {
     playerCount: gameRoom.playerCount,
     leaderboard: gameRoom.buildLeaderboard(),
   });
 
-  // Player clicks Play
-  socket.on(C.EVENTS.PLAY, ({ name, walletAddress, email } = {}) => {
+  socket.on(C.EVENTS.PLAY, ({ name, walletAddress, googleId } = {}) => {
     const playerName = (name || 'Player').slice(0, 20);
-    if (email) socket._authEmail = email;
+    if (googleId) socket._googleId = googleId;
     console.log(`[>] ${playerName} joins game`);
     gameRoom.addPlayer(socket, playerName, walletAddress || null);
   });
 
-  // Player sends input
   socket.on(C.EVENTS.INPUT, ({ angle, boost }) => {
     if (typeof angle !== 'number') return;
     gameRoom.handleInput(socket.id, angle, !!boost);
   });
 
-  // Player respawns
   socket.on(C.EVENTS.RESPAWN, () => {
     gameRoom.respawnPlayer(socket.id);
   });
 
-  // Wallet: connect / verify address
   socket.on(C.EVENTS.WALLET_CONNECT, ({ walletAddress }) => {
     if (!walletAddress) return;
     const balance = walletLedger.get(walletAddress) || 0;
     socket.emit(C.EVENTS.WALLET_BALANCE, { balance, walletAddress });
   });
 
-  // Wallet: deposit (simulated - in production verify on-chain tx)
   socket.on(C.EVENTS.WALLET_DEPOSIT, ({ walletAddress, amount }) => {
     if (!walletAddress || !amount || amount <= 0) return;
     const current = walletLedger.get(walletAddress) || 0;
     walletLedger.set(walletAddress, current + amount);
-    socket.emit(C.EVENTS.WALLET_BALANCE, {
-      balance: walletLedger.get(walletAddress),
-      walletAddress,
-    });
+    socket.emit(C.EVENTS.WALLET_BALANCE, { balance: walletLedger.get(walletAddress), walletAddress });
   });
 
-  // Wallet: withdraw (simulated)
   socket.on(C.EVENTS.WALLET_WITHDRAW, ({ walletAddress, amount }) => {
     if (!walletAddress || !amount || amount <= 0) return;
     const current = walletLedger.get(walletAddress) || 0;
@@ -82,54 +132,18 @@ io.on('connection', (socket) => {
       return;
     }
     walletLedger.set(walletAddress, current - amount);
-    socket.emit(C.EVENTS.WALLET_BALANCE, {
-      balance: walletLedger.get(walletAddress),
-      walletAddress,
-    });
-  });
-
-  // Auth: request login code
-  socket.on('auth_request_code', async ({ email }) => {
-    console.log(`[AUTH] Code requested for: ${email}`);
-    console.log(`[AUTH] SMTP_USER set: ${!!process.env.SMTP_USER}, SMTP_PASS set: ${!!process.env.SMTP_PASS}`);
-    try {
-      const { isExisting } = await Auth.sendCode(email);
-      console.log(`[AUTH] Code sent successfully to: ${email}`);
-      socket.emit('auth_code_sent', { email, isExisting });
-    } catch (e) {
-      console.error(`[AUTH] Failed to send code to ${email}:`, e.message);
-      socket.emit('auth_failed', { reason: 'Failed to send email: ' + e.message });
-    }
-  });
-
-  // Auth: verify code
-  socket.on('auth_verify_code', ({ email, code }) => {
-    const result = Auth.verifyCode(email, code);
-    if (result.ok) {
-      socket.emit('auth_success', { account: result.account });
-    } else {
-      socket.emit('auth_failed', { reason: result.reason });
-    }
-  });
-
-  // Auth: update display name
-  socket.on('auth_update_name', ({ email, name }) => {
-    const acc = Auth.saveAccount(email, { name: name.slice(0, 20) });
-    if (acc) socket.emit('auth_account_updated', { account: acc });
+    socket.emit(C.EVENTS.WALLET_BALANCE, { balance: walletLedger.get(walletAddress), walletAddress });
   });
 
   socket.on('disconnect', () => {
     console.log(`[-] Disconnected: ${socket.id}`);
-    // Record game result if player was in game
     const snake = gameRoom.snakes && gameRoom.snakes.get(socket.id);
-    if (snake && socket._authEmail) {
-      Auth.recordGameResult(socket._authEmail, snake.score);
+    if (snake && socket._googleId) {
+      Auth.recordGameResult(socket._googleId, snake.score);
     }
     gameRoom.removePlayer(socket.id);
   });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-});
+server.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));

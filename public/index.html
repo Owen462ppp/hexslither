@@ -13,26 +13,23 @@
   <div class="lobby-container" id="login-screen">
     <div class="title">HexSlither</div>
     <div class="subtitle">Multiplayer Snake Arena</div>
-
-    <!-- Step 1: Email -->
-    <div class="card" id="step-email">
-      <h3>Sign in with Email</h3>
-      <p class="card-desc">Enter your email and we'll send you a 6-digit code</p>
-      <input type="email" id="login-email" placeholder="your@email.com" autocomplete="email">
-      <button class="btn btn-play" id="btn-send-code">Send Code</button>
+    <div class="card" style="text-align:center">
+      <h3>Sign in to play</h3>
+      <p class="card-desc">Save your stats and play with people worldwide</p>
+      <a href="/auth/google" class="btn-google">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" height="20" alt="">
+        Sign in with Google
+      </a>
     </div>
-
-    <!-- Step 2: Code -->
-    <div class="card hidden" id="step-code">
-      <h3>Enter Your Code</h3>
-      <p class="card-desc" id="code-sent-to">Code sent to your email</p>
-      <input type="text" id="login-code" placeholder="000000" maxlength="6" autocomplete="one-time-code">
-      <button class="btn btn-play" id="btn-verify-code">Verify</button>
-      <button class="btn btn-back" id="btn-back-email">← Back</button>
+    <div class="card">
+      <h3>Server</h3>
+      <div class="stats-row">
+        <div>Players Online: <span id="stat-players-login">0</span></div>
+      </div>
     </div>
   </div>
 
-  <!-- LOBBY SCREEN (shown after login) -->
+  <!-- LOBBY SCREEN -->
   <div class="lobby-container hidden" id="lobby-screen">
     <div class="title">HexSlither</div>
     <div class="subtitle">Multiplayer Snake Arena</div>
@@ -41,7 +38,8 @@
     <div class="card">
       <h3>Account</h3>
       <div class="account-row">
-        <div class="account-avatar" id="account-avatar">?</div>
+        <img class="account-avatar-img" id="account-avatar-img" src="" alt="" onerror="this.style.display='none'">
+        <div class="account-avatar hidden" id="account-avatar-fallback">?</div>
         <div class="account-info">
           <div class="account-name" id="account-name">—</div>
           <div class="account-email" id="account-email">—</div>
@@ -52,10 +50,10 @@
         <div class="stat-box"><div class="stat-val" id="stat-highscore">0</div><div class="stat-lbl">High Score</div></div>
         <div class="stat-box"><div class="stat-val" id="stat-games">0</div><div class="stat-lbl">Games</div></div>
       </div>
-      <button class="btn btn-signout" id="btn-signout">Sign Out</button>
+      <a href="/auth/logout" class="btn btn-signout">Sign Out</a>
     </div>
 
-    <!-- Name -->
+    <!-- Display Name -->
     <div class="card">
       <h3>Display Name</h3>
       <input type="text" id="player-name" placeholder="Enter your name..." maxlength="20">
