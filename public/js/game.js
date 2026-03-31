@@ -11,8 +11,9 @@ if (minimapEl) minimapEl.appendChild(minimapCanvas);
 const minimapCtx = minimapCanvas.getContext('2d');
 
 // Player info from lobby
-const playerName = sessionStorage.getItem('playerName') || 'Player';
+const playerName   = sessionStorage.getItem('playerName')   || 'Player';
 const walletAddress = sessionStorage.getItem('walletAddress') || null;
+const playerEmail  = sessionStorage.getItem('playerEmail')  || null;
 
 let myId = null;
 let isDead = false;
@@ -32,7 +33,7 @@ let displayState = { snakes: [], food: [], worldRadius: CONSTANTS.BASE_WORLD_RAD
 const socket = io();
 
 socket.on('connect', () => {
-  socket.emit(CONSTANTS.EVENTS.PLAY, { name: playerName, walletAddress });
+  socket.emit(CONSTANTS.EVENTS.PLAY, { name: playerName, walletAddress, email: playerEmail });
 });
 
 socket.on(CONSTANTS.EVENTS.GAME_JOINED, ({ playerId, worldRadius, snakeColor, food }) => {

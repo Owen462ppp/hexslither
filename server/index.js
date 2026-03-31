@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 const path = require('path');
 const C = require('../shared/constants');
 const GameRoom = require('./GameRoom');
+const Auth = require('./Auth');
 
 const app = express();
 const server = http.createServer(app);
@@ -36,8 +37,9 @@ io.on('connection', (socket) => {
   });
 
   // Player clicks Play
-  socket.on(C.EVENTS.PLAY, ({ name, walletAddress } = {}) => {
+  socket.on(C.EVENTS.PLAY, ({ name, walletAddress, email } = {}) => {
     const playerName = (name || 'Player').slice(0, 20);
+    if (email) socket._authEmail = email;
     console.log(`[>] ${playerName} joins game`);
     gameRoom.addPlayer(socket, playerName, walletAddress || null);
   });
@@ -86,8 +88,39 @@ io.on('connection', (socket) => {
     });
   });
 
+  // Auth: request login code
+  socket.on('auth_request_code', async ({ email }) => {
+    try {
+      const { isExisting } = await Auth.sendCode(email);
+      socket.emit('auth_code_sent', { email, isExisting });
+    } catch (e) {
+      socket.emit(C.EVENTS.ERROR, { code: 'AUTH_ERROR', message: e.message });
+    }
+  });
+
+  // Auth: verify code
+  socket.on('auth_verify_code', ({ email, code }) => {
+    const result = Auth.verifyCode(email, code);
+    if (result.ok) {
+      socket.emit('auth_success', { account: result.account });
+    } else {
+      socket.emit('auth_failed', { reason: result.reason });
+    }
+  });
+
+  // Auth: update display name
+  socket.on('auth_update_name', ({ email, name }) => {
+    const acc = Auth.saveAccount(email, { name: name.slice(0, 20) });
+    if (acc) socket.emit('auth_account_updated', { account: acc });
+  });
+
   socket.on('disconnect', () => {
     console.log(`[-] Disconnected: ${socket.id}`);
+    // Record game result if player was in game
+    const snake = gameRoom.snakes && gameRoom.snakes.get(socket.id);
+    if (snake && socket._authEmail) {
+      Auth.recordGameResult(socket._authEmail, snake.score);
+    }
     gameRoom.removePlayer(socket.id);
   });
 });

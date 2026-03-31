@@ -9,21 +9,62 @@
 <body>
   <canvas id="bg-canvas"></canvas>
 
-  <div class="lobby-container">
+  <!-- LOGIN SCREEN -->
+  <div class="lobby-container" id="login-screen">
     <div class="title">HexSlither</div>
     <div class="subtitle">Multiplayer Snake Arena</div>
 
-    <!-- Name input -->
+    <!-- Step 1: Email -->
+    <div class="card" id="step-email">
+      <h3>Sign in with Email</h3>
+      <p class="card-desc">Enter your email and we'll send you a 6-digit code</p>
+      <input type="email" id="login-email" placeholder="your@email.com" autocomplete="email">
+      <button class="btn btn-play" id="btn-send-code">Send Code</button>
+    </div>
+
+    <!-- Step 2: Code -->
+    <div class="card hidden" id="step-code">
+      <h3>Enter Your Code</h3>
+      <p class="card-desc" id="code-sent-to">Code sent to your email</p>
+      <input type="text" id="login-code" placeholder="000000" maxlength="6" autocomplete="one-time-code">
+      <button class="btn btn-play" id="btn-verify-code">Verify</button>
+      <button class="btn btn-back" id="btn-back-email">← Back</button>
+    </div>
+  </div>
+
+  <!-- LOBBY SCREEN (shown after login) -->
+  <div class="lobby-container hidden" id="lobby-screen">
+    <div class="title">HexSlither</div>
+    <div class="subtitle">Multiplayer Snake Arena</div>
+
+    <!-- Account card -->
     <div class="card">
-      <h3>Your Name</h3>
-      <input type="text" id="player-name" placeholder="Enter your name..." maxlength="20" value="Player">
+      <h3>Account</h3>
+      <div class="account-row">
+        <div class="account-avatar" id="account-avatar">?</div>
+        <div class="account-info">
+          <div class="account-name" id="account-name">—</div>
+          <div class="account-email" id="account-email">—</div>
+        </div>
+        <button class="btn-icon" id="btn-edit-name" title="Edit name">✏️</button>
+      </div>
+      <div class="account-stats">
+        <div class="stat-box"><div class="stat-val" id="stat-highscore">0</div><div class="stat-lbl">High Score</div></div>
+        <div class="stat-box"><div class="stat-val" id="stat-games">0</div><div class="stat-lbl">Games</div></div>
+      </div>
+      <button class="btn btn-signout" id="btn-signout">Sign Out</button>
+    </div>
+
+    <!-- Name -->
+    <div class="card">
+      <h3>Display Name</h3>
+      <input type="text" id="player-name" placeholder="Enter your name..." maxlength="20">
     </div>
 
     <!-- Phantom Wallet -->
     <div class="card">
       <h3>Phantom Wallet</h3>
       <button class="btn btn-wallet" id="btn-wallet">Connect Phantom Wallet</button>
-
       <div class="wallet-info" id="wallet-info">
         <div class="wallet-address" id="wallet-address"></div>
         <div class="balance-row">
@@ -54,8 +95,19 @@
       </ul>
     </div>
 
-    <!-- Play -->
     <button class="btn btn-play" id="btn-play">PLAY</button>
+  </div>
+
+  <!-- Edit name modal -->
+  <div class="modal-overlay" id="modal-editname">
+    <div class="modal">
+      <h3>Change Display Name</h3>
+      <input type="text" id="editname-input" placeholder="New name..." maxlength="20">
+      <div class="modal-btns">
+        <button class="btn-small btn-cancel" id="cancel-editname">Cancel</button>
+        <button class="btn-small btn-confirm" id="confirm-editname">Save</button>
+      </div>
+    </div>
   </div>
 
   <!-- Deposit Modal -->
