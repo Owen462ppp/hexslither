@@ -1,24 +1,10 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-// In-memory stores (persist to a DB in production)
-const accounts = new Map();   // email -> { name, walletAddress, highScore, gamesPlayed, createdAt }
-const pending  = new Map();   // email -> { code, expiresAt }
+const accounts = new Map();
+const pending  = new Map();
 
 function generateCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
-}
-
-function createTransport() {
-  // Uses env vars set in Render dashboard (or .env locally)
-  return nodemailer.createTransport({
-    host:   process.env.SMTP_HOST   || 'smtp.gmail.com',
-    port:   parseInt(process.env.SMTP_PORT || '587'),
-    secure: false,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
 }
 
 async function sendCode(email) {
@@ -26,33 +12,29 @@ async function sendCode(email) {
   if (!email.includes('@')) throw new Error('Invalid email');
 
   const code = generateCode();
-  const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
-  pending.set(email, { code, expiresAt });
-
+  pending.set(email, { code, expiresAt: Date.now() + 10 * 60 * 1000 });
   const isExisting = accounts.has(email);
 
-  // Only send real email if SMTP credentials are configured
-  if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-    const transport = createTransport();
-    await transport.sendMail({
-      from: `"HexSlither" <${process.env.SMTP_USER}>`,
+  if (process.env.RESEND_API_KEY) {
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const { error } = await resend.emails.send({
+      from: 'HexSlither <onboarding@resend.dev>',
       to: email,
       subject: 'Your HexSlither login code',
       html: `
         <div style="font-family:sans-serif;background:#03080f;color:#fff;padding:32px;border-radius:12px;max-width:400px">
           <h2 style="color:#ff8800;margin:0 0 8px">HexSlither</h2>
           <p style="color:#aaa;margin:0 0 24px">Your login code:</p>
-          <div style="font-size:42px;font-weight:900;letter-spacing:12px;color:#fff;background:#0b1929;padding:20px;border-radius:8px;text-align:center">
+          <div style="font-size:48px;font-weight:900;letter-spacing:14px;color:#fff;background:#0b1929;padding:20px;border-radius:8px;text-align:center">
             ${code}
           </div>
-          <p style="color:#555;font-size:12px;margin:16px 0 0">
-            This code expires in 10 minutes. If you didn't request this, ignore it.
-          </p>
+          <p style="color:#555;font-size:12px;margin:16px 0 0">Expires in 10 minutes.</p>
         </div>
       `,
     });
+    if (error) throw new Error(error.message);
   } else {
-    // Dev mode: print code to server console
+    // Dev fallback — print to console
     console.log(`[AUTH] Code for ${email}: ${code}`);
   }
 
@@ -62,17 +44,16 @@ async function sendCode(email) {
 function verifyCode(email, code) {
   email = email.toLowerCase().trim();
   const entry = pending.get(email);
-  if (!entry) return { ok: false, reason: 'No code requested' };
+  if (!entry) return { ok: false, reason: 'No code was requested for this email' };
   if (Date.now() > entry.expiresAt) {
     pending.delete(email);
-    return { ok: false, reason: 'Code expired' };
+    return { ok: false, reason: 'Code expired, request a new one' };
   }
   if (entry.code !== String(code).trim()) {
-    return { ok: false, reason: 'Wrong code' };
+    return { ok: false, reason: 'Incorrect code' };
   }
   pending.delete(email);
 
-  // Create account if new
   if (!accounts.has(email)) {
     accounts.set(email, {
       email,
