@@ -89,8 +89,8 @@ class HexGrid {
     const halfW = W / (2 * scale);
     const halfH = H / (2 * scale);
     // World-space center of screen
-    const worldCX = -camX / scale;
-    const worldCY = -camY / scale;
+    const worldCX = (W / 2 - camX) / scale;
+    const worldCY = (H / 2 - camY) / scale;
 
     const left   = worldCX - halfW;
     const right  = worldCX + halfW;
