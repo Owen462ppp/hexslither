@@ -1,0 +1,69 @@
+const { v4: uuidv4 } = require('uuid');
+const C = require('../shared/constants');
+
+const FOOD_COLORS = [
+  '#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff922b',
+  '#cc5de8', '#20c997', '#f06595', '#74c0fc', '#a9e34b',
+];
+
+class FoodManager {
+  constructor() {
+    this.items = new Map();
+  }
+
+  spawnInitial(worldRadius) {
+    for (let i = 0; i < C.FOOD_SPAWN_COUNT; i++) {
+      this.spawnOne(worldRadius);
+    }
+  }
+
+  spawnOne(worldRadius, x, y) {
+    const id = uuidv4();
+    let fx, fy;
+    if (x !== undefined && y !== undefined) {
+      fx = x;
+      fy = y;
+    } else {
+      const angle = Math.random() * Math.PI * 2;
+      const r = Math.random() * (worldRadius - 50);
+      fx = Math.cos(angle) * r;
+      fy = Math.sin(angle) * r;
+    }
+    const food = {
+      id,
+      x: fx,
+      y: fy,
+      color: FOOD_COLORS[Math.floor(Math.random() * FOOD_COLORS.length)],
+      value: 1,
+    };
+    this.items.set(id, food);
+    return food;
+  }
+
+  refill(worldRadius) {
+    const needed = C.FOOD_SPAWN_COUNT - this.items.size;
+    const spawned = [];
+    for (let i = 0; i < Math.min(needed, 10); i++) {
+      spawned.push(this.spawnOne(worldRadius));
+    }
+    return spawned;
+  }
+
+  remove(id) {
+    this.items.delete(id);
+  }
+
+  serialize() {
+    const result = [];
+    for (const f of this.items.values()) {
+      result.push(f.x, f.y, f.value, f.color, f.id);
+    }
+    return result;
+  }
+
+  getAll() {
+    return Array.from(this.items.values());
+  }
+}
+
+module.exports = FoodManager;

@@ -1,0 +1,168 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #000;
+  overflow: hidden;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+#game-canvas {
+  display: block;
+  cursor: none;
+}
+
+/* HUD */
+#hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+#score-display {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+#minimap {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,0,0,0.6);
+  overflow: hidden;
+  background: rgba(0,0,0,0.5);
+}
+
+#minimap canvas {
+  width: 100%;
+  height: 100%;
+}
+
+#leaderboard {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(0,0,0,0.6);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 12px 16px;
+  min-width: 180px;
+}
+#leaderboard h4 {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #888;
+  margin-bottom: 8px;
+}
+#leaderboard-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+#leaderboard-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.82rem;
+  color: #ccc;
+}
+#leaderboard-list li.me { color: #ff8800; font-weight: 700; }
+#leaderboard-list .lb-rank { color: #555; }
+#leaderboard-list .lb-score { color: #ff8800; }
+
+#boost-bar-container {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+#boost-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #888;
+  margin-bottom: 4px;
+}
+#boost-bar-bg {
+  width: 180px;
+  height: 10px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 5px;
+  overflow: hidden;
+}
+#boost-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff8800, #ffdd00);
+  border-radius: 5px;
+  transition: width 0.1s;
+  width: 100%;
+}
+
+/* Death screen overlay */
+#death-screen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 50;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 20px;
+}
+#death-screen.active { display: flex; }
+#death-screen h2 {
+  font-size: 3rem;
+  color: #ff4444;
+  text-shadow: 0 0 30px rgba(255, 68, 68, 0.8);
+  animation: death-shake 0.4s;
+}
+@keyframes death-shake {
+  0%,100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+}
+.death-stats {
+  text-align: center;
+  color: #ccc;
+  font-size: 1.1rem;
+  line-height: 2;
+}
+.death-stats span { color: #ff8800; font-weight: 700; font-size: 1.3rem; }
+.death-btns { display: flex; gap: 16px; }
+.btn {
+  padding: 12px 28px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s;
+  letter-spacing: 1px;
+}
+.btn:active { transform: scale(0.97); }
+.btn-respawn {
+  background: linear-gradient(135deg, #ff4444, #ff8800);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(255,80,0,0.4);
+}
+.btn-lobby {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.2);
+}

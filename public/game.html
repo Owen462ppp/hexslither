@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HexSlither - Playing</title>
+  <link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+  <canvas id="game-canvas"></canvas>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="score-display">Length: <span id="hud-length">0</span> &nbsp;|&nbsp; Score: <span id="hud-score">0</span></div>
+
+    <div id="leaderboard">
+      <h4>Leaderboard</h4>
+      <ul id="leaderboard-list"></ul>
+    </div>
+
+    <div id="boost-bar-container">
+      <div id="boost-label">Boost (hold Space / Right Click)</div>
+      <div id="boost-bar-bg">
+        <div id="boost-bar-fill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Death Screen -->
+  <div id="death-screen">
+    <h2>YOU DIED</h2>
+    <div class="death-stats">
+      Length: <span id="death-length">0</span><br>
+      Score: <span id="death-score">0</span>
+    </div>
+    <div class="death-btns">
+      <button class="btn btn-respawn" id="btn-respawn">Play Again</button>
+      <button class="btn btn-lobby" id="btn-lobby">Lobby</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/shared/constants.js"></script>
+  <script src="js/HexGrid.js"></script>
+  <script src="js/Camera.js"></script>
+  <script src="js/Renderer.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
