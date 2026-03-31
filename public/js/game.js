@@ -23,7 +23,7 @@ let boostActive = false;
 // We keep the last two snapshots and lerp between them each frame
 let snapBuffer = [];          // [{t, state}, {t, state}]
 let renderTime = 0;           // the world-time we're currently rendering
-const INTERP_DELAY_MS = 80;   // render this many ms behind latest snapshot (buffer window)
+const INTERP_DELAY_MS = 50;   // render this many ms behind latest snapshot (buffer window)
 
 // Displayed (interpolated) state used for rendering
 let displayState = { snakes: [], food: [], worldRadius: CONSTANTS.BASE_WORLD_RADIUS, leaderboard: [] };
@@ -171,7 +171,7 @@ function updateHUD(snap) {
   if (mySnake) {
     document.getElementById('hud-length').textContent = mySnake.length;
     document.getElementById('hud-score').textContent = mySnake.score;
-    const pct = Math.min(100, (mySnake.foodStored || 0) / 50 * 100);
+    const pct = Math.round((mySnake.boostRatio || 0) * 100);
     const fill = document.getElementById('boost-bar-fill');
     if (fill) fill.style.width = pct + '%';
   }

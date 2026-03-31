@@ -19,11 +19,24 @@ class GameRoom {
 
   start() {
     this.foodManager.spawnInitial(this.worldRadius);
-    this.tickInterval = setInterval(() => this.tick(), 1000 / C.TICK_RATE);
+    // Use a high-resolution timer loop instead of setInterval to avoid
+    // Windows timer jitter (~15ms minimum resolution on setInterval)
+    const tickMs = 1000 / C.TICK_RATE;
+    let last = process.hrtime.bigint();
+    const loop = () => {
+      const now = process.hrtime.bigint();
+      const elapsed = Number(now - last) / 1e6;
+      if (elapsed >= tickMs) {
+        last = now;
+        this.tick();
+      }
+      this.tickInterval = setImmediate(loop);
+    };
+    this.tickInterval = setImmediate(loop);
   }
 
   stop() {
-    if (this.tickInterval) clearInterval(this.tickInterval);
+    if (this.tickInterval) clearImmediate(this.tickInterval);
   }
 
   addPlayer(socket, name, walletAddress) {
