@@ -90,11 +90,15 @@ io.on('connection', (socket) => {
 
   // Auth: request login code
   socket.on('auth_request_code', async ({ email }) => {
+    console.log(`[AUTH] Code requested for: ${email}`);
+    console.log(`[AUTH] SMTP_USER set: ${!!process.env.SMTP_USER}, SMTP_PASS set: ${!!process.env.SMTP_PASS}`);
     try {
       const { isExisting } = await Auth.sendCode(email);
+      console.log(`[AUTH] Code sent successfully to: ${email}`);
       socket.emit('auth_code_sent', { email, isExisting });
     } catch (e) {
-      socket.emit(C.EVENTS.ERROR, { code: 'AUTH_ERROR', message: e.message });
+      console.error(`[AUTH] Failed to send code to ${email}:`, e.message);
+      socket.emit('auth_failed', { reason: 'Failed to send email: ' + e.message });
     }
   });
 

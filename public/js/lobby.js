@@ -103,8 +103,10 @@ socket.on('auth_success', ({ account: acc }) => {
 
 socket.on('auth_failed', ({ reason }) => {
   alert('Login failed: ' + reason);
+  // If we're still on the email step, reset button
+  document.getElementById('btn-send-code').textContent = 'Send Code';
+  document.getElementById('btn-send-code').disabled = false;
   document.getElementById('login-code').value = '';
-  document.getElementById('login-code').focus();
 });
 
 socket.on('auth_account_updated', ({ account: acc }) => {
