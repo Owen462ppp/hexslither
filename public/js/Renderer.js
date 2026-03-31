@@ -2,7 +2,7 @@ class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    this.hexGrid = new HexGrid(CONSTANTS.HEX_RADIUS);
+    this.hexGrid = new HexGrid();
     this.camera = new Camera();
     this._glowCache = new Map();
   }

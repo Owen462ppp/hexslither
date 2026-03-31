@@ -84,11 +84,18 @@ class HexGrid {
     const W = ctx.canvas.width;
     const H = ctx.canvas.height;
 
-    // Viewport bounds in world space
-    const left   = (-camX) / scale - W / (2 * scale);
-    const right  = (-camX) / scale + W / (2 * scale);
-    const top    = (-camY) / scale - H / (2 * scale);
-    const bottom = (-camY) / scale + H / (2 * scale);
+    // Camera transform is already applied to ctx, so we work in world space.
+    // Convert screen corners to world coords to find which tiles are visible.
+    const halfW = W / (2 * scale);
+    const halfH = H / (2 * scale);
+    // World-space center of screen
+    const worldCX = -camX / scale;
+    const worldCY = -camY / scale;
+
+    const left   = worldCX - halfW;
+    const right  = worldCX + halfW;
+    const top    = worldCY - halfH;
+    const bottom = worldCY + halfH;
 
     const colStart = Math.floor(left   / COL_STEP) - 1;
     const colEnd   = Math.ceil (right  / COL_STEP) + 1;
