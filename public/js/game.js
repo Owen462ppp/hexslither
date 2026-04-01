@@ -24,7 +24,7 @@ let boostActive = false;
 // We keep the last two snapshots and lerp between them each frame
 let snapBuffer = [];          // [{t, state}, {t, state}]
 let renderTime = 0;           // the world-time we're currently rendering
-const INTERP_DELAY_MS = 50;   // render this many ms behind latest snapshot (buffer window)
+const INTERP_DELAY_MS = 60;   // one server tick worth of buffer at 20Hz = 50ms + small margin
 
 // Displayed (interpolated) state used for rendering
 let displayState = { snakes: [], food: [], worldRadius: CONSTANTS.BASE_WORLD_RADIUS, leaderboard: [] };
