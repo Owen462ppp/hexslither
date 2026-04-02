@@ -3,107 +3,197 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HexSlither - Multiplayer Snake</title>
-  <link rel="stylesheet" href="css/lobby.css">
+  <title>HexSlither</title>
+  <link rel="stylesheet" href="/css/lobby.css">
 </head>
 <body>
+
   <canvas id="bg-canvas"></canvas>
 
-  <!-- Balance sidebar -->
-  <div class="balance-sidebar" id="balance-sidebar">
-    <div class="balance-sidebar-label">Balance</div>
-    <div class="balance-sidebar-amount"><span id="sidebar-balance">0.0000</span></div>
-    <div class="balance-sidebar-unit">SOL</div>
+  <!-- Decorative snakes -->
+  <svg class="deco-snake" style="left:60px;top:160px;animation-delay:0s">
+    <path d="M 20,110 C 55,20 120,20 150,70 C 178,115 230,100 245,55"
+          stroke="#4a88d4" stroke-width="26" fill="none" stroke-linecap="round"/>
+    <circle cx="245" cy="55" r="15" fill="#4a88d4"/>
+    <circle cx="238" cy="48" r="5.5" fill="white"/><circle cx="252" cy="48" r="5.5" fill="white"/>
+    <circle cx="239" cy="49" r="2.8" fill="#111"/><circle cx="253" cy="49" r="2.8" fill="#111"/>
+  </svg>
+
+  <svg class="deco-snake" style="left:20px;bottom:90px;animation-delay:0.8s">
+    <path d="M 10,65 C 65,10 130,100 190,45 C 230,10 265,65 290,55"
+          stroke="#e8963a" stroke-width="26" fill="none" stroke-linecap="round"/>
+    <circle cx="290" cy="55" r="15" fill="#e8963a"/>
+    <circle cx="283" cy="48" r="5.5" fill="white"/><circle cx="297" cy="48" r="5.5" fill="white"/>
+    <circle cx="284" cy="49" r="2.8" fill="#111"/><circle cx="298" cy="49" r="2.8" fill="#111"/>
+  </svg>
+
+  <svg class="deco-snake" style="right:220px;bottom:70px;animation-delay:0.4s">
+    <path d="M 10,55 C 55,5 115,95 165,50 C 205,15 245,65 260,45"
+          stroke="#b86e2a" stroke-width="26" fill="none" stroke-linecap="round"/>
+    <circle cx="260" cy="45" r="15" fill="#b86e2a"/>
+    <circle cx="253" cy="38" r="5.5" fill="white"/><circle cx="267" cy="38" r="5.5" fill="white"/>
+    <circle cx="254" cy="39" r="2.8" fill="#111"/><circle cx="268" cy="39" r="2.8" fill="#111"/>
+  </svg>
+
+  <svg class="deco-snake" style="right:20px;bottom:20px;animation-delay:1.2s">
+    <path d="M 10,90 C 40,20 95,85 140,45 C 170,18 190,58 200,48"
+          stroke="#2ec4b6" stroke-width="26" fill="none" stroke-linecap="round"/>
+    <circle cx="200" cy="48" r="15" fill="#2ec4b6"/>
+    <circle cx="193" cy="41" r="5.5" fill="white"/><circle cx="207" cy="41" r="5.5" fill="white"/>
+    <circle cx="194" cy="42" r="2.8" fill="#111"/><circle cx="208" cy="42" r="2.8" fill="#111"/>
+  </svg>
+
+  <svg class="deco-snake" style="right:60px;top:420px;animation-delay:1.8s;width:160px;height:120px">
+    <path d="M 10,80 C 35,20 85,80 110,40 C 130,15 148,52 155,42"
+          stroke="#e8963a" stroke-width="22" fill="none" stroke-linecap="round"/>
+    <circle cx="155" cy="42" r="13" fill="#e8963a"/>
+    <circle cx="149" cy="36" r="4.5" fill="white"/><circle cx="161" cy="36" r="4.5" fill="white"/>
+    <circle cx="150" cy="37" r="2.3" fill="#111"/><circle cx="162" cy="37" r="2.3" fill="#111"/>
+  </svg>
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-snake-icon">🐍</span>
+      <span class="topbar-welcome">Welcome, <strong id="topbar-name">Guest</strong></span>
+    </div>
+    <div class="topbar-right">
+      <div id="topbar-login-btn">
+        <a href="/auth/google" class="btn-google-top">
+          <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+          Sign In
+        </a>
+      </div>
+      <div id="topbar-user" class="hidden">
+        <img id="topbar-avatar" src="" alt="">
+        <span id="topbar-username"></span>
+      </div>
+    </div>
   </div>
 
-  <!-- LOGIN SCREEN -->
-  <div class="lobby-container" id="login-screen">
-    <div class="title">HexSlither</div>
-    <div class="subtitle">Multiplayer Snake Arena</div>
-    <div class="card" style="text-align:center">
-      <h3>Sign in to play</h3>
-      <p class="card-desc">Save your stats and play with people worldwide</p>
+  <!-- Login screen -->
+  <div id="login-screen" class="hidden screen-center">
+    <div class="login-title">
+      <h1 class="game-title">HEX<span>SLITHER</span></h1>
+      <p class="game-subtitle">MULTIPLAYER SNAKE ARENA</p>
+    </div>
+    <div class="login-card">
+      <p class="login-desc">Sign in to play, track stats &amp; use your wallet</p>
       <a href="/auth/google" class="btn-google">
-        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" height="20" alt="">
+        <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
         Sign in with Google
       </a>
-    </div>
-    <div class="card">
-      <h3>Server</h3>
-      <div class="stats-row">
-        <div>Players Online: <span id="stat-players-login">0</span></div>
-      </div>
+      <div class="login-online"><span id="stat-players-login">0</span> players online</div>
     </div>
   </div>
 
-  <!-- LOBBY SCREEN -->
-  <div class="lobby-container hidden" id="lobby-screen">
-    <div class="title">HexSlither</div>
-    <div class="subtitle">Multiplayer Snake Arena</div>
+  <!-- Lobby screen -->
+  <div id="lobby-screen" class="hidden lobby-page">
+    <div class="lobby-title-block">
+      <h1 class="game-title">HEX<span>SLITHER</span></h1>
+      <p class="game-subtitle">MULTIPLAYER SNAKE ARENA</p>
+    </div>
 
-    <!-- Account card -->
-    <div class="card">
-      <h3>Account</h3>
-      <div class="account-row">
-        <img class="account-avatar-img" id="account-avatar-img" src="" alt="" onerror="this.style.display='none'">
-        <div class="account-avatar hidden" id="account-avatar-fallback">?</div>
-        <div class="account-info">
-          <div class="account-name" id="account-name">—</div>
-          <div class="account-email" id="account-email">—</div>
+    <div class="lobby-grid">
+
+      <!-- Left column -->
+      <div class="lobby-col">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <span class="card-icon">🏆</span>
+              <span class="card-title">Leaderboard</span>
+            </div>
+            <span class="badge-live">● Live</span>
+          </div>
+          <ul class="leaderboard-list" id="lobby-leaderboard">
+            <li><span class="lb-name" style="color:#444">No players yet</span></li>
+          </ul>
         </div>
-        <button class="btn-icon" id="btn-edit-name" title="Edit name">✏️</button>
-      </div>
-      <div class="account-stats">
-        <div class="stat-box"><div class="stat-val" id="stat-highscore">0</div><div class="stat-lbl">High Score</div></div>
-        <div class="stat-box"><div class="stat-val" id="stat-games">0</div><div class="stat-lbl">Games</div></div>
-      </div>
-      <a href="/auth/logout" class="btn btn-signout">Sign Out</a>
-    </div>
 
-    <!-- Display Name -->
-    <div class="card">
-      <h3>Display Name</h3>
-      <input type="text" id="player-name" placeholder="Enter your name..." maxlength="20">
-    </div>
-
-    <!-- Wallet -->
-    <div class="card">
-      <h3>Wallet</h3>
-      <div class="balance-row" style="margin-bottom:14px">
-        <span class="balance-label">Game Balance</span>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="balance-value" id="game-balance">0.0000 SOL</span>
-          <button class="btn-refresh" id="btn-refresh-balance" title="Refresh balance">↻</button>
+        <div class="card">
+          <div class="account-row">
+            <div class="account-avatar" id="account-avatar-fallback">?</div>
+            <img class="account-avatar-img hidden" id="account-avatar-img" src="" alt="">
+            <div class="account-info">
+              <div class="account-name" id="account-name">Player</div>
+              <div class="account-email" id="account-email"></div>
+            </div>
+            <button class="btn-icon" id="btn-edit-name" title="Edit name">✏️</button>
+          </div>
+          <div class="account-stats">
+            <div class="stat-box">
+              <div class="stat-val" id="stat-highscore">0</div>
+              <div class="stat-lbl">High Score</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val" id="stat-games">0</div>
+              <div class="stat-lbl">Games</div>
+            </div>
+          </div>
+          <a href="/auth/logout" class="btn-signout">Sign Out</a>
         </div>
       </div>
-      <div class="wallet-actions">
-        <button class="btn-small btn-deposit" id="btn-add-funds">Add Funds</button>
-        <button class="btn-small btn-withdraw" id="btn-withdraw">Withdraw</button>
+
+      <!-- Center column -->
+      <div class="lobby-col lobby-col-center">
+        <div class="card play-card">
+          <div class="play-profile">
+            <div class="play-avatar-wrap">
+              <img id="play-avatar-img" class="play-avatar-img hidden" src="" alt="">
+              <span id="play-avatar-fallback" class="play-avatar-fallback">?</span>
+            </div>
+            <span class="play-username" id="play-username">Player</span>
+          </div>
+
+          <input type="text" class="name-input" id="player-name" placeholder="Display name..." maxlength="20">
+
+          <button class="btn-play" id="btn-play">&#9654; JOIN GAME</button>
+
+          <div class="server-stats-row">
+            <div class="server-stat">
+              <div class="server-stat-val" id="stat-players">0</div>
+              <div class="server-stat-lbl">Players Online</div>
+            </div>
+            <div class="server-stat-divider"></div>
+            <div class="server-stat">
+              <div class="server-stat-val">🌐</div>
+              <div class="server-stat-lbl">Global Server</div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div id="wallet-status" style="font-size:0.75rem;color:#666;margin-top:8px;min-height:16px"></div>
-    </div>
 
-    <!-- Server stats -->
-    <div class="card">
-      <h3>Server</h3>
-      <div class="stats-row">
-        <div>Players Online: <span id="stat-players">0</span></div>
-        <div>Arena Size: <span id="stat-arena">—</span></div>
+      <!-- Right column -->
+      <div class="lobby-col">
+        <div class="card wallet-card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <span class="card-icon">💳</span>
+              <span class="card-title">Wallet</span>
+            </div>
+            <button class="btn-text-sm" id="btn-refresh-balance">↻ Refresh</button>
+          </div>
+          <div class="wallet-balance-block">
+            <div class="wallet-balance-num" id="game-balance">0.0000 SOL</div>
+          </div>
+          <div class="wallet-action-row">
+            <button class="btn-add-funds" id="btn-add-funds">Add Funds</button>
+            <button class="btn-cash-out" id="btn-withdraw">Cash Out</button>
+          </div>
+          <div class="wallet-status-msg" id="wallet-status"></div>
+        </div>
       </div>
-    </div>
 
-    <!-- Leaderboard -->
-    <div class="card">
-      <h3>Top Players</h3>
-      <ul class="leaderboard-list" id="lobby-leaderboard">
-        <li><span class="rank">—</span><span class="lb-name" style="color:#555">No players yet</span></li>
-      </ul>
     </div>
-
-    <button class="btn btn-play" id="btn-play">PLAY</button>
   </div>
 
-  <!-- Edit name modal -->
+  <!-- Hidden balance sidebar (kept for JS compatibility) -->
+  <div style="display:none" id="balance-sidebar"><span id="sidebar-balance">0.0000</span></div>
+
+  <!-- ── Modals ──────────────────────────────────────────────────────────── -->
+
+  <!-- Edit name -->
   <div class="modal-overlay" id="modal-editname">
     <div class="modal">
       <h3>Change Display Name</h3>
@@ -115,7 +205,7 @@
     </div>
   </div>
 
-  <!-- Receive / Add Funds Modal -->
+  <!-- Add Funds / Receive -->
   <div class="modal-overlay" id="modal-receive">
     <div class="modal modal-receive">
       <div class="receive-header">
@@ -123,7 +213,7 @@
         <h3>Add Funds</h3>
       </div>
       <div class="receive-subtitle">Receive SOL</div>
-      <p class="receive-desc">Scan this QR code or copy the address below, then send SOL from your Phantom wallet. Your balance updates automatically.</p>
+      <p class="receive-desc">Scan this QR code or copy the address below, then send SOL from your Phantom wallet.</p>
       <div id="receive-qr"></div>
       <div class="receive-wallet-label">Game wallet address</div>
       <div class="receive-address-row">
@@ -137,10 +227,10 @@
     </div>
   </div>
 
-  <!-- Withdraw Modal -->
+  <!-- Withdraw -->
   <div class="modal-overlay" id="modal-withdraw">
     <div class="modal">
-      <h3>Withdraw SOL</h3>
+      <h3>Cash Out SOL</h3>
       <input type="text" id="withdraw-wallet" placeholder="Your Phantom wallet address">
       <input type="number" id="withdraw-amount" placeholder="Amount in SOL" min="0.01" step="0.01">
       <div class="modal-btns">
@@ -150,9 +240,9 @@
     </div>
   </div>
 
+  <script src="/shared/constants.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/shared/constants.js"></script>
-  <script src="js/lobby.js"></script>
+  <script src="/js/lobby.js"></script>
 </body>
 </html>

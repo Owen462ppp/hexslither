@@ -23,32 +23,32 @@
   }
 
   function drawHex(cx, cy) {
-    p(OV, cx, cy); ctx.fillStyle = '#03080f'; ctx.fill();
-    p(IV, cx, cy); ctx.fillStyle = '#0b1929'; ctx.fill();
+    p(OV, cx, cy); ctx.fillStyle = '#080909'; ctx.fill();
+    p(IV, cx, cy); ctx.fillStyle = '#0e1012'; ctx.fill();
     const gx = cx - INNER_R * 0.3, gy = cy - INNER_R * 0.3;
     const grad = ctx.createRadialGradient(gx, gy, 0, gx, gy, INNER_R * 1.6);
-    grad.addColorStop(0,    'rgba(25,65,110,0.85)');
-    grad.addColorStop(0.45, 'rgba(12,28,55,0.6)');
-    grad.addColorStop(1,    'rgba(0,0,0,0.75)');
+    grad.addColorStop(0,    'rgba(22,24,30,0.9)');
+    grad.addColorStop(0.5,  'rgba(12,13,16,0.7)');
+    grad.addColorStop(1,    'rgba(0,0,0,0.85)');
     p(IV, cx, cy); ctx.fillStyle = grad; ctx.fill();
     ctx.save(); p(IV, cx, cy); ctx.clip();
     ctx.beginPath();
     ctx.moveTo(cx+IV[1].x,cy+IV[1].y); ctx.lineTo(cx+IV[2].x,cy+IV[2].y);
     ctx.lineTo(cx+IV[3].x,cy+IV[3].y); ctx.lineTo(cx+IV[4].x,cy+IV[4].y);
-    ctx.strokeStyle='rgba(0,0,0,0.7)'; ctx.lineWidth=GAP*2; ctx.stroke();
+    ctx.strokeStyle='rgba(0,0,0,0.8)'; ctx.lineWidth=GAP*2; ctx.stroke();
     ctx.restore();
     ctx.save(); p(IV, cx, cy); ctx.clip();
     ctx.beginPath();
     ctx.moveTo(cx+IV[4].x,cy+IV[4].y); ctx.lineTo(cx+IV[5].x,cy+IV[5].y);
     ctx.lineTo(cx+IV[0].x,cy+IV[0].y); ctx.lineTo(cx+IV[1].x,cy+IV[1].y);
-    ctx.strokeStyle='rgba(80,140,220,0.13)'; ctx.lineWidth=GAP*2; ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,0.025)'; ctx.lineWidth=GAP*2; ctx.stroke();
     ctx.restore();
   }
 
   function draw() {
     canvas.width = window.innerWidth; canvas.height = window.innerHeight;
     const W = canvas.width, H = canvas.height;
-    ctx.fillStyle = '#03080f'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#080909'; ctx.fillRect(0, 0, W, H);
     const cols = Math.ceil(W / COL_STEP) + 3, rows = Math.ceil(H / ROW_STEP) + 3;
     for (let col = -1; col < cols; col++)
       for (let row = -1; row < rows; row++) {
@@ -95,7 +95,7 @@ socket.on(CONSTANTS.EVENTS.LOBBY_STATE, ({ playerCount, leaderboard }) => {
 });
 
 socket.on(CONSTANTS.EVENTS.WALLET_BALANCE, ({ balance }) => {
-  document.getElementById('wallet-balance').textContent = balance.toFixed(4) + ' SOL';
+  setBalance(balance);
 });
 
 socket.on(CONSTANTS.EVENTS.ERROR, ({ message }) => alert('Error: ' + message));
@@ -118,19 +118,28 @@ function showLobby() {
     fallback.classList.remove('hidden');
   }
 
-  document.getElementById('account-name').textContent  = account.name || 'Player';
-  document.getElementById('account-email').textContent = account.email || '';
+  document.getElementById('account-name').textContent   = account.name || 'Player';
+  document.getElementById('account-email').textContent  = account.email || '';
   document.getElementById('stat-highscore').textContent = account.highScore  || 0;
   document.getElementById('stat-games').textContent     = account.gamesPlayed || 0;
-  document.getElementById('player-name').value = account.name || 'Player';
+  document.getElementById('player-name').value          = account.name || 'Player';
+  document.getElementById('play-username').textContent  = account.name || 'Player';
+  document.getElementById('topbar-name').textContent    = account.name || 'Player';
 
-  // Register this socket for real-time wallet balance pushes
+  // Topbar avatar
+  const tav = document.getElementById('topbar-avatar');
+  if (account.avatar) { tav.src = account.avatar; }
+  document.getElementById('topbar-user').classList.remove('hidden');
+  document.getElementById('topbar-login-btn').classList.add('hidden');
+  document.getElementById('topbar-username').textContent = account.name || 'Player';
+
+  // Play card avatar
+  const pai = document.getElementById('play-avatar-img');
+  const paf = document.getElementById('play-avatar-fallback');
+  if (account.avatar) { pai.src = account.avatar; pai.classList.remove('hidden'); paf.classList.add('hidden'); }
+  else { paf.textContent = (account.name || '?')[0].toUpperCase(); }
+
   socket.emit('lobby:join', { googleId: account.googleId });
-
-  // Pre-fill linked Phantom address if saved
-  if (account.walletAddress) {
-    document.getElementById('phantom-address-input').value = account.walletAddress;
-  }
 }
 
 // Edit name
@@ -151,8 +160,11 @@ document.getElementById('confirm-editname').addEventListener('click', async () =
   });
   const { account: updated } = await res.json();
   account = updated;
-  document.getElementById('account-name').textContent = account.name;
-  document.getElementById('player-name').value = account.name;
+  document.getElementById('account-name').textContent  = account.name;
+  document.getElementById('player-name').value         = account.name;
+  document.getElementById('play-username').textContent = account.name;
+  document.getElementById('topbar-name').textContent   = account.name;
+  document.getElementById('topbar-username').textContent = account.name;
   document.getElementById('modal-editname').classList.remove('active');
 });
 
