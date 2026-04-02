@@ -23,20 +23,40 @@ function getEscrowPublicKey() {
 // Track credited signatures to prevent double-crediting
 const usedSignatures = new Set();
 
-// Find the most recent unclaimed deposit to the escrow and return its amount
+// Retry wrapper for rate-limited RPC calls
+async function withRetry(fn, retries = 4, delay = 1500) {
+  try {
+    return await fn();
+  } catch (e) {
+    const is429 = e.message && (e.message.includes('429') || e.message.includes('Too many'));
+    if (retries > 0 && is429) {
+      await new Promise(r => setTimeout(r, delay));
+      return withRetry(fn, retries - 1, delay * 2);
+    }
+    throw e;
+  }
+}
+
+// Find the most recent unclaimed deposit to the escrow
+// Returns { amount, fromAddress } or null if none found
 async function findLatestDeposit() {
   const escrowPubkey = getEscrowPublicKey();
   const escrow = new PublicKey(escrowPubkey);
-  const sigs = await connection.getSignaturesForAddress(escrow, { limit: 20 });
+
+  const sigs = await withRetry(() =>
+    connection.getSignaturesForAddress(escrow, { limit: 10 })
+  );
 
   for (const sigInfo of sigs) {
     if (usedSignatures.has(sigInfo.signature)) continue;
     if (sigInfo.err) { usedSignatures.add(sigInfo.signature); continue; }
 
-    const tx = await connection.getTransaction(sigInfo.signature, {
-      commitment: 'confirmed',
-      maxSupportedTransactionVersion: 0,
-    });
+    const tx = await withRetry(() =>
+      connection.getTransaction(sigInfo.signature, {
+        commitment: 'confirmed',
+        maxSupportedTransactionVersion: 0,
+      })
+    );
     if (!tx || tx.meta.err) { usedSignatures.add(sigInfo.signature); continue; }
 
     const accountKeys = tx.transaction.message.staticAccountKeys ||
@@ -48,10 +68,11 @@ async function findLatestDeposit() {
     if (lamports <= 0) { usedSignatures.add(sigInfo.signature); continue; }
 
     usedSignatures.add(sigInfo.signature);
-    return lamports / LAMPORTS_PER_SOL;
+    const fromAddress = accountKeys[0].toString(); // sender is fee payer (index 0)
+    return { amount: lamports / LAMPORTS_PER_SOL, fromAddress };
   }
 
-  throw new Error('No recent deposit found. Make sure your transaction confirmed, then try again.');
+  return null; // no new deposit yet
 }
 
 // Send SOL from escrow to a user wallet
@@ -72,8 +93,8 @@ async function withdraw(toAddress, amountSol) {
   tx.feePayer = escrow.publicKey;
   tx.sign(escrow);
 
-  const signature = await connection.sendRawTransaction(tx.serialize());
-  await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight });
+  const signature = await withRetry(() => connection.sendRawTransaction(tx.serialize()));
+  await withRetry(() => connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }));
   return signature;
 }
 

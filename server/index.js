@@ -94,15 +94,18 @@ app.get('/wallet/info', (req, res) => {
   }
 });
 
-// Confirm deposit: credit the most recent unclaimed transaction to the escrow
+// Poll for a new deposit — client calls this periodically while modal is open
 app.post('/wallet/deposit', async (req, res) => {
   if (!req.isAuthenticated()) return res.status(401).json({ error: 'Not logged in' });
   try {
-    const amount = await Wallet.findLatestDeposit();
+    const result = await Wallet.findLatestDeposit();
+    if (!result) return res.status(202).json({ pending: true }); // no deposit yet
     const acc = Auth.getAccountByGoogleId(req.user.googleId);
     if (!acc) return res.status(404).json({ error: 'Account not found' });
-    acc.balance = (acc.balance || 0) + amount;
-    res.json({ ok: true, amount, balance: acc.balance });
+    acc.balance = (acc.balance || 0) + result.amount;
+    if (result.fromAddress) acc.walletAddress = result.fromAddress; // remember for withdrawals
+    console.log(`[WALLET] Credited ${result.amount} SOL to ${acc.name}`);
+    res.json({ ok: true, amount: result.amount, balance: acc.balance });
   } catch (e) {
     console.error('[WALLET] Deposit error:', e.message);
     res.status(400).json({ error: e.message });

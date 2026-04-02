@@ -196,11 +196,46 @@ fetch('/auth/me').then(r => r.json()).then(({ account: acc }) => {
 });
 
 // ─── Add Funds ────────────────────────────────────────────────────────────────
+let depositPollTimer = null;
+
+function stopDepositPoll() {
+  if (depositPollTimer) { clearInterval(depositPollTimer); depositPollTimer = null; }
+}
+
+async function pollForDeposit() {
+  const statusEl = document.getElementById('deposit-status');
+  try {
+    const res = await fetch('/wallet/deposit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    if (res.status === 401) {
+      stopDepositPoll();
+      statusEl.style.color = '#ff6666';
+      statusEl.textContent = 'Session expired — please refresh the page.';
+      return;
+    }
+    if (res.status === 202) return; // no deposit yet, keep waiting
+    const data = await res.json();
+    if (data.error) { console.warn('[deposit poll]', data.error); return; }
+    // Deposit found!
+    stopDepositPoll();
+    setBalance(data.balance);
+    statusEl.style.color = '#14F195';
+    statusEl.textContent = `Received ${data.amount.toFixed(4)} SOL ✓`;
+    walletStatus(`Deposit received: ${data.amount.toFixed(4)} SOL ✓`);
+    setTimeout(() => document.getElementById('modal-receive').classList.remove('active'), 2500);
+  } catch (e) { /* network hiccup, keep waiting */ }
+}
+
 document.getElementById('btn-add-funds').addEventListener('click', () => {
   if (!walletInfo) { walletStatus('Wallet not configured on server.', true); return; }
   const addr = walletInfo.escrowAddress;
   document.getElementById('receive-address-short').textContent = addr.slice(0, 6) + '...' + addr.slice(-4);
-  document.getElementById('deposit-status').textContent = '';
+  const statusEl = document.getElementById('deposit-status');
+  statusEl.style.color = '#555';
+  statusEl.textContent = 'Waiting for your deposit...';
 
   const qrEl = document.getElementById('receive-qr');
   qrEl.innerHTML = '';
@@ -213,9 +248,14 @@ document.getElementById('btn-add-funds').addEventListener('click', () => {
     correctLevel: QRCode.CorrectLevel.M,
   });
   document.getElementById('modal-receive').classList.add('active');
+
+  // Poll every 15 seconds while modal is open
+  stopDepositPoll();
+  depositPollTimer = setInterval(pollForDeposit, 15000);
 });
 
 document.getElementById('close-receive').addEventListener('click', () => {
+  stopDepositPoll();
   document.getElementById('modal-receive').classList.remove('active');
 });
 
@@ -226,27 +266,6 @@ document.getElementById('btn-copy-address').addEventListener('click', () => {
     btn.textContent = 'Copied!';
     setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
   });
-});
-
-document.getElementById('btn-i-sent').addEventListener('click', async () => {
-  const statusEl = document.getElementById('deposit-status');
-  statusEl.style.color = '#aaa';
-  statusEl.textContent = 'Checking transaction...';
-  try {
-    const res = await fetch('/wallet/deposit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    setBalance(data.balance);
-    statusEl.style.color = '#14F195';
-    statusEl.textContent = `Deposited ${data.amount.toFixed(4)} SOL ✓`;
-  } catch (e) {
-    statusEl.style.color = '#ff6666';
-    statusEl.textContent = 'Error: ' + (e.message || e);
-  }
 });
 
 // ─── Withdraw ─────────────────────────────────────────────────────────────────
