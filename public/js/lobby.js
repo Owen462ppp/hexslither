@@ -165,6 +165,36 @@ function escHtml(s) {
 }
 
 // ─── Phantom Wallet ───────────────────────────────────────────────────────────
+let walletInfo = null; // { escrowAddress, network }
+
+// Load escrow info from server
+fetch('/wallet/info').then(r => r.json()).then(info => { walletInfo = info; });
+
+function walletStatus(msg, isError) {
+  const el = document.getElementById('wallet-status');
+  if (el) { el.textContent = msg; el.style.color = isError ? '#ff6666' : '#14F195'; }
+}
+
+async function refreshPhantomBalance() {
+  if (!walletAddress || !walletInfo) return;
+  try {
+    const { Connection, PublicKey, LAMPORTS_PER_SOL } = solanaWeb3;
+    const rpc = walletInfo.network === 'mainnet-beta'
+      ? 'https://api.mainnet-beta.solana.com'
+      : 'https://api.devnet.solana.com';
+    const conn = new Connection(rpc, 'confirmed');
+    const bal = await conn.getBalance(new PublicKey(walletAddress));
+    document.getElementById('phantom-balance').textContent = (bal / LAMPORTS_PER_SOL).toFixed(4) + ' SOL';
+  } catch(e) {}
+}
+
+function refreshGameBalance() {
+  fetch('/auth/me').then(r => r.json()).then(({ account: acc }) => {
+    if (acc) document.getElementById('game-balance').textContent =
+      ((acc.balance || 0).toFixed(4)) + ' SOL';
+  });
+}
+
 document.getElementById('btn-wallet').addEventListener('click', async () => {
   const phantom = window.solana;
   if (!phantom || !phantom.isPhantom) {
@@ -173,35 +203,95 @@ document.getElementById('btn-wallet').addEventListener('click', async () => {
   try {
     const resp = await phantom.connect();
     walletAddress = resp.publicKey.toString();
-    document.getElementById('wallet-address').textContent = walletAddress;
-    document.getElementById('wallet-info').classList.add('active');
-    document.getElementById('btn-wallet').textContent = 'Wallet Connected';
-    document.getElementById('btn-wallet').style.opacity = '0.6';
-    socket.emit(CONSTANTS.EVENTS.WALLET_CONNECT, { walletAddress });
+    // Shorten address for display
+    const short = walletAddress.slice(0,4) + '...' + walletAddress.slice(-4);
+    document.getElementById('wallet-address').textContent = short;
+    document.getElementById('wallet-connect-section').classList.add('hidden');
+    document.getElementById('wallet-connected-section').classList.remove('hidden');
+    refreshPhantomBalance();
+    refreshGameBalance();
   } catch (e) { alert('Wallet connect failed: ' + (e.message || e)); }
 });
 
+// Deposit
 document.getElementById('btn-deposit').addEventListener('click', () =>
   document.getElementById('modal-deposit').classList.add('active'));
 document.getElementById('cancel-deposit').addEventListener('click', () =>
   document.getElementById('modal-deposit').classList.remove('active'));
-document.getElementById('confirm-deposit').addEventListener('click', () => {
+document.getElementById('confirm-deposit').addEventListener('click', async () => {
   const amount = parseFloat(document.getElementById('deposit-amount').value);
-  if (!amount || amount <= 0) return;
-  socket.emit(CONSTANTS.EVENTS.WALLET_DEPOSIT, { walletAddress, amount });
+  if (!amount || amount <= 0 || !walletAddress || !walletInfo) return;
+
   document.getElementById('modal-deposit').classList.remove('active');
+  walletStatus('Waiting for Phantom approval...');
+
+  try {
+    const { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } = solanaWeb3;
+    const rpc = walletInfo.network === 'mainnet-beta'
+      ? 'https://api.mainnet-beta.solana.com'
+      : 'https://api.devnet.solana.com';
+    const conn = new Connection(rpc, 'confirmed');
+    const { blockhash } = await conn.getLatestBlockhash();
+
+    const tx = new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: new PublicKey(walletAddress),
+        toPubkey:   new PublicKey(walletInfo.escrowAddress),
+        lamports:   Math.floor(amount * LAMPORTS_PER_SOL),
+      })
+    );
+    tx.recentBlockhash = blockhash;
+    tx.feePayer = new PublicKey(walletAddress);
+
+    walletStatus('Approve in Phantom...');
+    const { signature } = await window.solana.signAndSendTransaction(tx);
+    walletStatus('Confirming transaction...');
+
+    // Tell server to verify and credit
+    const res = await fetch('/wallet/deposit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ signature, walletAddress }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    document.getElementById('game-balance').textContent = data.balance.toFixed(4) + ' SOL';
+    walletStatus(`Deposited ${data.amount.toFixed(4)} SOL ✓`);
+    refreshPhantomBalance();
+  } catch (e) {
+    walletStatus('Deposit failed: ' + (e.message || e), true);
+  }
   document.getElementById('deposit-amount').value = '';
 });
 
+// Withdraw
 document.getElementById('btn-withdraw').addEventListener('click', () =>
   document.getElementById('modal-withdraw').classList.add('active'));
 document.getElementById('cancel-withdraw').addEventListener('click', () =>
   document.getElementById('modal-withdraw').classList.remove('active'));
-document.getElementById('confirm-withdraw').addEventListener('click', () => {
+document.getElementById('confirm-withdraw').addEventListener('click', async () => {
   const amount = parseFloat(document.getElementById('withdraw-amount').value);
   if (!amount || amount <= 0) return;
-  socket.emit(CONSTANTS.EVENTS.WALLET_WITHDRAW, { walletAddress, amount });
+
   document.getElementById('modal-withdraw').classList.remove('active');
+  walletStatus('Processing withdrawal...');
+
+  try {
+    const res = await fetch('/wallet/withdraw', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    document.getElementById('game-balance').textContent = data.balance.toFixed(4) + ' SOL';
+    walletStatus(`Withdrew ${amount.toFixed(4)} SOL ✓`);
+    refreshPhantomBalance();
+  } catch (e) {
+    walletStatus('Withdrawal failed: ' + (e.message || e), true);
+  }
   document.getElementById('withdraw-amount').value = '';
 });
 

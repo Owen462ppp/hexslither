@@ -5,9 +5,10 @@ const path       = require('path');
 const session    = require('express-session');
 const passport   = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const C    = require('../shared/constants');
+const C      = require('../shared/constants');
 const GameRoom = require('./GameRoom');
-const Auth = require('./Auth');
+const Auth   = require('./Auth');
+const Wallet = require('./Wallet');
 
 const app    = express();
 const server = http.createServer(app);
@@ -71,6 +72,53 @@ app.post('/auth/update-name', (req, res) => {
   if (!name) return res.status(400).json({ error: 'Invalid name' });
   const acc = Auth.saveAccount(req.user.googleId, { name });
   res.json({ account: acc });
+});
+
+// ─── Wallet API ───────────────────────────────────────────────────────────────
+
+// Return escrow address and network so client knows where to send SOL
+app.get('/wallet/info', (req, res) => {
+  res.json({
+    escrowAddress: Wallet.getEscrowPublicKey(),
+    network: Wallet.NETWORK,
+  });
+});
+
+// Confirm deposit: client sends signature after Phantom approves
+app.post('/wallet/deposit', async (req, res) => {
+  if (!req.isAuthenticated()) return res.status(401).json({ error: 'Not logged in' });
+  const { signature, walletAddress } = req.body;
+  if (!signature || !walletAddress) return res.status(400).json({ error: 'Missing fields' });
+  try {
+    const amount = await Wallet.verifyDeposit(signature, walletAddress);
+    const acc = Auth.getAccountByGoogleId(req.user.googleId);
+    if (!acc) return res.status(404).json({ error: 'Account not found' });
+    acc.balance = (acc.balance || 0) + amount;
+    acc.walletAddress = walletAddress;
+    res.json({ ok: true, amount, balance: acc.balance });
+  } catch (e) {
+    console.error('[WALLET] Deposit error:', e.message);
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Withdraw: send SOL from escrow back to user wallet
+app.post('/wallet/withdraw', async (req, res) => {
+  if (!req.isAuthenticated()) return res.status(401).json({ error: 'Not logged in' });
+  const { amount } = req.body;
+  if (!amount || amount <= 0) return res.status(400).json({ error: 'Invalid amount' });
+  const acc = Auth.getAccountByGoogleId(req.user.googleId);
+  if (!acc) return res.status(404).json({ error: 'Account not found' });
+  if (!acc.walletAddress) return res.status(400).json({ error: 'No wallet linked' });
+  if ((acc.balance || 0) < amount) return res.status(400).json({ error: 'Insufficient balance' });
+  try {
+    const sig = await Wallet.withdraw(acc.walletAddress, amount);
+    acc.balance = (acc.balance || 0) - amount;
+    res.json({ ok: true, signature: sig, balance: acc.balance });
+  } catch (e) {
+    console.error('[WALLET] Withdraw error:', e.message);
+    res.status(400).json({ error: e.message });
+  }
 });
 
 // ─── Static files ─────────────────────────────────────────────────────────────

@@ -62,17 +62,29 @@
     <!-- Phantom Wallet -->
     <div class="card">
       <h3>Phantom Wallet</h3>
-      <button class="btn btn-wallet" id="btn-wallet">Connect Phantom Wallet</button>
-      <div class="wallet-info" id="wallet-info">
+
+      <!-- Step 1: not connected -->
+      <div id="wallet-connect-section">
+        <button class="btn btn-wallet" id="btn-wallet">Connect Phantom Wallet</button>
+        <p class="card-desc" style="margin-top:10px">Connect your wallet to deposit &amp; withdraw SOL</p>
+      </div>
+
+      <!-- Step 2: connected -->
+      <div class="hidden" id="wallet-connected-section">
         <div class="wallet-address" id="wallet-address"></div>
-        <div class="balance-row">
-          <span class="balance-label">Balance</span>
-          <span class="balance-value" id="wallet-balance">0.00 SOL</span>
+        <div class="balance-row" style="margin-top:10px">
+          <span class="balance-label">Phantom Balance</span>
+          <span class="balance-value" id="phantom-balance">— SOL</span>
         </div>
-        <div class="wallet-actions">
+        <div class="balance-row" style="margin-top:6px">
+          <span class="balance-label">Game Balance</span>
+          <span class="balance-value" id="game-balance">0.0000 SOL</span>
+        </div>
+        <div class="wallet-actions" style="margin-top:12px">
           <button class="btn-small btn-deposit" id="btn-deposit">Deposit</button>
           <button class="btn-small btn-withdraw" id="btn-withdraw">Withdraw</button>
         </div>
+        <div id="wallet-status" style="font-size:0.75rem;color:#666;margin-top:8px;min-height:16px"></div>
       </div>
     </div>
 
@@ -132,6 +144,7 @@
     </div>
   </div>
 
+  <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/constants.js"></script>
   <script src="js/lobby.js"></script>
