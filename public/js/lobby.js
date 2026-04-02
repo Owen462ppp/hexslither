@@ -123,6 +123,14 @@ function showLobby() {
   document.getElementById('stat-highscore').textContent = account.highScore  || 0;
   document.getElementById('stat-games').textContent     = account.gamesPlayed || 0;
   document.getElementById('player-name').value = account.name || 'Player';
+
+  // Register this socket for real-time wallet balance pushes
+  socket.emit('lobby:join', { googleId: account.googleId });
+
+  // Pre-fill linked Phantom address if saved
+  if (account.walletAddress) {
+    document.getElementById('phantom-address-input').value = account.walletAddress;
+  }
 }
 
 // Edit name
@@ -165,50 +173,75 @@ function escHtml(s) {
 }
 
 // ─── Wallet ───────────────────────────────────────────────────────────────────
-let walletInfo = null; // { escrowAddress, network }
+let walletInfo = null;
 
 fetch('/wallet/info').then(r => r.json()).then(info => {
   if (info && info.escrowAddress) walletInfo = info;
 }).catch(() => {});
+
+function setBalance(bal) {
+  const formatted = parseFloat(bal).toFixed(4);
+  document.getElementById('game-balance').textContent = formatted + ' SOL';
+  const sb = document.getElementById('sidebar-balance');
+  if (sb) sb.textContent = formatted;
+}
 
 function walletStatus(msg, isError) {
   const el = document.getElementById('wallet-status');
   if (el) { el.textContent = msg; el.style.color = isError ? '#ff6666' : '#14F195'; }
 }
 
-function refreshGameBalance() {
-  fetch('/auth/me').then(r => r.json()).then(({ account: acc }) => {
-    if (acc) {
-      const bal = (acc.balance || 0).toFixed(4);
-      document.getElementById('game-balance').textContent = bal + ' SOL';
-      const sb = document.getElementById('sidebar-balance');
-      if (sb) sb.textContent = bal;
-    }
-  });
-}
-refreshGameBalance();
+// Auto-push from server when deposit detected
+socket.on(CONSTANTS.EVENTS.WALLET_BALANCE, ({ balance }) => {
+  setBalance(balance);
+  walletStatus('Deposit received! ✓');
+  setTimeout(() => walletStatus(''), 4000);
+});
 
-// ─── Add Funds (Receive) ──────────────────────────────────────────────────────
+// Load balance on open
+fetch('/auth/me').then(r => r.json()).then(({ account: acc }) => {
+  if (acc) setBalance(acc.balance || 0);
+});
+
+// ─── Link Phantom address ─────────────────────────────────────────────────────
+document.getElementById('btn-save-wallet').addEventListener('click', async () => {
+  const walletAddress = document.getElementById('phantom-address-input').value.trim();
+  const statusEl = document.getElementById('wallet-link-status');
+  if (!walletAddress) return;
+  try {
+    const res = await fetch('/auth/link-wallet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ walletAddress }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    if (account) account.walletAddress = walletAddress;
+    statusEl.style.color = '#14F195';
+    statusEl.textContent = 'Linked ✓ Deposits will now auto-credit';
+    setTimeout(() => { statusEl.textContent = ''; }, 5000);
+  } catch (e) {
+    statusEl.style.color = '#ff6666';
+    statusEl.textContent = 'Error: ' + (e.message || e);
+  }
+});
+
+// ─── Add Funds ────────────────────────────────────────────────────────────────
 document.getElementById('btn-add-funds').addEventListener('click', () => {
-  if (!walletInfo) { walletStatus('Wallet not configured. Add ESCROW env vars on Render.', true); return; }
+  if (!walletInfo) { walletStatus('Wallet not configured on server.', true); return; }
   const addr = walletInfo.escrowAddress;
-  const short = addr.slice(0, 6) + '...' + addr.slice(-4);
-  document.getElementById('receive-address-short').textContent = short;
+  document.getElementById('receive-address-short').textContent = addr.slice(0, 6) + '...' + addr.slice(-4);
 
-  // Generate QR code (clear previous first)
   const qrEl = document.getElementById('receive-qr');
   qrEl.innerHTML = '';
   new QRCode(qrEl, {
     text: addr,
-    width: 200,
-    height: 200,
+    width: 190,
+    height: 190,
     colorDark: '#ffffff',
     colorLight: '#141828',
     correctLevel: QRCode.CorrectLevel.M,
   });
-
-  document.getElementById('deposit-status').textContent = '';
-  document.getElementById('confirm-wallet-address').value = '';
   document.getElementById('modal-receive').classList.add('active');
 });
 
@@ -216,7 +249,6 @@ document.getElementById('close-receive').addEventListener('click', () => {
   document.getElementById('modal-receive').classList.remove('active');
 });
 
-// Copy address to clipboard
 document.getElementById('btn-copy-address').addEventListener('click', () => {
   if (!walletInfo) return;
   navigator.clipboard.writeText(walletInfo.escrowAddress).then(() => {
@@ -226,49 +258,18 @@ document.getElementById('btn-copy-address').addEventListener('click', () => {
   });
 });
 
-// Confirm deposit after sending from Phantom
-document.getElementById('btn-confirm-deposit').addEventListener('click', async () => {
-  const walletAddress = document.getElementById('confirm-wallet-address').value.trim();
-  const statusEl     = document.getElementById('deposit-status');
-
-  if (!walletAddress) {
-    statusEl.style.color = '#ff6666';
-    statusEl.textContent = 'Enter the wallet address you sent from.';
+// ─── Withdraw ─────────────────────────────────────────────────────────────────
+document.getElementById('btn-withdraw').addEventListener('click', () => {
+  if (!account?.walletAddress) {
+    walletStatus('Save your Phantom address above first.', true);
     return;
   }
-  statusEl.style.color = '#aaa';
-  statusEl.textContent = 'Looking up your transaction...';
-
-  try {
-    const res = await fetch('/wallet/deposit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ walletAddress }),
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    const bal = data.balance.toFixed(4);
-    document.getElementById('game-balance').textContent = bal + ' SOL';
-    const sb = document.getElementById('sidebar-balance');
-    if (sb) sb.textContent = bal;
-    statusEl.style.color = '#14F195';
-    statusEl.textContent = `Deposited ${data.amount.toFixed(4)} SOL ✓`;
-    document.getElementById('confirm-wallet-address').value = '';
-  } catch (e) {
-    statusEl.style.color = '#ff6666';
-    statusEl.textContent = 'Error: ' + (e.message || e);
-  }
+  document.getElementById('modal-withdraw').classList.add('active');
 });
-
-// ─── Withdraw ─────────────────────────────────────────────────────────────────
-document.getElementById('btn-withdraw').addEventListener('click', () =>
-  document.getElementById('modal-withdraw').classList.add('active'));
 document.getElementById('cancel-withdraw').addEventListener('click', () =>
   document.getElementById('modal-withdraw').classList.remove('active'));
 document.getElementById('confirm-withdraw').addEventListener('click', async () => {
-  const walletAddress = document.getElementById('withdraw-wallet').value.trim();
   const amount = parseFloat(document.getElementById('withdraw-amount').value);
-  if (!walletAddress) { alert('Enter your Solana wallet address.'); return; }
   if (!amount || amount <= 0) return;
 
   document.getElementById('modal-withdraw').classList.remove('active');
@@ -278,24 +279,23 @@ document.getElementById('confirm-withdraw').addEventListener('click', async () =
     const res = await fetch('/wallet/withdraw', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount, walletAddress }),
+      body: JSON.stringify({ amount }),
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
-    document.getElementById('game-balance').textContent = data.balance.toFixed(4) + ' SOL';
+    setBalance(data.balance);
     walletStatus(`Withdrew ${amount.toFixed(4)} SOL ✓`);
   } catch (e) {
     walletStatus('Withdrawal failed: ' + (e.message || e), true);
   }
   document.getElementById('withdraw-amount').value = '';
-  document.getElementById('withdraw-wallet').value = '';
 });
 
 // ─── Play ─────────────────────────────────────────────────────────────────────
 document.getElementById('btn-play').addEventListener('click', () => {
   const name = document.getElementById('player-name').value.trim() || account?.name || 'Player';
   sessionStorage.setItem('playerName',    name);
-  sessionStorage.setItem('walletAddress', walletAddress || '');
+  sessionStorage.setItem('walletAddress', account?.walletAddress || '');
   sessionStorage.setItem('googleId',      account?.googleId || '');
   window.location.href = '/game.html';
 });

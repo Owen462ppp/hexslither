@@ -74,6 +74,15 @@ app.post('/auth/update-name', (req, res) => {
   res.json({ account: acc });
 });
 
+// Link Phantom wallet address to account
+app.post('/auth/link-wallet', (req, res) => {
+  if (!req.isAuthenticated()) return res.status(401).json({ error: 'Not logged in' });
+  const { walletAddress } = req.body;
+  if (!walletAddress) return res.status(400).json({ error: 'Missing wallet address' });
+  const acc = Auth.saveAccount(req.user.googleId, { walletAddress });
+  res.json({ ok: true, walletAddress: acc.walletAddress });
+});
+
 // ─── Wallet API ───────────────────────────────────────────────────────────────
 
 // Return escrow address and network so client knows where to send SOL
@@ -136,7 +145,27 @@ app.use('/shared', express.static(path.join(__dirname, '../shared')));
 const gameRoom = new GameRoom(io);
 gameRoom.start();
 
-const walletLedger = new Map();
+// Map of googleId -> socket for real-time wallet balance pushes
+const lobbySocketsByGoogleId = new Map();
+
+// Start auto-polling for deposits
+(async () => {
+  try {
+    await Wallet.startPolling((fromAddress, amountSol) => {
+      const acc = Auth.getAccountByWallet(fromAddress);
+      if (!acc) {
+        console.log(`[WALLET] Unknown deposit from ${fromAddress} (${amountSol} SOL) — wallet not linked`);
+        return;
+      }
+      acc.balance = (acc.balance || 0) + amountSol;
+      console.log(`[WALLET] Auto-credited ${amountSol} SOL to ${acc.name} (balance: ${acc.balance})`);
+      const sock = lobbySocketsByGoogleId.get(acc.googleId);
+      if (sock) sock.emit(C.EVENTS.WALLET_BALANCE, { balance: acc.balance });
+    });
+  } catch (e) {
+    console.log('[WALLET] Polling not started:', e.message);
+  }
+})();
 
 io.on('connection', (socket) => {
   console.log(`[+] Connected: ${socket.id}`);
@@ -146,9 +175,20 @@ io.on('connection', (socket) => {
     leaderboard: gameRoom.buildLeaderboard(),
   });
 
+  // Lobby registration — ties this socket to a Google account for balance pushes
+  socket.on('lobby:join', ({ googleId } = {}) => {
+    if (googleId) {
+      socket._googleId = googleId;
+      lobbySocketsByGoogleId.set(googleId, socket);
+    }
+  });
+
   socket.on(C.EVENTS.PLAY, ({ name, walletAddress, googleId } = {}) => {
     const playerName = (name || 'Player').slice(0, 20);
-    if (googleId) socket._googleId = googleId;
+    if (googleId) {
+      socket._googleId = googleId;
+      lobbySocketsByGoogleId.set(googleId, socket);
+    }
     console.log(`[>] ${playerName} joins game`);
     gameRoom.addPlayer(socket, playerName, walletAddress || null);
   });
@@ -162,36 +202,13 @@ io.on('connection', (socket) => {
     gameRoom.respawnPlayer(socket.id);
   });
 
-  socket.on(C.EVENTS.WALLET_CONNECT, ({ walletAddress }) => {
-    if (!walletAddress) return;
-    const balance = walletLedger.get(walletAddress) || 0;
-    socket.emit(C.EVENTS.WALLET_BALANCE, { balance, walletAddress });
-  });
-
-  socket.on(C.EVENTS.WALLET_DEPOSIT, ({ walletAddress, amount }) => {
-    if (!walletAddress || !amount || amount <= 0) return;
-    const current = walletLedger.get(walletAddress) || 0;
-    walletLedger.set(walletAddress, current + amount);
-    socket.emit(C.EVENTS.WALLET_BALANCE, { balance: walletLedger.get(walletAddress), walletAddress });
-  });
-
-  socket.on(C.EVENTS.WALLET_WITHDRAW, ({ walletAddress, amount }) => {
-    if (!walletAddress || !amount || amount <= 0) return;
-    const current = walletLedger.get(walletAddress) || 0;
-    if (amount > current) {
-      socket.emit(C.EVENTS.ERROR, { code: 'INSUFFICIENT_FUNDS', message: 'Insufficient balance' });
-      return;
-    }
-    walletLedger.set(walletAddress, current - amount);
-    socket.emit(C.EVENTS.WALLET_BALANCE, { balance: walletLedger.get(walletAddress), walletAddress });
-  });
-
   socket.on('disconnect', () => {
     console.log(`[-] Disconnected: ${socket.id}`);
     const snake = gameRoom.snakes && gameRoom.snakes.get(socket.id);
     if (snake && socket._googleId) {
       Auth.recordGameResult(socket._googleId, snake.score);
     }
+    if (socket._googleId) lobbySocketsByGoogleId.delete(socket._googleId);
     gameRoom.removePlayer(socket.id);
   });
 });

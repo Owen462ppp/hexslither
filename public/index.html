@@ -73,6 +73,14 @@
         <span class="balance-label">Game Balance</span>
         <span class="balance-value" id="game-balance">0.0000 SOL</span>
       </div>
+      <div style="margin-bottom:12px">
+        <div class="card-desc" style="margin-bottom:6px">Your Phantom address <span style="color:#555">(link once for auto-deposits)</span></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" id="phantom-address-input" placeholder="Paste your Phantom wallet address..." style="flex:1;font-size:0.8rem;padding:8px 12px">
+          <button class="btn-small btn-confirm" id="btn-save-wallet" style="width:auto;padding:8px 16px;flex-shrink:0">Save</button>
+        </div>
+        <div id="wallet-link-status" style="font-size:0.75rem;margin-top:5px;min-height:14px"></div>
+      </div>
       <div class="wallet-actions">
         <button class="btn-small btn-deposit" id="btn-add-funds">Add Funds</button>
         <button class="btn-small btn-withdraw" id="btn-withdraw">Withdraw</button>
@@ -117,20 +125,17 @@
     <div class="modal modal-receive">
       <div class="receive-header">
         <button class="btn-back-modal" id="close-receive">&#8592;</button>
-        <h3>Receive Funds</h3>
+        <h3>Add Funds</h3>
       </div>
       <div class="receive-subtitle">Receive SOL</div>
-      <p class="receive-desc">Scan this code or copy your wallet address to receive funds on Solana. Make sure to send funds on Solana.</p>
+      <p class="receive-desc">Scan this QR code or copy the address below, then send SOL from your Phantom wallet. Your balance updates automatically.</p>
       <div id="receive-qr"></div>
-      <div class="receive-wallet-label">Your wallet</div>
+      <div class="receive-wallet-label">Game wallet address</div>
       <div class="receive-address-row">
         <span class="receive-address-short" id="receive-address-short">—</span>
         <button class="btn-copy" id="btn-copy-address">Copy</button>
       </div>
-      <div class="receive-divider">After sending — confirm your deposit</div>
-      <input type="text" id="confirm-wallet-address" placeholder="Your Solana wallet address">
-      <button class="btn-confirm-deposit" id="btn-confirm-deposit">I Sent SOL</button>
-      <div id="deposit-status" style="font-size:0.78rem;text-align:center;min-height:16px"></div>
+      <p class="receive-desc" style="text-align:center;color:#14F195;margin-top:4px">Balance updates automatically after sending!</p>
     </div>
   </div>
 
@@ -138,7 +143,7 @@
   <div class="modal-overlay" id="modal-withdraw">
     <div class="modal">
       <h3>Withdraw SOL</h3>
-      <input type="text" id="withdraw-wallet" placeholder="Your Solana wallet address">
+      <p style="font-size:0.8rem;color:#666;margin-bottom:4px">Sends to your linked Phantom address</p>
       <input type="number" id="withdraw-amount" placeholder="Amount in SOL" min="0.01" step="0.01">
       <div class="modal-btns">
         <button class="btn-small btn-cancel" id="cancel-withdraw">Cancel</button>

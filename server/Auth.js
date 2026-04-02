@@ -41,4 +41,11 @@ function recordGameResult(googleId, score) {
   if (score > acc.highScore) acc.highScore = score;
 }
 
-module.exports = { getOrCreateAccount, getAccountByGoogleId, saveAccount, recordGameResult };
+function getAccountByWallet(walletAddress) {
+  for (const acc of accounts.values()) {
+    if (acc.walletAddress === walletAddress) return acc;
+  }
+  return null;
+}
+
+module.exports = { getOrCreateAccount, getAccountByGoogleId, getAccountByWallet, saveAccount, recordGameResult };
