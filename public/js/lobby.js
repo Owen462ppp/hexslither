@@ -264,6 +264,12 @@ document.getElementById('btn-add-funds').addEventListener('click', () => {
   depositPollTimer = setInterval(pollForDeposit, 12000);
 });
 
+document.getElementById('btn-check-now').addEventListener('click', () => {
+  document.getElementById('deposit-status').style.color = '#aaa';
+  document.getElementById('deposit-status').textContent = 'Checking...';
+  pollForDeposit();
+});
+
 document.getElementById('close-receive').addEventListener('click', () => {
   stopDepositPoll();
   document.getElementById('modal-receive').classList.remove('active');

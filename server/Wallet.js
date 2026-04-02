@@ -45,36 +45,66 @@ async function findLatestDeposit() {
   const escrowPubkey = getEscrowPublicKey();
   const escrow = new PublicKey(escrowPubkey);
 
+  console.log(`[WALLET] Checking escrow ${escrowPubkey} for deposits...`);
+
   const sigs = await withRetry(() =>
-    connection.getSignaturesForAddress(escrow, { limit: 10 })
+    connection.getSignaturesForAddress(escrow, { limit: 25 })
   );
+
+  console.log(`[WALLET] Found ${sigs.length} recent sigs, ${usedSignatures.size} already used`);
 
   for (const sigInfo of sigs) {
     if (usedSignatures.has(sigInfo.signature)) continue;
-    if (sigInfo.err) { usedSignatures.add(sigInfo.signature); continue; }
+    if (sigInfo.err) {
+      usedSignatures.add(sigInfo.signature);
+      continue;
+    }
 
-    const tx = await withRetry(() =>
-      connection.getTransaction(sigInfo.signature, {
-        commitment: 'confirmed',
-        maxSupportedTransactionVersion: 0,
-      })
-    );
-    if (!tx || tx.meta.err) { usedSignatures.add(sigInfo.signature); continue; }
+    let tx;
+    try {
+      tx = await withRetry(() =>
+        connection.getTransaction(sigInfo.signature, {
+          commitment: 'confirmed',
+          maxSupportedTransactionVersion: 0,
+        })
+      );
+    } catch (e) {
+      console.error(`[WALLET] getTransaction failed for ${sigInfo.signature.slice(0,8)}: ${e.message}`);
+      continue; // don't mark as used — retry next poll
+    }
+
+    if (!tx) {
+      console.log(`[WALLET] tx not found yet: ${sigInfo.signature.slice(0,8)}`);
+      continue; // not confirmed yet — retry next poll, don't mark as used
+    }
+    if (tx.meta.err) {
+      usedSignatures.add(sigInfo.signature);
+      continue;
+    }
 
     const accountKeys = tx.transaction.message.staticAccountKeys ||
       tx.transaction.message.accountKeys;
     const escrowIndex = accountKeys.findIndex(k => k.toString() === escrowPubkey);
-    if (escrowIndex === -1) { usedSignatures.add(sigInfo.signature); continue; }
+
+    if (escrowIndex === -1) {
+      usedSignatures.add(sigInfo.signature);
+      continue;
+    }
 
     const lamports = tx.meta.postBalances[escrowIndex] - tx.meta.preBalances[escrowIndex];
-    if (lamports <= 0) { usedSignatures.add(sigInfo.signature); continue; }
+    if (lamports <= 0) {
+      usedSignatures.add(sigInfo.signature);
+      continue;
+    }
 
     usedSignatures.add(sigInfo.signature);
-    const fromAddress = accountKeys[0].toString(); // sender is fee payer (index 0)
+    const fromAddress = accountKeys[0].toString();
+    console.log(`[WALLET] Deposit found: ${lamports / LAMPORTS_PER_SOL} SOL from ${fromAddress.slice(0,8)}`);
     return { amount: lamports / LAMPORTS_PER_SOL, fromAddress };
   }
 
-  return null; // no new deposit yet
+  console.log(`[WALLET] No new deposits found`);
+  return null;
 }
 
 // Send SOL from escrow to a user wallet
@@ -105,4 +135,17 @@ async function getEscrowBalance() {
   return bal / LAMPORTS_PER_SOL;
 }
 
-module.exports = { getEscrowPublicKey, findLatestDeposit, withdraw, getEscrowBalance, NETWORK };
+async function getRecentSigs() {
+  const escrow = new PublicKey(getEscrowPublicKey());
+  const sigs = await withRetry(() =>
+    connection.getSignaturesForAddress(escrow, { limit: 10 })
+  );
+  return sigs.map(s => ({
+    sig: s.signature.slice(0, 16) + '...',
+    err: s.err,
+    blockTime: s.blockTime,
+    used: usedSignatures.has(s.signature),
+  }));
+}
+
+module.exports = { getEscrowPublicKey, findLatestDeposit, getRecentSigs, withdraw, getEscrowBalance, NETWORK };

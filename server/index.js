@@ -85,6 +85,18 @@ app.post('/auth/link-wallet', (req, res) => {
 
 // ─── Wallet API ───────────────────────────────────────────────────────────────
 
+// Debug: show recent transactions to escrow (remove before production)
+app.get('/wallet/debug', async (req, res) => {
+  try {
+    const { Connection, PublicKey } = require('@solana/web3.js');
+    const escrowPubkey = Wallet.getEscrowPublicKey();
+    const sigs = await Wallet.getRecentSigs();
+    res.json({ escrowPubkey, sigs });
+  } catch (e) {
+    res.json({ error: e.message });
+  }
+});
+
 // Return escrow address and network so client knows where to send SOL
 app.get('/wallet/info', (req, res) => {
   try {
