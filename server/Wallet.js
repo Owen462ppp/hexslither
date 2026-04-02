@@ -3,10 +3,12 @@ const {
   Transaction, SystemProgram, LAMPORTS_PER_SOL,
 } = require('@solana/web3.js');
 
-const NETWORK = process.env.SOLANA_NETWORK || 'devnet';
-const RPC_URL = NETWORK === 'mainnet-beta'
-  ? 'https://api.mainnet-beta.solana.com'
-  : 'https://api.devnet.solana.com';
+const NETWORK = process.env.SOLANA_NETWORK || 'mainnet-beta';
+const RPC_URL = process.env.RPC_URL || (
+  NETWORK === 'mainnet-beta'
+    ? 'https://api.mainnet-beta.solana.com'
+    : 'https://api.devnet.solana.com'
+);
 
 const connection = new Connection(RPC_URL, 'confirmed');
 
