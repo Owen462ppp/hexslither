@@ -375,6 +375,47 @@ input[type="text"]::placeholder { color: #555; }
 .btn-cancel { background: rgba(255,255,255,0.1); color: #fff; }
 .btn-confirm { background: #14F195; color: #000; }
 
+/* Balance sidebar */
+.balance-sidebar {
+  position: fixed;
+  right: 32px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(20,241,149,0.25);
+  border-radius: 20px;
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  backdrop-filter: blur(12px);
+  min-width: 140px;
+}
+.balance-sidebar-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #555;
+}
+.balance-sidebar-amount {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #14F195;
+  line-height: 1;
+  text-shadow: 0 0 20px rgba(20,241,149,0.4);
+}
+.balance-sidebar-unit {
+  font-size: 0.8rem;
+  color: #14F195;
+  opacity: 0.6;
+  letter-spacing: 2px;
+}
+@media (max-width: 900px) {
+  .balance-sidebar { display: none; }
+}
+
 /* Receive modal */
 .modal-receive { width: 360px; max-width: 95vw; }
 

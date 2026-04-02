@@ -167,7 +167,9 @@ function escHtml(s) {
 // ─── Wallet ───────────────────────────────────────────────────────────────────
 let walletInfo = null; // { escrowAddress, network }
 
-fetch('/wallet/info').then(r => r.json()).then(info => { walletInfo = info; });
+fetch('/wallet/info').then(r => r.json()).then(info => {
+  if (info && info.escrowAddress) walletInfo = info;
+}).catch(() => {});
 
 function walletStatus(msg, isError) {
   const el = document.getElementById('wallet-status');
@@ -176,15 +178,19 @@ function walletStatus(msg, isError) {
 
 function refreshGameBalance() {
   fetch('/auth/me').then(r => r.json()).then(({ account: acc }) => {
-    if (acc) document.getElementById('game-balance').textContent =
-      (acc.balance || 0).toFixed(4) + ' SOL';
+    if (acc) {
+      const bal = (acc.balance || 0).toFixed(4);
+      document.getElementById('game-balance').textContent = bal + ' SOL';
+      const sb = document.getElementById('sidebar-balance');
+      if (sb) sb.textContent = bal;
+    }
   });
 }
 refreshGameBalance();
 
 // ─── Add Funds (Receive) ──────────────────────────────────────────────────────
 document.getElementById('btn-add-funds').addEventListener('click', () => {
-  if (!walletInfo) { walletStatus('Loading...'); return; }
+  if (!walletInfo) { walletStatus('Wallet not configured. Add ESCROW env vars on Render.', true); return; }
   const addr = walletInfo.escrowAddress;
   const short = addr.slice(0, 6) + '...' + addr.slice(-4);
   document.getElementById('receive-address-short').textContent = short;
@@ -203,7 +209,6 @@ document.getElementById('btn-add-funds').addEventListener('click', () => {
 
   document.getElementById('deposit-status').textContent = '';
   document.getElementById('confirm-wallet-address').value = '';
-  document.getElementById('confirm-tx-sig').value = '';
   document.getElementById('modal-receive').classList.add('active');
 });
 
@@ -242,7 +247,10 @@ document.getElementById('btn-confirm-deposit').addEventListener('click', async (
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
-    document.getElementById('game-balance').textContent = data.balance.toFixed(4) + ' SOL';
+    const bal = data.balance.toFixed(4);
+    document.getElementById('game-balance').textContent = bal + ' SOL';
+    const sb = document.getElementById('sidebar-balance');
+    if (sb) sb.textContent = bal;
     statusEl.style.color = '#14F195';
     statusEl.textContent = `Deposited ${data.amount.toFixed(4)} SOL ✓`;
     document.getElementById('confirm-wallet-address').value = '';

@@ -78,10 +78,11 @@ app.post('/auth/update-name', (req, res) => {
 
 // Return escrow address and network so client knows where to send SOL
 app.get('/wallet/info', (req, res) => {
-  res.json({
-    escrowAddress: Wallet.getEscrowPublicKey(),
-    network: Wallet.NETWORK,
-  });
+  try {
+    res.json({ escrowAddress: Wallet.getEscrowPublicKey(), network: Wallet.NETWORK });
+  } catch (e) {
+    res.status(500).json({ error: 'Wallet not configured on server' });
+  }
 });
 
 // Confirm deposit: server finds the most recent tx from user's wallet to escrow
