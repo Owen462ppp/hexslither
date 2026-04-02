@@ -113,6 +113,21 @@ async function withdraw(toAddress, amountSol) {
   const toPubkey = new PublicKey(toAddress);
   const lamports = Math.floor(amountSol * LAMPORTS_PER_SOL);
 
+  // Ensure escrow keeps enough for rent-exempt minimum + tx fee
+  const [escrowBalance, rentMin] = await Promise.all([
+    connection.getBalance(escrow.publicKey),
+    connection.getMinimumBalanceForRentExemption(0),
+  ]);
+  const feeBuffer = 10000; // ~0.00001 SOL for tx fee
+  const maxWithdrawable = escrowBalance - rentMin - feeBuffer;
+
+  if (maxWithdrawable <= 0) throw new Error('Escrow has insufficient funds');
+  if (lamports > maxWithdrawable) {
+    throw new Error(
+      `Amount too large. Max withdrawable: ${(maxWithdrawable / LAMPORTS_PER_SOL).toFixed(4)} SOL`
+    );
+  }
+
   const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
   const tx = new Transaction().add(
     SystemProgram.transfer({
