@@ -164,10 +164,9 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// ─── Phantom Wallet ───────────────────────────────────────────────────────────
+// ─── Wallet ───────────────────────────────────────────────────────────────────
 let walletInfo = null; // { escrowAddress, network }
 
-// Load escrow info from server
 fetch('/wallet/info').then(r => r.json()).then(info => { walletInfo = info; });
 
 function walletStatus(msg, isError) {
@@ -175,79 +174,68 @@ function walletStatus(msg, isError) {
   if (el) { el.textContent = msg; el.style.color = isError ? '#ff6666' : '#14F195'; }
 }
 
-async function refreshPhantomBalance() {
-  if (!walletAddress || !walletInfo) return;
-  try {
-    const { Connection, PublicKey, LAMPORTS_PER_SOL } = solanaWeb3;
-    const rpc = walletInfo.network === 'mainnet-beta'
-      ? 'https://api.mainnet-beta.solana.com'
-      : 'https://api.devnet.solana.com';
-    const conn = new Connection(rpc, 'confirmed');
-    const bal = await conn.getBalance(new PublicKey(walletAddress));
-    document.getElementById('phantom-balance').textContent = (bal / LAMPORTS_PER_SOL).toFixed(4) + ' SOL';
-  } catch(e) {}
-}
-
 function refreshGameBalance() {
   fetch('/auth/me').then(r => r.json()).then(({ account: acc }) => {
     if (acc) document.getElementById('game-balance').textContent =
-      ((acc.balance || 0).toFixed(4)) + ' SOL';
+      (acc.balance || 0).toFixed(4) + ' SOL';
   });
 }
+refreshGameBalance();
 
-document.getElementById('btn-wallet').addEventListener('click', async () => {
-  const phantom = window.solana;
-  if (!phantom || !phantom.isPhantom) {
-    alert('Phantom Wallet not found!\nInstall it at phantom.app'); return;
-  }
-  try {
-    const resp = await phantom.connect();
-    walletAddress = resp.publicKey.toString();
-    // Shorten address for display
-    const short = walletAddress.slice(0,4) + '...' + walletAddress.slice(-4);
-    document.getElementById('wallet-address').textContent = short;
-    document.getElementById('wallet-connect-section').classList.add('hidden');
-    document.getElementById('wallet-connected-section').classList.remove('hidden');
-    refreshPhantomBalance();
-    refreshGameBalance();
-  } catch (e) { alert('Wallet connect failed: ' + (e.message || e)); }
+// ─── Add Funds (Receive) ──────────────────────────────────────────────────────
+document.getElementById('btn-add-funds').addEventListener('click', () => {
+  if (!walletInfo) { walletStatus('Loading...'); return; }
+  const addr = walletInfo.escrowAddress;
+  const short = addr.slice(0, 6) + '...' + addr.slice(-4);
+  document.getElementById('receive-address-short').textContent = short;
+
+  // Generate QR code (clear previous first)
+  const qrEl = document.getElementById('receive-qr');
+  qrEl.innerHTML = '';
+  new QRCode(qrEl, {
+    text: addr,
+    width: 200,
+    height: 200,
+    colorDark: '#ffffff',
+    colorLight: '#141828',
+    correctLevel: QRCode.CorrectLevel.M,
+  });
+
+  document.getElementById('deposit-status').textContent = '';
+  document.getElementById('confirm-wallet-address').value = '';
+  document.getElementById('confirm-tx-sig').value = '';
+  document.getElementById('modal-receive').classList.add('active');
 });
 
-// Deposit
-document.getElementById('btn-deposit').addEventListener('click', () =>
-  document.getElementById('modal-deposit').classList.add('active'));
-document.getElementById('cancel-deposit').addEventListener('click', () =>
-  document.getElementById('modal-deposit').classList.remove('active'));
-document.getElementById('confirm-deposit').addEventListener('click', async () => {
-  const amount = parseFloat(document.getElementById('deposit-amount').value);
-  if (!amount || amount <= 0 || !walletAddress || !walletInfo) return;
+document.getElementById('close-receive').addEventListener('click', () => {
+  document.getElementById('modal-receive').classList.remove('active');
+});
 
-  document.getElementById('modal-deposit').classList.remove('active');
-  walletStatus('Waiting for Phantom approval...');
+// Copy address to clipboard
+document.getElementById('btn-copy-address').addEventListener('click', () => {
+  if (!walletInfo) return;
+  navigator.clipboard.writeText(walletInfo.escrowAddress).then(() => {
+    const btn = document.getElementById('btn-copy-address');
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+  });
+});
+
+// Confirm deposit after sending from Phantom
+document.getElementById('btn-confirm-deposit').addEventListener('click', async () => {
+  const walletAddress = document.getElementById('confirm-wallet-address').value.trim();
+  const signature    = document.getElementById('confirm-tx-sig').value.trim();
+  const statusEl     = document.getElementById('deposit-status');
+
+  if (!walletAddress || !signature) {
+    statusEl.style.color = '#ff6666';
+    statusEl.textContent = 'Enter your wallet address and transaction signature.';
+    return;
+  }
+  statusEl.style.color = '#aaa';
+  statusEl.textContent = 'Verifying transaction...';
 
   try {
-    const { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } = solanaWeb3;
-    const rpc = walletInfo.network === 'mainnet-beta'
-      ? 'https://api.mainnet-beta.solana.com'
-      : 'https://api.devnet.solana.com';
-    const conn = new Connection(rpc, 'confirmed');
-    const { blockhash } = await conn.getLatestBlockhash();
-
-    const tx = new Transaction().add(
-      SystemProgram.transfer({
-        fromPubkey: new PublicKey(walletAddress),
-        toPubkey:   new PublicKey(walletInfo.escrowAddress),
-        lamports:   Math.floor(amount * LAMPORTS_PER_SOL),
-      })
-    );
-    tx.recentBlockhash = blockhash;
-    tx.feePayer = new PublicKey(walletAddress);
-
-    walletStatus('Approve in Phantom...');
-    const { signature } = await window.solana.signAndSendTransaction(tx);
-    walletStatus('Confirming transaction...');
-
-    // Tell server to verify and credit
     const res = await fetch('/wallet/deposit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -255,23 +243,26 @@ document.getElementById('confirm-deposit').addEventListener('click', async () =>
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
-
     document.getElementById('game-balance').textContent = data.balance.toFixed(4) + ' SOL';
-    walletStatus(`Deposited ${data.amount.toFixed(4)} SOL ✓`);
-    refreshPhantomBalance();
+    statusEl.style.color = '#14F195';
+    statusEl.textContent = `Deposited ${data.amount.toFixed(4)} SOL ✓`;
+    document.getElementById('confirm-wallet-address').value = '';
+    document.getElementById('confirm-tx-sig').value = '';
   } catch (e) {
-    walletStatus('Deposit failed: ' + (e.message || e), true);
+    statusEl.style.color = '#ff6666';
+    statusEl.textContent = 'Error: ' + (e.message || e);
   }
-  document.getElementById('deposit-amount').value = '';
 });
 
-// Withdraw
+// ─── Withdraw ─────────────────────────────────────────────────────────────────
 document.getElementById('btn-withdraw').addEventListener('click', () =>
   document.getElementById('modal-withdraw').classList.add('active'));
 document.getElementById('cancel-withdraw').addEventListener('click', () =>
   document.getElementById('modal-withdraw').classList.remove('active'));
 document.getElementById('confirm-withdraw').addEventListener('click', async () => {
+  const walletAddress = document.getElementById('withdraw-wallet').value.trim();
   const amount = parseFloat(document.getElementById('withdraw-amount').value);
+  if (!walletAddress) { alert('Enter your Solana wallet address.'); return; }
   if (!amount || amount <= 0) return;
 
   document.getElementById('modal-withdraw').classList.remove('active');
@@ -281,18 +272,17 @@ document.getElementById('confirm-withdraw').addEventListener('click', async () =
     const res = await fetch('/wallet/withdraw', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount }),
+      body: JSON.stringify({ amount, walletAddress }),
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
-
     document.getElementById('game-balance').textContent = data.balance.toFixed(4) + ' SOL';
     walletStatus(`Withdrew ${amount.toFixed(4)} SOL ✓`);
-    refreshPhantomBalance();
   } catch (e) {
     walletStatus('Withdrawal failed: ' + (e.message || e), true);
   }
   document.getElementById('withdraw-amount').value = '';
+  document.getElementById('withdraw-wallet').value = '';
 });
 
 // ─── Play ─────────────────────────────────────────────────────────────────────

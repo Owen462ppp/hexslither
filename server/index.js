@@ -105,15 +105,17 @@ app.post('/wallet/deposit', async (req, res) => {
 // Withdraw: send SOL from escrow back to user wallet
 app.post('/wallet/withdraw', async (req, res) => {
   if (!req.isAuthenticated()) return res.status(401).json({ error: 'Not logged in' });
-  const { amount } = req.body;
+  const { amount, walletAddress } = req.body;
   if (!amount || amount <= 0) return res.status(400).json({ error: 'Invalid amount' });
   const acc = Auth.getAccountByGoogleId(req.user.googleId);
   if (!acc) return res.status(404).json({ error: 'Account not found' });
-  if (!acc.walletAddress) return res.status(400).json({ error: 'No wallet linked' });
+  const toAddress = walletAddress || acc.walletAddress;
+  if (!toAddress) return res.status(400).json({ error: 'No wallet address provided' });
   if ((acc.balance || 0) < amount) return res.status(400).json({ error: 'Insufficient balance' });
   try {
-    const sig = await Wallet.withdraw(acc.walletAddress, amount);
+    const sig = await Wallet.withdraw(toAddress, amount);
     acc.balance = (acc.balance || 0) - amount;
+    if (walletAddress) acc.walletAddress = walletAddress;
     res.json({ ok: true, signature: sig, balance: acc.balance });
   } catch (e) {
     console.error('[WALLET] Withdraw error:', e.message);
