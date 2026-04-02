@@ -191,39 +191,8 @@ function walletStatus(msg, isError) {
   if (el) { el.textContent = msg; el.style.color = isError ? '#ff6666' : '#14F195'; }
 }
 
-// Auto-push from server when deposit detected
-socket.on(CONSTANTS.EVENTS.WALLET_BALANCE, ({ balance }) => {
-  setBalance(balance);
-  walletStatus('Deposit received! ✓');
-  setTimeout(() => walletStatus(''), 4000);
-});
-
-// Load balance on open
 fetch('/auth/me').then(r => r.json()).then(({ account: acc }) => {
   if (acc) setBalance(acc.balance || 0);
-});
-
-// ─── Link Phantom address ─────────────────────────────────────────────────────
-document.getElementById('btn-save-wallet').addEventListener('click', async () => {
-  const walletAddress = document.getElementById('phantom-address-input').value.trim();
-  const statusEl = document.getElementById('wallet-link-status');
-  if (!walletAddress) return;
-  try {
-    const res = await fetch('/auth/link-wallet', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ walletAddress }),
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    if (account) account.walletAddress = walletAddress;
-    statusEl.style.color = '#14F195';
-    statusEl.textContent = 'Linked ✓ Deposits will now auto-credit';
-    setTimeout(() => { statusEl.textContent = ''; }, 5000);
-  } catch (e) {
-    statusEl.style.color = '#ff6666';
-    statusEl.textContent = 'Error: ' + (e.message || e);
-  }
 });
 
 // ─── Add Funds ────────────────────────────────────────────────────────────────
@@ -231,6 +200,7 @@ document.getElementById('btn-add-funds').addEventListener('click', () => {
   if (!walletInfo) { walletStatus('Wallet not configured on server.', true); return; }
   const addr = walletInfo.escrowAddress;
   document.getElementById('receive-address-short').textContent = addr.slice(0, 6) + '...' + addr.slice(-4);
+  document.getElementById('deposit-status').textContent = '';
 
   const qrEl = document.getElementById('receive-qr');
   qrEl.innerHTML = '';
@@ -258,18 +228,36 @@ document.getElementById('btn-copy-address').addEventListener('click', () => {
   });
 });
 
-// ─── Withdraw ─────────────────────────────────────────────────────────────────
-document.getElementById('btn-withdraw').addEventListener('click', () => {
-  if (!account?.walletAddress) {
-    walletStatus('Save your Phantom address above first.', true);
-    return;
+document.getElementById('btn-i-sent').addEventListener('click', async () => {
+  const statusEl = document.getElementById('deposit-status');
+  statusEl.style.color = '#aaa';
+  statusEl.textContent = 'Checking transaction...';
+  try {
+    const res = await fetch('/wallet/deposit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    setBalance(data.balance);
+    statusEl.style.color = '#14F195';
+    statusEl.textContent = `Deposited ${data.amount.toFixed(4)} SOL ✓`;
+  } catch (e) {
+    statusEl.style.color = '#ff6666';
+    statusEl.textContent = 'Error: ' + (e.message || e);
   }
-  document.getElementById('modal-withdraw').classList.add('active');
 });
+
+// ─── Withdraw ─────────────────────────────────────────────────────────────────
+document.getElementById('btn-withdraw').addEventListener('click', () =>
+  document.getElementById('modal-withdraw').classList.add('active'));
 document.getElementById('cancel-withdraw').addEventListener('click', () =>
   document.getElementById('modal-withdraw').classList.remove('active'));
 document.getElementById('confirm-withdraw').addEventListener('click', async () => {
+  const walletAddress = document.getElementById('withdraw-wallet').value.trim();
   const amount = parseFloat(document.getElementById('withdraw-amount').value);
+  if (!walletAddress) { alert('Enter your Phantom wallet address.'); return; }
   if (!amount || amount <= 0) return;
 
   document.getElementById('modal-withdraw').classList.remove('active');
@@ -279,7 +267,7 @@ document.getElementById('confirm-withdraw').addEventListener('click', async () =
     const res = await fetch('/wallet/withdraw', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount }),
+      body: JSON.stringify({ amount, walletAddress }),
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -289,6 +277,7 @@ document.getElementById('confirm-withdraw').addEventListener('click', async () =
     walletStatus('Withdrawal failed: ' + (e.message || e), true);
   }
   document.getElementById('withdraw-amount').value = '';
+  document.getElementById('withdraw-wallet').value = '';
 });
 
 // ─── Play ─────────────────────────────────────────────────────────────────────

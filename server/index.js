@@ -94,17 +94,14 @@ app.get('/wallet/info', (req, res) => {
   }
 });
 
-// Confirm deposit: server finds the most recent tx from user's wallet to escrow
+// Confirm deposit: credit the most recent unclaimed transaction to the escrow
 app.post('/wallet/deposit', async (req, res) => {
   if (!req.isAuthenticated()) return res.status(401).json({ error: 'Not logged in' });
-  const { walletAddress } = req.body;
-  if (!walletAddress) return res.status(400).json({ error: 'Missing wallet address' });
   try {
-    const amount = await Wallet.verifyDeposit(walletAddress);
+    const amount = await Wallet.findLatestDeposit();
     const acc = Auth.getAccountByGoogleId(req.user.googleId);
     if (!acc) return res.status(404).json({ error: 'Account not found' });
     acc.balance = (acc.balance || 0) + amount;
-    acc.walletAddress = walletAddress;
     res.json({ ok: true, amount, balance: acc.balance });
   } catch (e) {
     console.error('[WALLET] Deposit error:', e.message);
@@ -117,15 +114,13 @@ app.post('/wallet/withdraw', async (req, res) => {
   if (!req.isAuthenticated()) return res.status(401).json({ error: 'Not logged in' });
   const { amount, walletAddress } = req.body;
   if (!amount || amount <= 0) return res.status(400).json({ error: 'Invalid amount' });
+  if (!walletAddress) return res.status(400).json({ error: 'Wallet address required' });
   const acc = Auth.getAccountByGoogleId(req.user.googleId);
   if (!acc) return res.status(404).json({ error: 'Account not found' });
-  const toAddress = walletAddress || acc.walletAddress;
-  if (!toAddress) return res.status(400).json({ error: 'No wallet address provided' });
   if ((acc.balance || 0) < amount) return res.status(400).json({ error: 'Insufficient balance' });
   try {
-    const sig = await Wallet.withdraw(toAddress, amount);
+    const sig = await Wallet.withdraw(walletAddress, amount);
     acc.balance = (acc.balance || 0) - amount;
-    if (walletAddress) acc.walletAddress = walletAddress;
     res.json({ ok: true, signature: sig, balance: acc.balance });
   } catch (e) {
     console.error('[WALLET] Withdraw error:', e.message);
@@ -147,25 +142,6 @@ gameRoom.start();
 
 // Map of googleId -> socket for real-time wallet balance pushes
 const lobbySocketsByGoogleId = new Map();
-
-// Start auto-polling for deposits
-(async () => {
-  try {
-    await Wallet.startPolling((fromAddress, amountSol) => {
-      const acc = Auth.getAccountByWallet(fromAddress);
-      if (!acc) {
-        console.log(`[WALLET] Unknown deposit from ${fromAddress} (${amountSol} SOL) — wallet not linked`);
-        return;
-      }
-      acc.balance = (acc.balance || 0) + amountSol;
-      console.log(`[WALLET] Auto-credited ${amountSol} SOL to ${acc.name} (balance: ${acc.balance})`);
-      const sock = lobbySocketsByGoogleId.get(acc.googleId);
-      if (sock) sock.emit(C.EVENTS.WALLET_BALANCE, { balance: acc.balance });
-    });
-  } catch (e) {
-    console.log('[WALLET] Polling not started:', e.message);
-  }
-})();
 
 io.on('connection', (socket) => {
   console.log(`[+] Connected: ${socket.id}`);

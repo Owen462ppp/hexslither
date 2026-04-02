@@ -20,60 +20,38 @@ function getEscrowPublicKey() {
   return process.env.ESCROW_PUBLIC_KEY || getEscrowKeypair().publicKey.toString();
 }
 
-// Track already-credited signatures to prevent double-crediting
+// Track credited signatures to prevent double-crediting
 const usedSignatures = new Set();
 
-// On startup, mark existing transactions as already seen so we don't re-credit them
-async function initUsedSignatures() {
-  try {
-    const escrow = new PublicKey(getEscrowPublicKey());
-    const sigs = await connection.getSignaturesForAddress(escrow, { limit: 100 });
-    for (const s of sigs) usedSignatures.add(s.signature);
-    console.log(`[WALLET] Initialized with ${usedSignatures.size} existing signatures`);
-  } catch (e) {
-    console.error('[WALLET] Init error:', e.message);
+// Find the most recent unclaimed deposit to the escrow and return its amount
+async function findLatestDeposit() {
+  const escrowPubkey = getEscrowPublicKey();
+  const escrow = new PublicKey(escrowPubkey);
+  const sigs = await connection.getSignaturesForAddress(escrow, { limit: 20 });
+
+  for (const sigInfo of sigs) {
+    if (usedSignatures.has(sigInfo.signature)) continue;
+    if (sigInfo.err) { usedSignatures.add(sigInfo.signature); continue; }
+
+    const tx = await connection.getTransaction(sigInfo.signature, {
+      commitment: 'confirmed',
+      maxSupportedTransactionVersion: 0,
+    });
+    if (!tx || tx.meta.err) { usedSignatures.add(sigInfo.signature); continue; }
+
+    const accountKeys = tx.transaction.message.staticAccountKeys ||
+      tx.transaction.message.accountKeys;
+    const escrowIndex = accountKeys.findIndex(k => k.toString() === escrowPubkey);
+    if (escrowIndex === -1) { usedSignatures.add(sigInfo.signature); continue; }
+
+    const lamports = tx.meta.postBalances[escrowIndex] - tx.meta.preBalances[escrowIndex];
+    if (lamports <= 0) { usedSignatures.add(sigInfo.signature); continue; }
+
+    usedSignatures.add(sigInfo.signature);
+    return lamports / LAMPORTS_PER_SOL;
   }
-}
 
-// Poll every 10s for new deposits; call onDeposit(fromAddress, amountSol) for each new one
-async function startPolling(onDeposit) {
-  await initUsedSignatures();
-
-  setInterval(async () => {
-    try {
-      const escrowPubkey = getEscrowPublicKey();
-      const escrow = new PublicKey(escrowPubkey);
-      const sigs = await connection.getSignaturesForAddress(escrow, { limit: 10 });
-
-      // Process oldest first so credits happen in order
-      for (const sigInfo of [...sigs].reverse()) {
-        if (usedSignatures.has(sigInfo.signature)) continue;
-        if (sigInfo.err) { usedSignatures.add(sigInfo.signature); continue; }
-
-        const tx = await connection.getTransaction(sigInfo.signature, {
-          commitment: 'confirmed',
-          maxSupportedTransactionVersion: 0,
-        });
-        usedSignatures.add(sigInfo.signature);
-        if (!tx || tx.meta.err) continue;
-
-        const accountKeys = tx.transaction.message.staticAccountKeys ||
-          tx.transaction.message.accountKeys;
-        const escrowIndex = accountKeys.findIndex(k => k.toString() === escrowPubkey);
-        if (escrowIndex === -1) continue;
-
-        const lamports = tx.meta.postBalances[escrowIndex] - tx.meta.preBalances[escrowIndex];
-        if (lamports <= 0) continue;
-
-        // Sender is the fee payer (index 0)
-        const fromAddress = accountKeys[0].toString();
-        const amountSol = lamports / LAMPORTS_PER_SOL;
-        onDeposit(fromAddress, amountSol);
-      }
-    } catch (e) {
-      console.error('[WALLET] Poll error:', e.message);
-    }
-  }, 10000);
+  throw new Error('No recent deposit found. Make sure your transaction confirmed, then try again.');
 }
 
 // Send SOL from escrow to a user wallet
@@ -104,4 +82,4 @@ async function getEscrowBalance() {
   return bal / LAMPORTS_PER_SOL;
 }
 
-module.exports = { getEscrowPublicKey, startPolling, withdraw, getEscrowBalance, NETWORK };
+module.exports = { getEscrowPublicKey, findLatestDeposit, withdraw, getEscrowBalance, NETWORK };
