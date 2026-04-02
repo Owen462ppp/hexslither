@@ -193,11 +193,25 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// FPS counter
+let fpsFrames = 0, fpsLast = performance.now(), fpsDisplay = 0;
+const fpsEl = document.getElementById('fps-counter');
+
 // Main render loop — runs at monitor refresh rate (60/144/240Hz)
 function gameLoop(now) {
   interpolateState(now);
   renderer.render(displayState, myId, mousePos);
   if (minimapCtx) renderer.drawMinimap(minimapCtx, displayState, myId);
+
+  // FPS
+  fpsFrames++;
+  if (now - fpsLast >= 500) {
+    fpsDisplay = Math.round(fpsFrames * 1000 / (now - fpsLast));
+    fpsFrames = 0;
+    fpsLast = now;
+    if (fpsEl) fpsEl.textContent = `FPS: ${fpsDisplay}`;
+  }
+
   requestAnimationFrame(gameLoop);
 }
 requestAnimationFrame(gameLoop);

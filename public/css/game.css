@@ -84,6 +84,16 @@ body {
 #leaderboard-list .lb-rank { color: #555; }
 #leaderboard-list .lb-score { color: #ff8800; }
 
+#fps-counter {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.4);
+  font-family: monospace;
+  letter-spacing: 1px;
+}
+
 #boost-bar-container {
   position: absolute;
   bottom: 20px;
