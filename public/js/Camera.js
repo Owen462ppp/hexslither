@@ -6,7 +6,7 @@ class Camera {
     this.targetX = 0;
     this.targetY = 0;
     this.targetScale = 1;
-    this.LERP = 0.25;
+    this.LERP = 0.5;
   }
 
   follow(worldX, worldY, canvasW, canvasH) {

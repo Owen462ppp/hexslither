@@ -24,7 +24,7 @@ let boostActive = false;
 // We keep the last two snapshots and lerp between them each frame
 let snapBuffer = [];          // [{t, state}, {t, state}]
 let renderTime = 0;           // the world-time we're currently rendering
-const INTERP_DELAY_MS = 60;   // one server tick worth of buffer at 20Hz = 50ms + small margin
+const INTERP_DELAY_MS = 20;   // just over one 60Hz server tick (16.7ms) - tight and smooth
 
 // Displayed (interpolated) state used for rendering
 let displayState = { snakes: [], food: [], worldRadius: CONSTANTS.BASE_WORLD_RADIUS, leaderboard: [] };
@@ -164,7 +164,7 @@ function sendInput() {
   const angle = Math.atan2(worldPos.y - mySnake.segs[1], worldPos.x - mySnake.segs[0]);
   socket.emit(CONSTANTS.EVENTS.INPUT, { angle, boost: boostActive });
 }
-setInterval(sendInput, 1000 / 60);
+setInterval(sendInput, 1000 / 120);
 
 // HUD (updated on each snapshot, not each frame)
 function updateHUD(snap) {
