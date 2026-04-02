@@ -84,13 +84,13 @@ app.get('/wallet/info', (req, res) => {
   });
 });
 
-// Confirm deposit: client sends signature after Phantom approves
+// Confirm deposit: server finds the most recent tx from user's wallet to escrow
 app.post('/wallet/deposit', async (req, res) => {
   if (!req.isAuthenticated()) return res.status(401).json({ error: 'Not logged in' });
-  const { signature, walletAddress } = req.body;
-  if (!signature || !walletAddress) return res.status(400).json({ error: 'Missing fields' });
+  const { walletAddress } = req.body;
+  if (!walletAddress) return res.status(400).json({ error: 'Missing wallet address' });
   try {
-    const amount = await Wallet.verifyDeposit(signature, walletAddress);
+    const amount = await Wallet.verifyDeposit(walletAddress);
     const acc = Auth.getAccountByGoogleId(req.user.googleId);
     if (!acc) return res.status(404).json({ error: 'Account not found' });
     acc.balance = (acc.balance || 0) + amount;

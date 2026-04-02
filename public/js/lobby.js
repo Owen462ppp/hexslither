@@ -224,22 +224,21 @@ document.getElementById('btn-copy-address').addEventListener('click', () => {
 // Confirm deposit after sending from Phantom
 document.getElementById('btn-confirm-deposit').addEventListener('click', async () => {
   const walletAddress = document.getElementById('confirm-wallet-address').value.trim();
-  const signature    = document.getElementById('confirm-tx-sig').value.trim();
   const statusEl     = document.getElementById('deposit-status');
 
-  if (!walletAddress || !signature) {
+  if (!walletAddress) {
     statusEl.style.color = '#ff6666';
-    statusEl.textContent = 'Enter your wallet address and transaction signature.';
+    statusEl.textContent = 'Enter the wallet address you sent from.';
     return;
   }
   statusEl.style.color = '#aaa';
-  statusEl.textContent = 'Verifying transaction...';
+  statusEl.textContent = 'Looking up your transaction...';
 
   try {
     const res = await fetch('/wallet/deposit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ signature, walletAddress }),
+      body: JSON.stringify({ walletAddress }),
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -247,7 +246,6 @@ document.getElementById('btn-confirm-deposit').addEventListener('click', async (
     statusEl.style.color = '#14F195';
     statusEl.textContent = `Deposited ${data.amount.toFixed(4)} SOL ✓`;
     document.getElementById('confirm-wallet-address').value = '';
-    document.getElementById('confirm-tx-sig').value = '';
   } catch (e) {
     statusEl.style.color = '#ff6666';
     statusEl.textContent = 'Error: ' + (e.message || e);

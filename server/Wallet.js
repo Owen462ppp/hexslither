@@ -20,28 +20,46 @@ function getEscrowPublicKey() {
   return process.env.ESCROW_PUBLIC_KEY || getEscrowKeypair().publicKey.toString();
 }
 
-// Verify a deposit transaction on-chain and return the SOL amount sent to escrow
-async function verifyDeposit(signature, expectedFromAddress) {
-  const tx = await connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
-  if (!tx) throw new Error('Transaction not found');
-  if (tx.meta.err) throw new Error('Transaction failed on-chain');
+// Track already-credited signatures to prevent double-crediting
+const usedSignatures = new Set();
 
+// Find the most recent unprocessed deposit from fromAddress to escrow, credit it
+async function verifyDeposit(fromAddress) {
   const escrowPubkey = getEscrowPublicKey();
-  const accountKeys = tx.transaction.message.staticAccountKeys ||
-    tx.transaction.message.accountKeys;
+  const escrow = new PublicKey(escrowPubkey);
 
-  const escrowIndex = accountKeys.findIndex(k => k.toString() === escrowPubkey);
-  if (escrowIndex === -1) throw new Error('Escrow not found in transaction');
+  // Get recent transaction signatures for the escrow account
+  const sigs = await connection.getSignaturesForAddress(escrow, { limit: 20 });
+  if (!sigs.length) throw new Error('No transactions found for escrow');
 
-  const preBal  = tx.meta.preBalances[escrowIndex];
-  const postBal = tx.meta.postBalances[escrowIndex];
-  const lamports = postBal - preBal;
-  if (lamports <= 0) throw new Error('No SOL sent to escrow');
+  for (const sigInfo of sigs) {
+    if (usedSignatures.has(sigInfo.signature)) continue;
+    if (sigInfo.err) continue;
 
-  return lamports / LAMPORTS_PER_SOL;
+    const tx = await connection.getTransaction(sigInfo.signature, {
+      commitment: 'confirmed',
+      maxSupportedTransactionVersion: 0,
+    });
+    if (!tx || tx.meta.err) continue;
+
+    const accountKeys = tx.transaction.message.staticAccountKeys ||
+      tx.transaction.message.accountKeys;
+
+    // Check the sender matches the user's wallet
+    const fromIndex = accountKeys.findIndex(k => k.toString() === fromAddress);
+    if (fromIndex === -1) continue;
+
+    const escrowIndex = accountKeys.findIndex(k => k.toString() === escrowPubkey);
+    if (escrowIndex === -1) continue;
+
+    const lamports = tx.meta.postBalances[escrowIndex] - tx.meta.preBalances[escrowIndex];
+    if (lamports <= 0) continue;
+
+    usedSignatures.add(sigInfo.signature);
+    return lamports / LAMPORTS_PER_SOL;
+  }
+
+  throw new Error('No recent deposit found from that wallet. Wait a moment and try again.');
 }
 
 // Send SOL from escrow to a user wallet
