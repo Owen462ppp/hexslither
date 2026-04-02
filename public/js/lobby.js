@@ -195,6 +195,15 @@ fetch('/auth/me').then(r => r.json()).then(({ account: acc }) => {
   if (acc) setBalance(acc.balance || 0);
 });
 
+document.getElementById('btn-refresh-balance').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-refresh-balance');
+  btn.style.opacity = '0.4';
+  const res = await fetch('/auth/me');
+  const { account: acc } = await res.json();
+  if (acc) setBalance(acc.balance || 0);
+  btn.style.opacity = '1';
+});
+
 // ─── Add Funds ────────────────────────────────────────────────────────────────
 let depositPollTimer = null;
 
@@ -249,9 +258,10 @@ document.getElementById('btn-add-funds').addEventListener('click', () => {
   });
   document.getElementById('modal-receive').classList.add('active');
 
-  // Poll every 15 seconds while modal is open
+  // Poll immediately, then every 12 seconds while modal is open
   stopDepositPoll();
-  depositPollTimer = setInterval(pollForDeposit, 15000);
+  pollForDeposit();
+  depositPollTimer = setInterval(pollForDeposit, 12000);
 });
 
 document.getElementById('close-receive').addEventListener('click', () => {

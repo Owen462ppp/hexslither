@@ -496,6 +496,23 @@ input[type="text"]::placeholder { color: #555; }
   border-top: 1px solid rgba(255,255,255,0.07);
   padding-top: 12px;
 }
+.btn-refresh {
+  background: none;
+  border: 1px solid rgba(20,241,149,0.3);
+  color: #14F195;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s, transform 0.3s;
+  flex-shrink: 0;
+}
+.btn-refresh:hover { transform: rotate(180deg); opacity: 0.8; }
+
 .btn-confirm-deposit {
   width: 100%;
   padding: 12px;

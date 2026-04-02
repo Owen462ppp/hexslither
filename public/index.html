@@ -71,7 +71,10 @@
       <h3>Wallet</h3>
       <div class="balance-row" style="margin-bottom:14px">
         <span class="balance-label">Game Balance</span>
-        <span class="balance-value" id="game-balance">0.0000 SOL</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="balance-value" id="game-balance">0.0000 SOL</span>
+          <button class="btn-refresh" id="btn-refresh-balance" title="Refresh balance">↻</button>
+        </div>
       </div>
       <div class="wallet-actions">
         <button class="btn-small btn-deposit" id="btn-add-funds">Add Funds</button>
