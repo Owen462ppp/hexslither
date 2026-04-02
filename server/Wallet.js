@@ -22,8 +22,10 @@ function getEscrowPublicKey() {
   return process.env.ESCROW_PUBLIC_KEY || getEscrowKeypair().publicKey.toString();
 }
 
-// Track credited signatures to prevent double-crediting
+// In-memory cache of used sigs — DB is the source of truth
 const usedSignatures = new Set();
+let db = null;
+function setDb(dbModule) { db = dbModule; }
 
 // Retry wrapper for rate-limited RPC calls
 async function withRetry(fn, retries = 4, delay = 1500) {
@@ -54,7 +56,12 @@ async function findLatestDeposit() {
   console.log(`[WALLET] Found ${sigs.length} recent sigs, ${usedSignatures.size} already used`);
 
   for (const sigInfo of sigs) {
+    // Check in-memory cache first, then DB
     if (usedSignatures.has(sigInfo.signature)) continue;
+    if (db && await db.isTxUsed(sigInfo.signature)) {
+      usedSignatures.add(sigInfo.signature);
+      continue;
+    }
     if (sigInfo.err) {
       usedSignatures.add(sigInfo.signature);
       continue;
@@ -70,12 +77,12 @@ async function findLatestDeposit() {
       );
     } catch (e) {
       console.error(`[WALLET] getTransaction failed for ${sigInfo.signature.slice(0,8)}: ${e.message}`);
-      continue; // don't mark as used — retry next poll
+      continue;
     }
 
     if (!tx) {
       console.log(`[WALLET] tx not found yet: ${sigInfo.signature.slice(0,8)}`);
-      continue; // not confirmed yet — retry next poll, don't mark as used
+      continue;
     }
     if (tx.meta.err) {
       usedSignatures.add(sigInfo.signature);
@@ -100,7 +107,7 @@ async function findLatestDeposit() {
     usedSignatures.add(sigInfo.signature);
     const fromAddress = accountKeys[0].toString();
     console.log(`[WALLET] Deposit found: ${lamports / LAMPORTS_PER_SOL} SOL from ${fromAddress.slice(0,8)}`);
-    return { amount: lamports / LAMPORTS_PER_SOL, fromAddress };
+    return { amount: lamports / LAMPORTS_PER_SOL, fromAddress, sig: sigInfo.signature };
   }
 
   console.log(`[WALLET] No new deposits found`);
@@ -163,4 +170,4 @@ async function getRecentSigs() {
   }));
 }
 
-module.exports = { getEscrowPublicKey, findLatestDeposit, getRecentSigs, withdraw, getEscrowBalance, NETWORK };
+module.exports = { getEscrowPublicKey, findLatestDeposit, getRecentSigs, withdraw, getEscrowBalance, NETWORK, setDb };

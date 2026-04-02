@@ -7,19 +7,24 @@ const passport   = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const C      = require('../shared/constants');
 const GameRoom = require('./GameRoom');
-const Auth   = require('./Auth');
+const db     = require('./db');
 const Wallet = require('./Wallet');
+
+Wallet.setDb(db);
 
 const app    = express();
 const server = http.createServer(app);
 const io     = new Server(server, { cors: { origin: '*' } });
+
+// ─── Init DB then start server ────────────────────────────────────────────────
+db.init().catch(e => console.error('[DB] Init failed:', e.message));
 
 // ─── Session & Passport ───────────────────────────────────────────────────────
 app.use(session({
   secret: process.env.SESSION_SECRET || 'hexslither-dev-secret',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 }, // 7 days
+  cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 },
 }));
 app.use(passport.initialize());
 app.use(passport.session());
@@ -28,76 +33,62 @@ passport.use(new GoogleStrategy({
   clientID:     process.env.GOOGLE_CLIENT_ID     || 'PLACEHOLDER',
   clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'PLACEHOLDER',
   callbackURL:  process.env.GOOGLE_CALLBACK_URL  || 'http://localhost:3000/auth/google/callback',
-}, (accessToken, refreshToken, profile, done) => {
-  const account = Auth.getOrCreateAccount({
-    googleId: profile.id,
-    email:    profile.emails?.[0]?.value || '',
-    name:     profile.displayName || 'Player',
-    avatar:   profile.photos?.[0]?.value || '',
-  });
-  done(null, account);
+}, async (accessToken, refreshToken, profile, done) => {
+  try {
+    const account = await db.getOrCreateAccount({
+      googleId: profile.id,
+      email:    profile.emails?.[0]?.value || '',
+      name:     profile.displayName || 'Player',
+      avatar:   profile.photos?.[0]?.value || '',
+    });
+    done(null, account);
+  } catch (e) { done(e); }
 }));
 
-passport.serializeUser((user, done)   => done(null, user.googleId));
-passport.deserializeUser((id, done)   => done(null, Auth.getAccountByGoogleId(id) || false));
+passport.serializeUser((user, done) => done(null, user.googleId));
+passport.deserializeUser(async (id, done) => {
+  try {
+    const acc = await db.getAccountByGoogleId(id);
+    done(null, acc || false);
+  } catch (e) { done(e); }
+});
 
 // ─── Auth routes ──────────────────────────────────────────────────────────────
 app.get('/auth/google',
   passport.authenticate('google', { scope: ['profile', 'email'] })
 );
-
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/?error=auth' }),
   (req, res) => res.redirect('/')
 );
-
 app.get('/auth/logout', (req, res) => {
   req.logout(() => res.redirect('/'));
 });
-
-// Current user endpoint — lobby JS calls this on load
 app.get('/auth/me', (req, res) => {
-  if (req.isAuthenticated()) {
-    res.json({ loggedIn: true, account: req.user });
-  } else {
-    res.json({ loggedIn: false });
-  }
+  if (req.isAuthenticated()) res.json({ loggedIn: true, account: req.user });
+  else res.json({ loggedIn: false });
 });
 
-// Update display name
 app.use(express.json());
-app.post('/auth/update-name', (req, res) => {
+
+app.post('/auth/update-name', async (req, res) => {
   if (!req.isAuthenticated()) return res.status(401).json({ error: 'Not logged in' });
   const name = (req.body.name || '').slice(0, 20).trim();
   if (!name) return res.status(400).json({ error: 'Invalid name' });
-  const acc = Auth.saveAccount(req.user.googleId, { name });
+  const acc = await db.saveAccount(req.user.googleId, { name });
+  req.user.name = acc.name;
   res.json({ account: acc });
-});
-
-// Link Phantom wallet address to account
-app.post('/auth/link-wallet', (req, res) => {
-  if (!req.isAuthenticated()) return res.status(401).json({ error: 'Not logged in' });
-  const { walletAddress } = req.body;
-  if (!walletAddress) return res.status(400).json({ error: 'Missing wallet address' });
-  const acc = Auth.saveAccount(req.user.googleId, { walletAddress });
-  res.json({ ok: true, walletAddress: acc.walletAddress });
 });
 
 // ─── Wallet API ───────────────────────────────────────────────────────────────
 
-// Debug: show recent transactions to escrow (remove before production)
 app.get('/wallet/debug', async (req, res) => {
   try {
-    const { Connection, PublicKey } = require('@solana/web3.js');
-    const escrowPubkey = Wallet.getEscrowPublicKey();
     const sigs = await Wallet.getRecentSigs();
-    res.json({ escrowPubkey, sigs });
-  } catch (e) {
-    res.json({ error: e.message });
-  }
+    res.json({ escrowPubkey: Wallet.getEscrowPublicKey(), sigs });
+  } catch (e) { res.json({ error: e.message }); }
 });
 
-// Return escrow address and network so client knows where to send SOL
 app.get('/wallet/info', (req, res) => {
   try {
     res.json({ escrowAddress: Wallet.getEscrowPublicKey(), network: Wallet.NETWORK });
@@ -106,37 +97,36 @@ app.get('/wallet/info', (req, res) => {
   }
 });
 
-// Poll for a new deposit — client calls this periodically while modal is open
 app.post('/wallet/deposit', async (req, res) => {
   if (!req.isAuthenticated()) return res.status(401).json({ error: 'Not logged in' });
   try {
     const result = await Wallet.findLatestDeposit();
-    if (!result) return res.status(202).json({ pending: true }); // no deposit yet
-    const acc = Auth.getAccountByGoogleId(req.user.googleId);
-    if (!acc) return res.status(404).json({ error: 'Account not found' });
-    acc.balance = (acc.balance || 0) + result.amount;
-    if (result.fromAddress) acc.walletAddress = result.fromAddress; // remember for withdrawals
-    console.log(`[WALLET] Credited ${result.amount} SOL to ${acc.name}`);
-    res.json({ ok: true, amount: result.amount, balance: acc.balance });
+    if (!result) return res.status(202).json({ pending: true });
+    const newBalance = await db.recordDeposit(
+      req.user.googleId, result.sig, result.amount, result.fromAddress
+    );
+    req.user.balance = newBalance;
+    console.log(`[WALLET] Credited ${result.amount} SOL to ${req.user.name}`);
+    res.json({ ok: true, amount: result.amount, balance: newBalance });
   } catch (e) {
     console.error('[WALLET] Deposit error:', e.message);
     res.status(400).json({ error: e.message });
   }
 });
 
-// Withdraw: send SOL from escrow back to user wallet
 app.post('/wallet/withdraw', async (req, res) => {
   if (!req.isAuthenticated()) return res.status(401).json({ error: 'Not logged in' });
   const { amount, walletAddress } = req.body;
   if (!amount || amount <= 0) return res.status(400).json({ error: 'Invalid amount' });
   if (!walletAddress) return res.status(400).json({ error: 'Wallet address required' });
-  const acc = Auth.getAccountByGoogleId(req.user.googleId);
+  const acc = await db.getAccountByGoogleId(req.user.googleId);
   if (!acc) return res.status(404).json({ error: 'Account not found' });
-  if ((acc.balance || 0) < amount) return res.status(400).json({ error: 'Insufficient balance' });
+  if (acc.balance < amount) return res.status(400).json({ error: 'Insufficient balance' });
   try {
     const sig = await Wallet.withdraw(walletAddress, amount);
-    acc.balance = (acc.balance || 0) - amount;
-    res.json({ ok: true, signature: sig, balance: acc.balance });
+    const newBalance = await db.recordWithdrawal(req.user.googleId, sig, amount, walletAddress);
+    req.user.balance = newBalance;
+    res.json({ ok: true, signature: sig, balance: newBalance });
   } catch (e) {
     console.error('[WALLET] Withdraw error:', e.message);
     res.status(400).json({ error: e.message });
@@ -144,10 +134,7 @@ app.post('/wallet/withdraw', async (req, res) => {
 });
 
 // ─── Static files ─────────────────────────────────────────────────────────────
-app.use((req, res, next) => {
-  res.setHeader('Cache-Control', 'no-store');
-  next();
-});
+app.use((req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 app.use(express.static(path.join(__dirname, '../public')));
 app.use('/shared', express.static(path.join(__dirname, '../shared')));
 
@@ -155,7 +142,6 @@ app.use('/shared', express.static(path.join(__dirname, '../shared')));
 const gameRoom = new GameRoom(io);
 gameRoom.start();
 
-// Map of googleId -> socket for real-time wallet balance pushes
 const lobbySocketsByGoogleId = new Map();
 
 io.on('connection', (socket) => {
@@ -166,7 +152,6 @@ io.on('connection', (socket) => {
     leaderboard: gameRoom.buildLeaderboard(),
   });
 
-  // Lobby registration — ties this socket to a Google account for balance pushes
   socket.on('lobby:join', ({ googleId } = {}) => {
     if (googleId) {
       socket._googleId = googleId;
@@ -193,11 +178,11 @@ io.on('connection', (socket) => {
     gameRoom.respawnPlayer(socket.id);
   });
 
-  socket.on('disconnect', () => {
+  socket.on('disconnect', async () => {
     console.log(`[-] Disconnected: ${socket.id}`);
     const snake = gameRoom.snakes && gameRoom.snakes.get(socket.id);
     if (snake && socket._googleId) {
-      Auth.recordGameResult(socket._googleId, snake.score);
+      await db.recordGameResult(socket._googleId, snake.score).catch(() => {});
     }
     if (socket._googleId) lobbySocketsByGoogleId.delete(socket._googleId);
     gameRoom.removePlayer(socket.id);
