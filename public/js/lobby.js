@@ -2,54 +2,75 @@
 (function() {
   const canvas = document.getElementById('bg-canvas');
   const ctx = canvas.getContext('2d');
-  const R = 42, GAP = 4, INNER_R = R - GAP;
-  const COL_STEP = R * 1.5, ROW_STEP = Math.sqrt(3) * R;
 
-  function buildVerts(r) {
-    const v = [];
-    for (let i = 0; i < 6; i++) {
-      const a = (Math.PI / 3) * i;
-      v.push({ x: r * Math.cos(a), y: r * Math.sin(a) });
-    }
-    return v;
-  }
-  const OV = buildVerts(R), IV = buildVerts(INNER_R);
-
-  function p(verts, cx, cy) {
+  function hexPath(cx, cy, r) {
     ctx.beginPath();
-    ctx.moveTo(cx + verts[0].x, cy + verts[0].y);
-    for (let i = 1; i < 6; i++) ctx.lineTo(cx + verts[i].x, cy + verts[i].y);
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i + Math.PI / 6;
+      ctx.lineTo(cx + r * Math.cos(angle), cy + r * Math.sin(angle));
+    }
     ctx.closePath();
   }
 
-  function drawHex(cx, cy) {
-    // Gap — very dark near-black navy
-    p(OV, cx, cy); ctx.fillStyle = '#070b12'; ctx.fill();
-    // Hex face — rich blue-slate
-    p(IV, cx, cy); ctx.fillStyle = '#1b2a3e'; ctx.fill();
-    // Top-left highlight — bright, thick
-    ctx.beginPath();
-    ctx.moveTo(cx+IV[4].x,cy+IV[4].y); ctx.lineTo(cx+IV[5].x,cy+IV[5].y);
-    ctx.lineTo(cx+IV[0].x,cy+IV[0].y); ctx.lineTo(cx+IV[1].x,cy+IV[1].y);
-    ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=3; ctx.stroke();
-    // Bottom-right shadow — dark, thick
-    ctx.beginPath();
-    ctx.moveTo(cx+IV[1].x,cy+IV[1].y); ctx.lineTo(cx+IV[2].x,cy+IV[2].y);
-    ctx.lineTo(cx+IV[3].x,cy+IV[3].y); ctx.lineTo(cx+IV[4].x,cy+IV[4].y);
-    ctx.strokeStyle='rgba(0,0,0,0.50)'; ctx.lineWidth=3; ctx.stroke();
+  function draw() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const W = canvas.width, H = canvas.height;
+
+    ctx.fillStyle = '#070707';
+    ctx.fillRect(0, 0, W, H);
+
+    const size = 48;
+    const gap = 14.6;
+    const colStep = Math.sqrt(3) * size + gap;
+    const rowStep = 1.5 * size + Math.sqrt(3) / 2 * gap;
+    const faceR = size - gap / 2;
+
+    ctx.save();
+    ctx.translate(W / 2, H / 2);
+    ctx.rotate(-0.285);
+    ctx.scale(1.45, 1.45);
+    ctx.translate(-W / 2, -H / 2);
+
+    for (let row = -4; row < H / rowStep + 5; row++) {
+      for (let col = -4; col < W / colStep + 5; col++) {
+        const cx = col * colStep + (row % 2 === 1 ? colStep / 2 : 0);
+        const cy = row * rowStep;
+
+        hexPath(cx, cy, faceR);
+        const face = ctx.createLinearGradient(
+          cx + size * 0.65, cy - size * 0.65,
+          cx - size * 0.65, cy + size * 0.65
+        );
+        face.addColorStop(0,    '#181818');
+        face.addColorStop(0.25, '#101010');
+        face.addColorStop(0.6,  '#0b0b0b');
+        face.addColorStop(1,    '#050505');
+        ctx.fillStyle = face;
+        ctx.fill();
+
+        hexPath(cx, cy, faceR);
+        const rim = ctx.createLinearGradient(
+          cx + size * 0.55, cy - size * 0.55,
+          cx - size * 0.55, cy + size * 0.55
+        );
+        rim.addColorStop(0,    'rgba(45,45,45,0.15)');
+        rim.addColorStop(0.45, 'rgba(0,0,0,0)');
+        rim.addColorStop(1,    'rgba(0,0,0,0.55)');
+        ctx.strokeStyle = rim;
+        ctx.lineWidth = size * 0.055;
+        ctx.stroke();
+
+        hexPath(cx, cy, faceR);
+        ctx.strokeStyle = 'rgba(1,1,1,0.95)';
+        ctx.lineWidth = 5;
+        ctx.stroke();
+      }
+    }
+
+    ctx.restore();
   }
 
-  function draw() {
-    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-    const W = canvas.width, H = canvas.height;
-    ctx.fillStyle = '#070b12'; ctx.fillRect(0, 0, W, H);
-    const cols = Math.ceil(W / COL_STEP) + 3, rows = Math.ceil(H / ROW_STEP) + 3;
-    for (let col = -1; col < cols; col++)
-      for (let row = -1; row < rows; row++) {
-        const cx = col * COL_STEP, cy = row * ROW_STEP + (col % 2 === 0 ? 0 : ROW_STEP / 2);
-        drawHex(cx, cy);
-      }
-  }
   draw();
   window.addEventListener('resize', draw);
 })();

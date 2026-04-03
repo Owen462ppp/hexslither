@@ -52,7 +52,7 @@ class Renderer {
     camera.update();
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = '#070b12';
+    ctx.fillStyle = '#070707';
     ctx.fillRect(0, 0, W, H);
 
     camera.apply(ctx);

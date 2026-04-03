@@ -1,9 +1,9 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  --bg: #070b12;
-  --card: #0f1520;
-  --card-border: #1a2538;
+  --bg: #070707;
+  --card: #111111;
+  --card-border: #1e1e1e;
   --gold: #F0B429;
   --gold-dark: #c8841a;
   --green: #14F195;
