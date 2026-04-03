@@ -2,7 +2,7 @@
 (function() {
   const canvas = document.getElementById('bg-canvas');
   const ctx = canvas.getContext('2d');
-  const R = 42, GAP = 5, INNER_R = R - GAP;
+  const R = 42, GAP = 3, INNER_R = R - GAP;
   const COL_STEP = R * 1.5, ROW_STEP = Math.sqrt(3) * R;
 
   function buildVerts(r) {
@@ -23,32 +23,26 @@
   }
 
   function drawHex(cx, cy) {
-    p(OV, cx, cy); ctx.fillStyle = '#080909'; ctx.fill();
-    p(IV, cx, cy); ctx.fillStyle = '#0e1012'; ctx.fill();
-    const gx = cx - INNER_R * 0.3, gy = cy - INNER_R * 0.3;
-    const grad = ctx.createRadialGradient(gx, gy, 0, gx, gy, INNER_R * 1.6);
-    grad.addColorStop(0,    'rgba(22,24,30,0.9)');
-    grad.addColorStop(0.5,  'rgba(12,13,16,0.7)');
-    grad.addColorStop(1,    'rgba(0,0,0,0.85)');
-    p(IV, cx, cy); ctx.fillStyle = grad; ctx.fill();
-    ctx.save(); p(IV, cx, cy); ctx.clip();
-    ctx.beginPath();
-    ctx.moveTo(cx+IV[1].x,cy+IV[1].y); ctx.lineTo(cx+IV[2].x,cy+IV[2].y);
-    ctx.lineTo(cx+IV[3].x,cy+IV[3].y); ctx.lineTo(cx+IV[4].x,cy+IV[4].y);
-    ctx.strokeStyle='rgba(0,0,0,0.8)'; ctx.lineWidth=GAP*2; ctx.stroke();
-    ctx.restore();
-    ctx.save(); p(IV, cx, cy); ctx.clip();
+    // Outer gap — exactly matches HexGrid.js in-game
+    p(OV, cx, cy); ctx.fillStyle = '#03080f'; ctx.fill();
+    // Hex face
+    p(IV, cx, cy); ctx.fillStyle = '#0b1a2e'; ctx.fill();
+    // Top-left highlight
     ctx.beginPath();
     ctx.moveTo(cx+IV[4].x,cy+IV[4].y); ctx.lineTo(cx+IV[5].x,cy+IV[5].y);
     ctx.lineTo(cx+IV[0].x,cy+IV[0].y); ctx.lineTo(cx+IV[1].x,cy+IV[1].y);
-    ctx.strokeStyle='rgba(255,255,255,0.025)'; ctx.lineWidth=GAP*2; ctx.stroke();
-    ctx.restore();
+    ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=2; ctx.stroke();
+    // Bottom-right shadow
+    ctx.beginPath();
+    ctx.moveTo(cx+IV[1].x,cy+IV[1].y); ctx.lineTo(cx+IV[2].x,cy+IV[2].y);
+    ctx.lineTo(cx+IV[3].x,cy+IV[3].y); ctx.lineTo(cx+IV[4].x,cy+IV[4].y);
+    ctx.strokeStyle='rgba(0,0,0,0.45)'; ctx.lineWidth=2; ctx.stroke();
   }
 
   function draw() {
     canvas.width = window.innerWidth; canvas.height = window.innerHeight;
     const W = canvas.width, H = canvas.height;
-    ctx.fillStyle = '#080909'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#03080f'; ctx.fillRect(0, 0, W, H);
     const cols = Math.ceil(W / COL_STEP) + 3, rows = Math.ceil(H / ROW_STEP) + 3;
     for (let col = -1; col < cols; col++)
       for (let row = -1; row < rows; row++) {
@@ -335,3 +329,125 @@ document.getElementById('btn-play').addEventListener('click', () => {
   sessionStorage.setItem('googleId',      account?.googleId || '');
   window.location.href = '/game.html';
 });
+
+// ─── Lobby snake animation ─────────────────────────────────────────────────────
+(function() {
+  const canvas = document.getElementById('snake-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  const SNAKE_COLORS = [
+    '#e74c3c', '#3498db', '#2ecc71', '#9b59b6',
+    '#f39c12', '#1abc9c', '#e91e63', '#00bcd4',
+  ];
+
+  const RADIUS = 10;       // body segment radius
+  const SPEED  = 1.4;      // px per frame
+  const TRAIL  = 120;      // history length
+  const TURN   = 0.022;    // max turn per frame (radians)
+
+  function makeSnake(i) {
+    const W = window.innerWidth, H = window.innerHeight;
+    const angle = Math.random() * Math.PI * 2;
+    const x = Math.random() * W, y = Math.random() * H;
+    const color = SNAKE_COLORS[i % SNAKE_COLORS.length];
+    // Pre-fill trail so snake appears full-length immediately
+    const trail = [];
+    for (let t = 0; t < TRAIL; t++) {
+      trail.push({ x: x - Math.cos(angle) * t * SPEED, y: y - Math.sin(angle) * t * SPEED });
+    }
+    return { x, y, angle, color, trail, turnDir: (Math.random() < 0.5 ? 1 : -1), turnTimer: 0 };
+  }
+
+  const snakes = Array.from({ length: 6 }, (_, i) => makeSnake(i));
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function update(s) {
+    const W = canvas.width, H = canvas.height;
+
+    // Occasionally change turn direction
+    s.turnTimer--;
+    if (s.turnTimer <= 0) {
+      s.turnDir   = Math.random() < 0.5 ? 1 : -1;
+      s.turnTimer = 40 + Math.random() * 120;
+    }
+
+    // Steer away from edges
+    const margin = 120;
+    if (s.x < margin)        s.angle += TURN * 2;
+    else if (s.x > W - margin) s.angle -= TURN * 2;
+    if (s.y < margin)        s.angle += TURN * 2;
+    else if (s.y > H - margin) s.angle -= TURN * 2;
+
+    s.angle += s.turnDir * TURN * (0.3 + Math.random() * 0.7);
+    s.x += Math.cos(s.angle) * SPEED;
+    s.y += Math.sin(s.angle) * SPEED;
+
+    // Soft clamp
+    s.x = Math.max(RADIUS, Math.min(W - RADIUS, s.x));
+    s.y = Math.max(RADIUS, Math.min(H - RADIUS, s.y));
+
+    s.trail.unshift({ x: s.x, y: s.y });
+    if (s.trail.length > TRAIL) s.trail.pop();
+  }
+
+  function drawSnake(s) {
+    if (s.trail.length < 2) return;
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.lineCap  = 'round';
+    ctx.lineJoin = 'round';
+
+    // Body — draw as connected path
+    const segs = s.trail.length;
+    ctx.beginPath();
+    ctx.moveTo(s.trail[0].x, s.trail[0].y);
+    for (let i = 1; i < segs; i++) ctx.lineTo(s.trail[i].x, s.trail[i].y);
+    const fade = ctx.createLinearGradient(
+      s.trail[0].x, s.trail[0].y,
+      s.trail[segs - 1].x, s.trail[segs - 1].y
+    );
+    fade.addColorStop(0,   s.color);
+    fade.addColorStop(0.6, s.color + 'aa');
+    fade.addColorStop(1,   s.color + '00');
+    ctx.strokeStyle = fade;
+    ctx.lineWidth   = RADIUS * 2;
+    ctx.stroke();
+
+    // Head circle
+    ctx.globalAlpha = 0.7;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, RADIUS + 2, 0, Math.PI * 2);
+    ctx.fillStyle = s.color;
+    ctx.fill();
+
+    // Eyes
+    ctx.globalAlpha = 1;
+    const eyeAngle1 = s.angle - 0.45;
+    const eyeAngle2 = s.angle + 0.45;
+    const eyeDist   = RADIUS * 0.65;
+    [[eyeAngle1], [eyeAngle2]].forEach(([a]) => {
+      const ex = s.x + Math.cos(a) * eyeDist;
+      const ey = s.y + Math.sin(a) * eyeDist;
+      ctx.beginPath(); ctx.arc(ex, ey, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff'; ctx.fill();
+      ctx.beginPath(); ctx.arc(ex + 0.8, ey + 0.8, 1.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#111'; ctx.fill();
+    });
+
+    ctx.restore();
+  }
+
+  function loop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    snakes.forEach(s => { update(s); drawSnake(s); });
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();

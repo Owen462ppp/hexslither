@@ -91,7 +91,6 @@ class HexGrid {
       for (let row = rowStart; row <= rowEnd; row++) {
         const cx = col * this.COL_STEP;
         const cy = row * this.ROW_STEP + (col % 2 === 0 ? 0 : this.ROW_STEP / 2);
-        if (cx * cx + cy * cy > (worldRadius + this.R * 2) ** 2) continue;
         this._drawOne(ctx, cx, cy);
       }
     }

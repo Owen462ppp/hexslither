@@ -171,13 +171,13 @@ class Renderer {
 
   _drawBorder(ctx, worldRadius) {
     ctx.save();
-    // Dark mask outside border — no shadow
+    // Subtle dark vignette outside border (hex tiles still visible through)
     ctx.beginPath();
-    ctx.arc(0, 0, worldRadius + 300, 0, Math.PI * 2);
+    ctx.arc(0, 0, worldRadius + 600, 0, Math.PI * 2);
     ctx.arc(0, 0, worldRadius, 0, Math.PI * 2, true);
-    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
     ctx.fill();
-    // Red border ring — no shadowBlur
+    // Red border ring
     ctx.strokeStyle = '#ff3333';
     ctx.lineWidth = 6;
     ctx.beginPath();

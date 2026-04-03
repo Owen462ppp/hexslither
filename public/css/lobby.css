@@ -1,7 +1,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  --bg: #0a0b0d;
+  --bg: #03080f;
   --card: #111318;
   --card-border: #1e2028;
   --gold: #F0B429;
@@ -24,6 +24,13 @@ body {
   position: fixed;
   inset: 0;
   z-index: 0;
+}
+
+#snake-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
 }
 
 .hidden { display: none !important; }
@@ -49,7 +56,7 @@ body {
   position: fixed;
   top: 0; left: 0; right: 0;
   height: 52px;
-  z-index: 100;
+  z-index: 200;
   background: rgba(8,9,13,0.92);
   border-bottom: 1px solid var(--card-border);
   display: flex;
@@ -78,7 +85,7 @@ body {
 
 /* ── Login screen ─────────────────────────────────────────────────────── */
 .screen-center {
-  position: relative; z-index: 10;
+  position: relative; z-index: 5;
   min-height: 100vh;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
@@ -131,24 +138,27 @@ body {
 
 /* ── Lobby page ───────────────────────────────────────────────────────── */
 .lobby-page {
-  position: relative; z-index: 10;
-  min-height: 100vh;
-  padding-top: 68px;
-  padding-bottom: 24px;
-  display: flex; flex-direction: column;
-  align-items: center; gap: 18px;
+  position: fixed;
+  top: 52px; left: 0; right: 0; bottom: 0;
+  overflow-y: auto;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px 40px;
+  gap: 20px;
 }
 .lobby-title-block { text-align: center; }
 
 /* ── Three column grid ────────────────────────────────────────────────── */
+/* Exact fixed widths: 260 + 14gap + 360 + 14gap + 260 = 908px total     */
+/* Center of center column = 260+14+180 = 454px = half of 908px           */
+/* So JOIN GAME button is always at exact horizontal center of screen      */
 .lobby-grid {
   display: grid;
-  grid-template-columns: 270px 1fr 270px;
+  grid-template-columns: 260px 360px 260px;
   gap: 14px;
-  width: 100%;
-  max-width: 1060px;
-  padding: 0 16px;
-  align-items: start;
+  flex-shrink: 0;
 }
 .lobby-col { display: flex; flex-direction: column; gap: 14px; }
 .lobby-col-center { }
@@ -230,22 +240,23 @@ body {
 .btn-signout:hover { background: rgba(255,50,50,0.12); color: #ff7777; }
 
 /* ── Play card ────────────────────────────────────────────────────────── */
-.play-card { align-items: stretch; gap: 16px; }
+.play-card { gap: 16px; }
 .play-profile {
-  display: flex; align-items: center; gap: 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
   padding-bottom: 4px;
 }
 .play-avatar-wrap {
-  width: 52px; height: 52px; border-radius: 50%;
+  width: 72px; height: 72px; border-radius: 50%;
   background: linear-gradient(135deg, #ff4444, #ff8800);
   display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; overflow: hidden;
+  overflow: hidden;
+  box-shadow: 0 0 0 3px rgba(240,180,41,0.3);
 }
 .play-avatar-img { width: 100%; height: 100%; object-fit: cover; }
-.play-avatar-fallback { font-size: 1.4rem; font-weight: 700; }
-.play-username { font-size: 1.1rem; font-weight: 700; }
+.play-avatar-fallback { font-size: 1.8rem; font-weight: 700; }
+.play-username { font-size: 1.2rem; font-weight: 700; text-align: center; }
 .name-input {
-  width: 100%;
+  width: 100%; display: block;
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: 8px;
@@ -265,6 +276,7 @@ body {
   text-transform: uppercase;
   transition: transform 0.1s, box-shadow 0.2s;
   box-shadow: 0 4px 24px rgba(240,180,41,0.35);
+  text-align: center;
 }
 .btn-play:hover { box-shadow: 0 6px 32px rgba(240,180,41,0.55); }
 .btn-play:active { transform: scale(0.98); }
@@ -272,7 +284,7 @@ body {
   display: flex; align-items: center; justify-content: center;
   gap: 0; background: rgba(255,255,255,0.03);
   border: 1px solid var(--card-border); border-radius: 10px;
-  overflow: hidden;
+  overflow: hidden; width: 100%;
 }
 .server-stat { flex: 1; padding: 14px; text-align: center; }
 .server-stat-val { font-size: 1.4rem; font-weight: 800; color: var(--gold); }
@@ -285,7 +297,7 @@ body {
   font-size: 1.8rem; font-weight: 800; color: var(--gold);
   text-shadow: 0 0 24px rgba(240,180,41,0.3);
 }
-.wallet-action-row { display: flex; gap: 8px; }
+.wallet-action-row { display: flex; gap: 8px; width: 100%; }
 .btn-add-funds {
   flex: 1; padding: 11px;
   background: transparent;
@@ -293,6 +305,7 @@ body {
   border-radius: 8px; color: var(--green);
   font-size: 0.88rem; font-weight: 700;
   cursor: pointer; transition: background 0.2s;
+  text-align: center;
 }
 .btn-add-funds:hover { background: rgba(20,241,149,0.1); }
 .btn-cash-out {
@@ -301,6 +314,7 @@ body {
   border: none; border-radius: 8px;
   color: #fff; font-size: 0.88rem; font-weight: 700;
   cursor: pointer; transition: opacity 0.2s;
+  text-align: center;
 }
 .btn-cash-out:hover { opacity: 0.88; }
 .wallet-status-msg { font-size: 0.78rem; min-height: 14px; text-align: center; color: var(--muted); }
