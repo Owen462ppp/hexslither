@@ -16,9 +16,9 @@ class Camera {
 
   setScale(worldRadius, canvasW, canvasH, snakeLength) {
     // Start very zoomed in, zoom out as snake grows
-    const base = Math.min(canvasW, canvasH) / (worldRadius * 0.12);
-    const lengthFactor = 1 - Math.min(0.85, (snakeLength || 0) / 600);
-    this.targetScale = Math.max(0.15, Math.min(4.0, base * lengthFactor));
+    const base = Math.min(canvasW, canvasH) / (worldRadius * 0.22);
+    const lengthFactor = 1 - Math.min(0.75, (snakeLength || 0) / 600);
+    this.targetScale = Math.max(0.15, Math.min(2.5, base * lengthFactor));
   }
 
   update() {

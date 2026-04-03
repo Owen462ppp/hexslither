@@ -88,11 +88,27 @@ class Renderer {
       ctx.fillStyle = grd;
       ctx.fill();
 
-      // Core orb
+      // Core orb — solid base color
       ctx.beginPath();
       ctx.arc(fx, fy, r, 0, Math.PI * 2);
       ctx.fillStyle = f.color;
       ctx.fill();
+
+      // Dark radial overlay: transparent center → dark edge (gives darker-shade-toward-perimeter look)
+      const darkOverlay = ctx.createRadialGradient(fx, fy, 0, fx, fy, r);
+      darkOverlay.addColorStop(0, 'rgba(0,0,0,0)');
+      darkOverlay.addColorStop(1, 'rgba(0,0,0,0.58)');
+      ctx.beginPath();
+      ctx.arc(fx, fy, r, 0, Math.PI * 2);
+      ctx.fillStyle = darkOverlay;
+      ctx.fill();
+
+      // Thin black outline
+      ctx.beginPath();
+      ctx.arc(fx, fy, r, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+      ctx.lineWidth = 0.7;
+      ctx.stroke();
     }
   }
 
