@@ -23,26 +23,26 @@
   }
 
   function drawHex(cx, cy) {
-    // Outer gap — near black like DamnBruh
-    p(OV, cx, cy); ctx.fillStyle = '#050507'; ctx.fill();
-    // Hex face — dark charcoal
-    p(IV, cx, cy); ctx.fillStyle = '#0d0f14'; ctx.fill();
+    // Gap — dark navy
+    p(OV, cx, cy); ctx.fillStyle = '#0c1020'; ctx.fill();
+    // Hex face — blue-slate like slither.io
+    p(IV, cx, cy); ctx.fillStyle = '#1d2540'; ctx.fill();
     // Top-left highlight
     ctx.beginPath();
     ctx.moveTo(cx+IV[4].x,cy+IV[4].y); ctx.lineTo(cx+IV[5].x,cy+IV[5].y);
     ctx.lineTo(cx+IV[0].x,cy+IV[0].y); ctx.lineTo(cx+IV[1].x,cy+IV[1].y);
-    ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,0.10)'; ctx.lineWidth=2; ctx.stroke();
     // Bottom-right shadow
     ctx.beginPath();
     ctx.moveTo(cx+IV[1].x,cy+IV[1].y); ctx.lineTo(cx+IV[2].x,cy+IV[2].y);
     ctx.lineTo(cx+IV[3].x,cy+IV[3].y); ctx.lineTo(cx+IV[4].x,cy+IV[4].y);
-    ctx.strokeStyle='rgba(0,0,0,0.55)'; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.strokeStyle='rgba(0,0,0,0.30)'; ctx.lineWidth=2; ctx.stroke();
   }
 
   function draw() {
     canvas.width = window.innerWidth; canvas.height = window.innerHeight;
     const W = canvas.width, H = canvas.height;
-    ctx.fillStyle = '#050507'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#0c1020'; ctx.fillRect(0, 0, W, H);
     const cols = Math.ceil(W / COL_STEP) + 3, rows = Math.ceil(H / ROW_STEP) + 3;
     for (let col = -1; col < cols; col++)
       for (let row = -1; row < rows; row++) {
@@ -400,63 +400,110 @@ document.getElementById('btn-play').addEventListener('click', () => {
 
   function drawSnake(s) {
     if (s.trail.length < 4) return;
+    const t = s.trail;
+    const len = t.length;
     ctx.save();
     ctx.lineCap  = 'round';
     ctx.lineJoin = 'round';
 
-    // Body
+    // 1. Base body
     ctx.beginPath();
-    ctx.moveTo(s.trail[0].x, s.trail[0].y);
-    for (let i = 1; i < s.trail.length; i++) ctx.lineTo(s.trail[i].x, s.trail[i].y);
+    ctx.moveTo(t[0].x, t[0].y);
+    for (let i = 1; i < len; i++) ctx.lineTo(t[i].x, t[i].y);
     ctx.strokeStyle = s.color;
     ctx.lineWidth   = R * 2;
-    ctx.globalAlpha = 0.92;
+    ctx.globalAlpha = 1;
     ctx.stroke();
 
-    // Sheen on body
+    // 2. Bottom shadow band (darker lower half → 3D tube look)
     ctx.beginPath();
-    ctx.moveTo(s.trail[0].x, s.trail[0].y);
-    for (let i = 1; i < s.trail.length; i++) ctx.lineTo(s.trail[i].x, s.trail[i].y);
-    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
-    ctx.lineWidth   = R * 0.65;
+    ctx.moveTo(t[0].x, t[0].y);
+    for (let i = 1; i < len; i++) ctx.lineTo(t[i].x, t[i].y);
+    ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+    ctx.lineWidth   = R * 1.2;
+    ctx.globalAlpha = 1;
     ctx.stroke();
 
-    // Head — bigger dome
-    const HR = R + 5;
-    ctx.globalAlpha = 0.95;
+    // 3. Top highlight (bright center stripe)
+    ctx.beginPath();
+    ctx.moveTo(t[0].x, t[0].y);
+    for (let i = 1; i < len; i++) ctx.lineTo(t[i].x, t[i].y);
+    ctx.strokeStyle = 'rgba(255,255,255,0.32)';
+    ctx.lineWidth   = R * 0.75;
+    ctx.stroke();
+
+    // 4. Segment rings — perpendicular dark lines like slither.io
+    ctx.lineCap = 'round';
+    let dist = 0;
+    for (let i = 1; i < len - 1; i++) {
+      const dx = t[i].x - t[i-1].x, dy = t[i].y - t[i-1].y;
+      dist += Math.sqrt(dx*dx + dy*dy);
+      if (dist >= 13) {
+        dist -= 13;
+        // Use next point for smooth perpendicular
+        const ax = t[Math.min(i+1,len-1)].x - t[i-1].x;
+        const ay = t[Math.min(i+1,len-1)].y - t[i-1].y;
+        const al = Math.sqrt(ax*ax + ay*ay) || 1;
+        const px = -ay/al, py = ax/al;
+        ctx.beginPath();
+        ctx.moveTo(t[i].x + px*(R-1), t[i].y + py*(R-1));
+        ctx.lineTo(t[i].x - px*(R-1), t[i].y - py*(R-1));
+        ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+        ctx.lineWidth   = 2.5;
+        ctx.stroke();
+      }
+    }
+
+    // 5. Head — dome, same color, slightly bigger
+    const HR = R + 6;
+    ctx.lineCap = 'round';
+    ctx.globalAlpha = 1;
     ctx.beginPath();
     ctx.arc(s.x, s.y, HR, 0, Math.PI * 2);
     ctx.fillStyle = s.color;
     ctx.fill();
 
-    // Head sheen
+    // Head bottom shadow
     ctx.beginPath();
-    ctx.arc(s.x - HR * 0.22, s.y - HR * 0.22, HR * 0.48, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.arc(s.x, s.y, HR, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
     ctx.fill();
 
-    // Eyes — large and round like DamnBruh
+    // Head top highlight blob
+    ctx.beginPath();
+    ctx.arc(s.x - HR * 0.18, s.y - HR * 0.22, HR * 0.58, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.26)';
+    ctx.fill();
+
+    // Re-fill head center to restore color after shadows
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, HR, 0, Math.PI * 2);
+    ctx.fillStyle = s.color;
+    ctx.globalAlpha = 0.45;
+    ctx.fill();
     ctx.globalAlpha = 1;
+
+    // 6. Eyes — large, close together, slither.io style
     const perpX = -Math.sin(s.angle), perpY = Math.cos(s.angle);
     const fwdX  =  Math.cos(s.angle), fwdY  = Math.sin(s.angle);
-    const eyeDist = HR * 0.52;
-    const eyeFwd  = HR * 0.38;
-    const eyeR    = HR * 0.40;
+    const eyeSep = HR * 0.36;   // close together
+    const eyeFwd = HR * 0.52;   // pushed forward on head
+    const eyeR   = HR * 0.42;   // large eyes
 
     for (const side of [-1, 1]) {
-      const ex = s.x + perpX * eyeDist * side + fwdX * eyeFwd;
-      const ey = s.y + perpY * eyeDist * side + fwdY * eyeFwd;
-      // White
+      const ex = s.x + perpX * eyeSep * side + fwdX * eyeFwd;
+      const ey = s.y + perpY * eyeSep * side + fwdY * eyeFwd;
+      // Sclera
       ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffffff'; ctx.fill();
-      // Pupil
+      ctx.fillStyle = '#f2f2f2'; ctx.fill();
+      // Large black pupil
       ctx.beginPath();
-      ctx.arc(ex + fwdX * eyeR * 0.28, ey + fwdY * eyeR * 0.28, eyeR * 0.52, 0, Math.PI * 2);
-      ctx.fillStyle = '#1a1a1a'; ctx.fill();
-      // Eye glint
+      ctx.arc(ex + fwdX * eyeR * 0.18, ey + fwdY * eyeR * 0.18, eyeR * 0.64, 0, Math.PI * 2);
+      ctx.fillStyle = '#111111'; ctx.fill();
+      // White glint
       ctx.beginPath();
-      ctx.arc(ex - eyeR * 0.2, ey - eyeR * 0.2, eyeR * 0.22, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fill();
+      ctx.arc(ex - eyeR * 0.18, ey - eyeR * 0.28, eyeR * 0.26, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fill();
     }
 
     ctx.restore();

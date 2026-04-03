@@ -52,7 +52,7 @@ class Renderer {
     camera.update();
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = '#050507';
+    ctx.fillStyle = '#0c1020';
     ctx.fillRect(0, 0, W, H);
 
     camera.apply(ctx);
@@ -109,47 +109,91 @@ class Renderer {
     const { segs, color, boosting, name } = snake;
 
     const growthScale = 1 + Math.min(1.5, (snake.length || 20) / 200);
-    const headRadius = CONSTANTS.SNAKE_HEAD_RADIUS * growthScale;
-    const bodyWidth  = headRadius * 2.2; // thick like DamnBruh
+    const headRadius  = CONSTANTS.SNAKE_HEAD_RADIUS * growthScale;
+    const bodyWidth   = headRadius * 2.2;
+    const bodyColor   = isMe ? this._lighten(color, 25) : color;
 
     ctx.save();
     ctx.lineCap  = 'round';
     ctx.lineJoin = 'round';
 
-    // Body
+    // 1. Base body
     ctx.beginPath();
     ctx.moveTo(segs[0], segs[1]);
     for (let i = 2; i < segs.length; i += 2) ctx.lineTo(segs[i], segs[i + 1]);
-    ctx.strokeStyle = isMe ? this._lighten(color, 30) : color;
+    ctx.strokeStyle = bodyColor;
     ctx.lineWidth   = bodyWidth;
     ctx.stroke();
 
-    // Body sheen (DamnBruh highlight)
+    // 2. Bottom shadow → 3D tube
     ctx.beginPath();
     ctx.moveTo(segs[0], segs[1]);
     for (let i = 2; i < segs.length; i += 2) ctx.lineTo(segs[i], segs[i + 1]);
-    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-    ctx.lineWidth   = bodyWidth * 0.3;
+    ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+    ctx.lineWidth   = bodyWidth * 0.6;
     ctx.stroke();
 
-    // Head — dome
+    // 3. Top highlight stripe
+    ctx.beginPath();
+    ctx.moveTo(segs[0], segs[1]);
+    for (let i = 2; i < segs.length; i += 2) ctx.lineTo(segs[i], segs[i + 1]);
+    ctx.strokeStyle = 'rgba(255,255,255,0.30)';
+    ctx.lineWidth   = bodyWidth * 0.35;
+    ctx.stroke();
+
+    // 4. Segment rings — perpendicular lines like slither.io
+    const segSpacing = bodyWidth * 1.1;
+    let dist = 0;
+    for (let i = 2; i < segs.length - 2; i += 2) {
+      const dx = segs[i] - segs[i-2], dy = segs[i+1] - segs[i-1];
+      dist += Math.sqrt(dx*dx + dy*dy);
+      if (dist >= segSpacing) {
+        dist -= segSpacing;
+        const ax = segs[i+2] - segs[i-2], ay = segs[i+3] - segs[i-1];
+        const al = Math.sqrt(ax*ax + ay*ay) || 1;
+        const px = -ay/al, py = ax/al;
+        const hw = bodyWidth * 0.48;
+        ctx.beginPath();
+        ctx.moveTo(segs[i] + px*hw, segs[i+1] + py*hw);
+        ctx.lineTo(segs[i] - px*hw, segs[i+1] - py*hw);
+        ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+        ctx.lineWidth   = bodyWidth * 0.12;
+        ctx.stroke();
+      }
+    }
+
+    // 5. Head — bigger dome
     const hx = segs[0], hy = segs[1];
-    const HR  = headRadius * 1.15;
+    const HR = headRadius * 1.2;
     ctx.beginPath();
     ctx.arc(hx, hy, HR, 0, Math.PI * 2);
-    ctx.fillStyle = isMe ? this._lighten(color, 50) : this._lighten(color, 25);
+    ctx.fillStyle = bodyColor;
     ctx.fill();
 
-    // Head sheen
+    // Head bottom shadow
     ctx.beginPath();
-    ctx.arc(hx - HR * 0.2, hy - HR * 0.2, HR * 0.45, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.arc(hx, hy, HR, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
     ctx.fill();
+
+    // Head top highlight
+    ctx.beginPath();
+    ctx.arc(hx - HR * 0.18, hy - HR * 0.22, HR * 0.58, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.26)';
+    ctx.fill();
+
+    // Restore head color center
+    ctx.beginPath();
+    ctx.arc(hx, hy, HR * 0.7, 0, Math.PI * 2);
+    ctx.fillStyle = bodyColor;
+    ctx.globalAlpha = 0.40;
+    ctx.fill();
+    ctx.globalAlpha = 1;
 
     // Boosting ring
     if (boosting) {
       ctx.beginPath();
-      ctx.arc(hx, hy, HR + 4, 0, Math.PI * 2);
+      ctx.arc(hx, hy, HR + 5, 0, Math.PI * 2);
       ctx.strokeStyle = color;
       ctx.lineWidth   = 3;
       ctx.globalAlpha = 0.55;
@@ -157,34 +201,33 @@ class Renderer {
       ctx.globalAlpha = 1;
     }
 
-    // Eyes — large, round, DamnBruh style
+    // 6. Eyes — large, close, slither.io style
     const angle = snake.angle || 0;
-    const perpX = -Math.sin(angle), perpY =  Math.cos(angle);
-    const fwdX  =  Math.cos(angle), fwdY  =  Math.sin(angle);
-    const eyeDist = HR * 0.50;
-    const eyeFwd  = HR * 0.38;
-    const eyeR    = HR * 0.38;
+    const perpX = -Math.sin(angle), perpY = Math.cos(angle);
+    const fwdX  =  Math.cos(angle), fwdY  = Math.sin(angle);
+    const eyeSep = HR * 0.36;
+    const eyeFwd = HR * 0.52;
+    const eyeR   = HR * 0.42;
 
     for (const side of [-1, 1]) {
-      const ex = hx + perpX * eyeDist * side + fwdX * eyeFwd;
-      const ey = hy + perpY * eyeDist * side + fwdY * eyeFwd;
+      const ex = hx + perpX * eyeSep * side + fwdX * eyeFwd;
+      const ey = hy + perpY * eyeSep * side + fwdY * eyeFwd;
       ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI * 2);
-      ctx.fillStyle = '#fff'; ctx.fill();
+      ctx.fillStyle = '#f2f2f2'; ctx.fill();
       ctx.beginPath();
-      ctx.arc(ex + fwdX * eyeR * 0.28, ey + fwdY * eyeR * 0.28, eyeR * 0.52, 0, Math.PI * 2);
-      ctx.fillStyle = '#1a1a1a'; ctx.fill();
-      // Glint
+      ctx.arc(ex + fwdX * eyeR * 0.18, ey + fwdY * eyeR * 0.18, eyeR * 0.64, 0, Math.PI * 2);
+      ctx.fillStyle = '#111'; ctx.fill();
       ctx.beginPath();
-      ctx.arc(ex - eyeR * 0.18, ey - eyeR * 0.18, eyeR * 0.22, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fill();
+      ctx.arc(ex - eyeR * 0.18, ey - eyeR * 0.28, eyeR * 0.26, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fill();
     }
 
     // Name
     if (name) {
-      ctx.font      = `bold ${Math.round(headRadius * 1.2)}px Segoe UI`;
+      ctx.font      = `bold ${Math.round(headRadius * 1.1)}px Segoe UI`;
       ctx.textAlign = 'center';
       ctx.fillStyle = isMe ? '#ffe066' : '#fff';
-      ctx.fillText(name, hx, hy - HR * 2.4);
+      ctx.fillText(name, hx, hy - HR * 2.5);
     }
 
     ctx.restore();

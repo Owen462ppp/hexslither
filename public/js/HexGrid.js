@@ -29,40 +29,40 @@ class HexGrid {
   _drawOne(ctx, cx, cy) {
     const IV = this.INNER_V;
 
-    // Gap fill — near black like DamnBruh
+    // Gap fill — dark navy like slither.io
     ctx.beginPath();
     ctx.moveTo(cx + this.OUTER_V[0].x, cy + this.OUTER_V[0].y);
     for (let i = 1; i < 6; i++) ctx.lineTo(cx + this.OUTER_V[i].x, cy + this.OUTER_V[i].y);
     ctx.closePath();
-    ctx.fillStyle = '#050507';
+    ctx.fillStyle = '#0c1020';
     ctx.fill();
 
-    // Hex face — dark charcoal
+    // Hex face — blue-slate
     ctx.beginPath();
     ctx.moveTo(cx + IV[0].x, cy + IV[0].y);
     for (let i = 1; i < 6; i++) ctx.lineTo(cx + IV[i].x, cy + IV[i].y);
     ctx.closePath();
-    ctx.fillStyle = '#0d0f14';
+    ctx.fillStyle = '#1d2540';
     ctx.fill();
 
-    // Single top-left highlight stroke
+    // Top-left highlight
     ctx.beginPath();
     ctx.moveTo(cx + IV[4].x, cy + IV[4].y);
     ctx.lineTo(cx + IV[5].x, cy + IV[5].y);
     ctx.lineTo(cx + IV[0].x, cy + IV[0].y);
     ctx.lineTo(cx + IV[1].x, cy + IV[1].y);
-    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+    ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Bottom-right shadow stroke
+    // Bottom-right shadow
     ctx.beginPath();
     ctx.moveTo(cx + IV[1].x, cy + IV[1].y);
     ctx.lineTo(cx + IV[2].x, cy + IV[2].y);
     ctx.lineTo(cx + IV[3].x, cy + IV[3].y);
     ctx.lineTo(cx + IV[4].x, cy + IV[4].y);
-    ctx.strokeStyle = 'rgba(0,0,0,0.55)';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(0,0,0,0.30)';
+    ctx.lineWidth = 2;
     ctx.stroke();
   }
 
@@ -72,7 +72,7 @@ class HexGrid {
     cc.width  = screenW  * 2;
     cc.height = screenH * 2;
 
-    ctx.fillStyle = '#050507';
+    ctx.fillStyle = '#0c1020';
     ctx.fillRect(0, 0, cc.width, cc.height);
 
     ctx.setTransform(scale, 0, 0, scale,
