@@ -68,20 +68,20 @@ class Renderer {
     const t = Date.now() / 1000;
 
     for (const f of food) {
-      // Slow unique drift per orb using position as phase seed
+      // Visible hover drift using position as phase seed
       const phase = (f.x * 0.13 + f.y * 0.09) % (Math.PI * 2);
-      const fx = f.x + Math.sin(t * 0.7 + phase) * 2.5;
-      const fy = f.y + Math.cos(t * 0.5 + phase * 1.4) * 2.5;
+      const fx = f.x + Math.sin(t * 1.1 + phase) * 7;
+      const fy = f.y + Math.cos(t * 0.85 + phase * 1.4) * 7;
 
       if (Math.abs(fx - worldCX) > halfW || Math.abs(fy - worldCY) > halfH) continue;
 
       const r = BASE_R * (f.size || 1);
       const glowR = r * 4.5;
 
-      // Static glow
+      // Subtle glow
       const grd = ctx.createRadialGradient(fx, fy, 0, fx, fy, glowR);
-      grd.addColorStop(0,   f.color + '88');
-      grd.addColorStop(0.5, f.color + '33');
+      grd.addColorStop(0,   f.color + '40');
+      grd.addColorStop(0.5, f.color + '18');
       grd.addColorStop(1,   f.color + '00');
       ctx.beginPath();
       ctx.arc(fx, fy, glowR, 0, Math.PI * 2);
@@ -92,12 +92,6 @@ class Renderer {
       ctx.beginPath();
       ctx.arc(fx, fy, r, 0, Math.PI * 2);
       ctx.fillStyle = f.color;
-      ctx.fill();
-
-      // Highlight glint
-      ctx.beginPath();
-      ctx.arc(fx - r * 0.28, fy - r * 0.28, r * 0.38, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(255,255,255,0.6)';
       ctx.fill();
     }
   }
