@@ -4,39 +4,11 @@ class Renderer {
     this.ctx = canvas.getContext('2d');
     this.hexGrid = new HexGrid();
     this.camera = new Camera();
-    // Pre-render a single food glow sprite to an offscreen canvas
-    this._foodSprites = new Map(); // color -> offscreen canvas
   }
 
   resize() {
     this.canvas.width = window.innerWidth;
     this.canvas.height = window.innerHeight;
-  }
-
-  // Build a small offscreen canvas for a glowing food orb of a given color
-  _getFoodSprite(color) {
-    if (this._foodSprites.has(color)) return this._foodSprites.get(color);
-    const R = CONSTANTS.FOOD_RADIUS;
-    const size = R * 6;
-    const oc = document.createElement('canvas');
-    oc.width = oc.height = size;
-    const ox = size / 2, oy = size / 2;
-    const c = oc.getContext('2d');
-    // Glow
-    const grd = c.createRadialGradient(ox, oy, 0, ox, oy, R * 3);
-    grd.addColorStop(0, color + 'cc');
-    grd.addColorStop(1, color + '00');
-    c.beginPath(); c.arc(ox, oy, R * 3, 0, Math.PI * 2);
-    c.fillStyle = grd; c.fill();
-    // Core
-    c.beginPath(); c.arc(ox, oy, R, 0, Math.PI * 2);
-    c.fillStyle = color; c.fill();
-    // Highlight
-    c.beginPath();
-    c.arc(ox - R * 0.3, oy - R * 0.3, R * 0.4, 0, Math.PI * 2);
-    c.fillStyle = 'rgba(255,255,255,0.55)'; c.fill();
-    this._foodSprites.set(color, oc);
-    return oc;
   }
 
   render(state, myId, mousePos) {
@@ -84,23 +56,49 @@ class Renderer {
   }
 
   _drawFood(ctx, food, camera) {
-    const R = CONSTANTS.FOOD_RADIUS;
-    const spriteSize = R * 6;
-    const half = spriteSize / 2;
-
-    // Viewport cull in world space
+    const BASE_R = CONSTANTS.FOOD_RADIUS;
     const { x: camX, y: camY, scale } = camera;
     const W = ctx.canvas.width, H = ctx.canvas.height;
     const worldCX = (W / 2 - camX) / scale;
     const worldCY = (H / 2 - camY) / scale;
-    const halfW = W / (2 * scale) + spriteSize;
-    const halfH = H / (2 * scale) + spriteSize;
+    const margin = BASE_R * 20;
+    const halfW = W / (2 * scale) + margin;
+    const halfH = H / (2 * scale) + margin;
+
+    const t = Date.now() / 1000;
 
     for (const f of food) {
-      // Skip offscreen food
-      if (Math.abs(f.x - worldCX) > halfW || Math.abs(f.y - worldCY) > halfH) continue;
-      const sprite = this._getFoodSprite(f.color);
-      ctx.drawImage(sprite, f.x - half, f.y - half, spriteSize, spriteSize);
+      // Slow unique drift per orb using position as phase seed
+      const phase = (f.x * 0.13 + f.y * 0.09) % (Math.PI * 2);
+      const fx = f.x + Math.sin(t * 0.7 + phase) * 2.5;
+      const fy = f.y + Math.cos(t * 0.5 + phase * 1.4) * 2.5;
+
+      if (Math.abs(fx - worldCX) > halfW || Math.abs(fy - worldCY) > halfH) continue;
+
+      const r = BASE_R * (f.size || 1);
+      const glowR = r * 4.5;
+
+      // Static glow
+      const grd = ctx.createRadialGradient(fx, fy, 0, fx, fy, glowR);
+      grd.addColorStop(0,   f.color + '88');
+      grd.addColorStop(0.5, f.color + '33');
+      grd.addColorStop(1,   f.color + '00');
+      ctx.beginPath();
+      ctx.arc(fx, fy, glowR, 0, Math.PI * 2);
+      ctx.fillStyle = grd;
+      ctx.fill();
+
+      // Core orb
+      ctx.beginPath();
+      ctx.arc(fx, fy, r, 0, Math.PI * 2);
+      ctx.fillStyle = f.color;
+      ctx.fill();
+
+      // Highlight glint
+      ctx.beginPath();
+      ctx.arc(fx - r * 0.28, fy - r * 0.28, r * 0.38, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fill();
     }
   }
 
