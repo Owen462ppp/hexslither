@@ -351,39 +351,38 @@ document.getElementById('btn-play').addEventListener('click', () => {
   window.location.href = '/game.html';
 });
 
-// ─── Lobby snake animation (DamnBruh style) ───────────────────────────────────
+// ─── Lobby snake animation ────────────────────────────────────────────────────
 (function() {
   const canvas = document.getElementById('snake-canvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
 
-  // 3 snakes like DamnBruh: teal bottom-left, gold top-right, pink bottom-right
-  const CONFIGS = [
-    { color: '#1ECEA8', zoneX: 0, zoneY: 1, angle:  -0.6 }, // teal,  bottom-left
-    { color: '#F5C020', zoneX: 1, zoneY: 0, angle:  -2.4 }, // gold,  top-right
-    { color: '#E85DA8', zoneX: 1, zoneY: 1, angle:   2.5 }, // pink,  bottom-right
+  const COLORS = [
+    '#1ECEA8', '#F5C020', '#E85DA8', '#5B8CFF',
+    '#FF6B35', '#A855F7', '#34D399', '#F87171',
+    '#FBBF24', '#38BDF8',
   ];
 
-  const R     = 20;    // body radius — thick like DamnBruh
-  const SPEED = 1.1;
-  const TRAIL = 200;
-  const TURN  = 0.016;
+  const R     = 18;
+  const SPEED = 1.2;
+  const TRAIL = 280;
+  const TURN  = 0.018;
 
-  function makeSnake(cfg, W, H) {
-    const pad = 180;
-    const x = cfg.zoneX === 0 ? pad + Math.random() * 120 : W - pad - Math.random() * 120;
-    const y = cfg.zoneY === 0 ? pad + Math.random() * 100 : H - pad - Math.random() * 120;
+  function makeSnake(color, W, H) {
+    const angle = Math.random() * Math.PI * 2;
+    const x = Math.random() * W;
+    const y = Math.random() * H;
     const trail = [];
     for (let t = 0; t < TRAIL; t++)
-      trail.push({ x: x - Math.cos(cfg.angle) * t * SPEED, y: y - Math.sin(cfg.angle) * t * SPEED });
-    return { x, y, angle: cfg.angle, color: cfg.color, trail, turnDir: 1, turnTimer: 60, zone: cfg };
+      trail.push({ x: x - Math.cos(angle) * t * SPEED, y: y - Math.sin(angle) * t * SPEED });
+    return { x, y, angle, color, trail, turnDir: 1, turnTimer: 60 + Math.random() * 120 };
   }
 
   let snakes = [];
   function resize() {
     canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
-    snakes = CONFIGS.map(c => makeSnake(c, canvas.width, canvas.height));
+    snakes = COLORS.map(c => makeSnake(c, canvas.width, canvas.height));
   }
   resize();
   window.addEventListener('resize', resize);
@@ -392,76 +391,70 @@ document.getElementById('btn-play').addEventListener('click', () => {
     const W = canvas.width, H = canvas.height;
     s.turnTimer--;
     if (s.turnTimer <= 0) {
-      s.turnDir   = -s.turnDir;
-      s.turnTimer = 70 + Math.random() * 110;
+      s.turnDir   = (Math.random() < 0.5 ? -1 : 1);
+      s.turnTimer = 80 + Math.random() * 130;
     }
-
-    // Stay in zone (corner area)
-    const zx = s.zone.zoneX === 0 ? 0 : W;
-    const zy = s.zone.zoneY === 0 ? 0 : H;
-    const dx = zx - s.x, dy = zy - s.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > 340) {
-      const toward = Math.atan2(dy, dx);
-      let diff = toward - s.angle;
-      while (diff >  Math.PI) diff -= 2 * Math.PI;
-      while (diff < -Math.PI) diff += 2 * Math.PI;
-      s.angle += Math.sign(diff) * TURN * 1.8;
-    } else {
-      s.angle += s.turnDir * TURN;
-    }
+    s.angle += s.turnDir * TURN;
 
     s.x += Math.cos(s.angle) * SPEED;
     s.y += Math.sin(s.angle) * SPEED;
-    s.x = Math.max(R, Math.min(W - R, s.x));
-    s.y = Math.max(R, Math.min(H - R, s.y));
+
+    // Wrap around screen edges
+    const pad = R * 3;
+    if (s.x < -pad)    s.x += W + pad * 2;
+    if (s.x > W + pad) s.x -= W + pad * 2;
+    if (s.y < -pad)    s.y += H + pad * 2;
+    if (s.y > H + pad) s.y -= H + pad * 2;
+
     s.trail.unshift({ x: s.x, y: s.y });
     if (s.trail.length > TRAIL) s.trail.pop();
   }
 
+  function drawTrailPass(t, len, wrapThresh, strokeStyle, lineWidth) {
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth   = lineWidth;
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i < len; i++) {
+      if (i > 0) {
+        const dx = Math.abs(t[i].x - t[i-1].x), dy = Math.abs(t[i].y - t[i-1].y);
+        if (dx > wrapThresh || dy > wrapThresh) {
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(t[i].x, t[i].y);
+          started = true;
+          continue;
+        }
+      }
+      if (!started || i === 0) { ctx.moveTo(t[i].x, t[i].y); started = true; }
+      else ctx.lineTo(t[i].x, t[i].y);
+    }
+    ctx.stroke();
+  }
+
   function drawSnake(s) {
     if (s.trail.length < 4) return;
-    const t = s.trail;
-    const len = t.length;
+    const t = s.trail, len = t.length;
+    const W = canvas.width, H = canvas.height;
+    const wrapThresh = Math.min(W, H) * 0.35;
+
     ctx.save();
-    ctx.lineCap  = 'round';
+    ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // 1. Base body
-    ctx.beginPath();
-    ctx.moveTo(t[0].x, t[0].y);
-    for (let i = 1; i < len; i++) ctx.lineTo(t[i].x, t[i].y);
-    ctx.strokeStyle = s.color;
-    ctx.lineWidth   = R * 2;
-    ctx.globalAlpha = 1;
-    ctx.stroke();
+    drawTrailPass(t, len, wrapThresh, s.color,                  R * 2);
+    drawTrailPass(t, len, wrapThresh, 'rgba(0,0,0,0.28)',       R * 1.2);
+    drawTrailPass(t, len, wrapThresh, 'rgba(255,255,255,0.30)', R * 0.72);
 
-    // 2. Bottom shadow band (darker lower half → 3D tube look)
-    ctx.beginPath();
-    ctx.moveTo(t[0].x, t[0].y);
-    for (let i = 1; i < len; i++) ctx.lineTo(t[i].x, t[i].y);
-    ctx.strokeStyle = 'rgba(0,0,0,0.28)';
-    ctx.lineWidth   = R * 1.2;
-    ctx.globalAlpha = 1;
-    ctx.stroke();
-
-    // 3. Top highlight (bright center stripe)
-    ctx.beginPath();
-    ctx.moveTo(t[0].x, t[0].y);
-    for (let i = 1; i < len; i++) ctx.lineTo(t[i].x, t[i].y);
-    ctx.strokeStyle = 'rgba(255,255,255,0.32)';
-    ctx.lineWidth   = R * 0.75;
-    ctx.stroke();
-
-    // 4. Segment rings — perpendicular dark lines like slither.io
-    ctx.lineCap = 'round';
+    // Segment rings
     let dist = 0;
     for (let i = 1; i < len - 1; i++) {
       const dx = t[i].x - t[i-1].x, dy = t[i].y - t[i-1].y;
-      dist += Math.sqrt(dx*dx + dy*dy);
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d > wrapThresh) { dist = 0; continue; }
+      dist += d;
       if (dist >= 13) {
         dist -= 13;
-        // Use next point for smooth perpendicular
         const ax = t[Math.min(i+1,len-1)].x - t[i-1].x;
         const ay = t[Math.min(i+1,len-1)].y - t[i-1].y;
         const al = Math.sqrt(ax*ax + ay*ay) || 1;
@@ -475,55 +468,30 @@ document.getElementById('btn-play').addEventListener('click', () => {
       }
     }
 
-    // 5. Head — dome, same color, slightly bigger
-    const HR = R + 6;
-    ctx.lineCap = 'round';
-    ctx.globalAlpha = 1;
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, HR, 0, Math.PI * 2);
-    ctx.fillStyle = s.color;
-    ctx.fill();
-
-    // Head bottom shadow
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, HR, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    ctx.fill();
-
-    // Head top highlight blob
-    ctx.beginPath();
-    ctx.arc(s.x - HR * 0.18, s.y - HR * 0.22, HR * 0.58, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255,255,255,0.26)';
-    ctx.fill();
-
-    // Re-fill head center to restore color after shadows
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, HR, 0, Math.PI * 2);
-    ctx.fillStyle = s.color;
-    ctx.globalAlpha = 0.45;
-    ctx.fill();
+    // Head dome
+    const HR = R + 5;
+    ctx.beginPath(); ctx.arc(s.x, s.y, HR, 0, Math.PI*2);
+    ctx.fillStyle = s.color; ctx.fill();
+    ctx.beginPath(); ctx.arc(s.x, s.y, HR, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(s.x - HR*0.18, s.y - HR*0.22, HR*0.55, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,255,255,0.24)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(s.x, s.y, HR, 0, Math.PI*2);
+    ctx.fillStyle = s.color; ctx.globalAlpha = 0.45; ctx.fill();
     ctx.globalAlpha = 1;
 
-    // 6. Eyes — large, close together, slither.io style
+    // Eyes
     const perpX = -Math.sin(s.angle), perpY = Math.cos(s.angle);
     const fwdX  =  Math.cos(s.angle), fwdY  = Math.sin(s.angle);
-    const eyeSep = HR * 0.36;   // close together
-    const eyeFwd = HR * 0.52;   // pushed forward on head
-    const eyeR   = HR * 0.42;   // large eyes
-
+    const eyeSep = HR * 0.36, eyeFwd = HR * 0.52, eyeR = HR * 0.42;
     for (const side of [-1, 1]) {
-      const ex = s.x + perpX * eyeSep * side + fwdX * eyeFwd;
-      const ey = s.y + perpY * eyeSep * side + fwdY * eyeFwd;
-      // Sclera
-      ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI * 2);
+      const ex = s.x + perpX*eyeSep*side + fwdX*eyeFwd;
+      const ey = s.y + perpY*eyeSep*side + fwdY*eyeFwd;
+      ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI*2);
       ctx.fillStyle = '#f2f2f2'; ctx.fill();
-      // Large black pupil
-      ctx.beginPath();
-      ctx.arc(ex + fwdX * eyeR * 0.18, ey + fwdY * eyeR * 0.18, eyeR * 0.64, 0, Math.PI * 2);
-      ctx.fillStyle = '#111111'; ctx.fill();
-      // White glint
-      ctx.beginPath();
-      ctx.arc(ex - eyeR * 0.18, ey - eyeR * 0.28, eyeR * 0.26, 0, Math.PI * 2);
+      ctx.beginPath(); ctx.arc(ex + fwdX*eyeR*0.18, ey + fwdY*eyeR*0.18, eyeR*0.64, 0, Math.PI*2);
+      ctx.fillStyle = '#111'; ctx.fill();
+      ctx.beginPath(); ctx.arc(ex - eyeR*0.18, ey - eyeR*0.28, eyeR*0.26, 0, Math.PI*2);
       ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fill();
     }
 

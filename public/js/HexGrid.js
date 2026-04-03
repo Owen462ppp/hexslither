@@ -82,7 +82,7 @@ class HexGrid {
 
     for (let row = rowStart; row <= rowEnd; row++) {
       for (let col = colStart; col <= colEnd; col++) {
-        const cx = col * this.COL_STEP + (row % 2 === 1 ? this.COL_STEP / 2 : 0);
+        const cx = col * this.COL_STEP + (Math.abs(row % 2) === 1 ? this.COL_STEP / 2 : 0);
         const cy = row * this.ROW_STEP;
         this._drawOne(ctx, cx, cy);
       }
