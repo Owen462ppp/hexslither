@@ -52,7 +52,7 @@ class Renderer {
     camera.update();
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = '#03080f';
+    ctx.fillStyle = '#050507';
     ctx.fillRect(0, 0, W, H);
 
     camera.apply(ctx);
@@ -110,60 +110,81 @@ class Renderer {
 
     const growthScale = 1 + Math.min(1.5, (snake.length || 20) / 200);
     const headRadius = CONSTANTS.SNAKE_HEAD_RADIUS * growthScale;
-    const bodyWidth = headRadius * 1.6;
+    const bodyWidth  = headRadius * 2.2; // thick like DamnBruh
 
     ctx.save();
-    ctx.lineCap = 'round';
+    ctx.lineCap  = 'round';
     ctx.lineJoin = 'round';
 
-    // Body — single pass, no shadow
+    // Body
     ctx.beginPath();
     ctx.moveTo(segs[0], segs[1]);
     for (let i = 2; i < segs.length; i += 2) ctx.lineTo(segs[i], segs[i + 1]);
-    ctx.strokeStyle = isMe ? this._lighten(color, 40) : color;
-    ctx.lineWidth = bodyWidth;
+    ctx.strokeStyle = isMe ? this._lighten(color, 30) : color;
+    ctx.lineWidth   = bodyWidth;
     ctx.stroke();
 
-    // Head
-    const hx = segs[0], hy = segs[1];
+    // Body sheen (DamnBruh highlight)
     ctx.beginPath();
-    ctx.arc(hx, hy, headRadius, 0, Math.PI * 2);
-    ctx.fillStyle = isMe ? this._lighten(color, 60) : this._lighten(color, 20);
+    ctx.moveTo(segs[0], segs[1]);
+    for (let i = 2; i < segs.length; i += 2) ctx.lineTo(segs[i], segs[i + 1]);
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.lineWidth   = bodyWidth * 0.3;
+    ctx.stroke();
+
+    // Head — dome
+    const hx = segs[0], hy = segs[1];
+    const HR  = headRadius * 1.15;
+    ctx.beginPath();
+    ctx.arc(hx, hy, HR, 0, Math.PI * 2);
+    ctx.fillStyle = isMe ? this._lighten(color, 50) : this._lighten(color, 25);
     ctx.fill();
 
-    // Boosting ring instead of expensive shadowBlur
+    // Head sheen
+    ctx.beginPath();
+    ctx.arc(hx - HR * 0.2, hy - HR * 0.2, HR * 0.45, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.fill();
+
+    // Boosting ring
     if (boosting) {
       ctx.beginPath();
-      ctx.arc(hx, hy, headRadius + 4, 0, Math.PI * 2);
+      ctx.arc(hx, hy, HR + 4, 0, Math.PI * 2);
       ctx.strokeStyle = color;
-      ctx.lineWidth = 3;
-      ctx.globalAlpha = 0.5;
+      ctx.lineWidth   = 3;
+      ctx.globalAlpha = 0.55;
       ctx.stroke();
       ctx.globalAlpha = 1;
     }
 
-    // Eyes
+    // Eyes — large, round, DamnBruh style
     const angle = snake.angle || 0;
-    const eyeOffset = headRadius * 0.5;
-    const eyeR = headRadius * 0.28;
-    const perpX = -Math.sin(angle), perpY = Math.cos(angle);
-    const fwdX  =  Math.cos(angle), fwdY  = Math.sin(angle);
+    const perpX = -Math.sin(angle), perpY =  Math.cos(angle);
+    const fwdX  =  Math.cos(angle), fwdY  =  Math.sin(angle);
+    const eyeDist = HR * 0.50;
+    const eyeFwd  = HR * 0.38;
+    const eyeR    = HR * 0.38;
 
     for (const side of [-1, 1]) {
-      const ex = hx + perpX * eyeOffset * side + fwdX * headRadius * 0.35;
-      const ey = hy + perpY * eyeOffset * side + fwdY * headRadius * 0.35;
+      const ex = hx + perpX * eyeDist * side + fwdX * eyeFwd;
+      const ey = hy + perpY * eyeDist * side + fwdY * eyeFwd;
       ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI * 2);
       ctx.fillStyle = '#fff'; ctx.fill();
-      ctx.beginPath(); ctx.arc(ex + fwdX * eyeR * 0.3, ey + fwdY * eyeR * 0.3, eyeR * 0.5, 0, Math.PI * 2);
-      ctx.fillStyle = '#111'; ctx.fill();
+      ctx.beginPath();
+      ctx.arc(ex + fwdX * eyeR * 0.28, ey + fwdY * eyeR * 0.28, eyeR * 0.52, 0, Math.PI * 2);
+      ctx.fillStyle = '#1a1a1a'; ctx.fill();
+      // Glint
+      ctx.beginPath();
+      ctx.arc(ex - eyeR * 0.18, ey - eyeR * 0.18, eyeR * 0.22, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fill();
     }
 
     // Name
     if (name) {
-      ctx.font = `bold ${Math.round(headRadius * 1.1)}px Segoe UI`;
+      ctx.font      = `bold ${Math.round(headRadius * 1.2)}px Segoe UI`;
       ctx.textAlign = 'center';
       ctx.fillStyle = isMe ? '#ffe066' : '#fff';
-      ctx.fillText(name, hx, hy - headRadius * 2.2);
+      ctx.fillText(name, hx, hy - HR * 2.4);
     }
 
     ctx.restore();

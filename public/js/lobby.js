@@ -2,7 +2,7 @@
 (function() {
   const canvas = document.getElementById('bg-canvas');
   const ctx = canvas.getContext('2d');
-  const R = 42, GAP = 3, INNER_R = R - GAP;
+  const R = 42, GAP = 4, INNER_R = R - GAP;
   const COL_STEP = R * 1.5, ROW_STEP = Math.sqrt(3) * R;
 
   function buildVerts(r) {
@@ -23,26 +23,26 @@
   }
 
   function drawHex(cx, cy) {
-    // Outer gap — exactly matches HexGrid.js in-game
-    p(OV, cx, cy); ctx.fillStyle = '#03080f'; ctx.fill();
-    // Hex face
-    p(IV, cx, cy); ctx.fillStyle = '#0b1a2e'; ctx.fill();
+    // Outer gap — near black like DamnBruh
+    p(OV, cx, cy); ctx.fillStyle = '#050507'; ctx.fill();
+    // Hex face — dark charcoal
+    p(IV, cx, cy); ctx.fillStyle = '#0d0f14'; ctx.fill();
     // Top-left highlight
     ctx.beginPath();
     ctx.moveTo(cx+IV[4].x,cy+IV[4].y); ctx.lineTo(cx+IV[5].x,cy+IV[5].y);
     ctx.lineTo(cx+IV[0].x,cy+IV[0].y); ctx.lineTo(cx+IV[1].x,cy+IV[1].y);
-    ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=2; ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.lineWidth=1.5; ctx.stroke();
     // Bottom-right shadow
     ctx.beginPath();
     ctx.moveTo(cx+IV[1].x,cy+IV[1].y); ctx.lineTo(cx+IV[2].x,cy+IV[2].y);
     ctx.lineTo(cx+IV[3].x,cy+IV[3].y); ctx.lineTo(cx+IV[4].x,cy+IV[4].y);
-    ctx.strokeStyle='rgba(0,0,0,0.45)'; ctx.lineWidth=2; ctx.stroke();
+    ctx.strokeStyle='rgba(0,0,0,0.55)'; ctx.lineWidth=1.5; ctx.stroke();
   }
 
   function draw() {
     canvas.width = window.innerWidth; canvas.height = window.innerHeight;
     const W = canvas.width, H = canvas.height;
-    ctx.fillStyle = '#03080f'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#050507'; ctx.fillRect(0, 0, W, H);
     const cols = Math.ceil(W / COL_STEP) + 3, rows = Math.ceil(H / ROW_STEP) + 3;
     for (let col = -1; col < cols; col++)
       for (let row = -1; row < rows; row++) {
@@ -330,116 +330,134 @@ document.getElementById('btn-play').addEventListener('click', () => {
   window.location.href = '/game.html';
 });
 
-// ─── Lobby snake animation ─────────────────────────────────────────────────────
+// ─── Lobby snake animation (DamnBruh style) ───────────────────────────────────
 (function() {
   const canvas = document.getElementById('snake-canvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
 
-  const SNAKE_COLORS = [
-    '#e74c3c', '#3498db', '#2ecc71', '#9b59b6',
-    '#f39c12', '#1abc9c', '#e91e63', '#00bcd4',
+  // 3 snakes like DamnBruh: teal bottom-left, gold top-right, pink bottom-right
+  const CONFIGS = [
+    { color: '#1ECEA8', zoneX: 0, zoneY: 1, angle:  -0.6 }, // teal,  bottom-left
+    { color: '#F5C020', zoneX: 1, zoneY: 0, angle:  -2.4 }, // gold,  top-right
+    { color: '#E85DA8', zoneX: 1, zoneY: 1, angle:   2.5 }, // pink,  bottom-right
   ];
 
-  const RADIUS = 10;       // body segment radius
-  const SPEED  = 1.4;      // px per frame
-  const TRAIL  = 120;      // history length
-  const TURN   = 0.022;    // max turn per frame (radians)
+  const R     = 20;    // body radius — thick like DamnBruh
+  const SPEED = 1.1;
+  const TRAIL = 200;
+  const TURN  = 0.016;
 
-  function makeSnake(i) {
-    const W = window.innerWidth, H = window.innerHeight;
-    const angle = Math.random() * Math.PI * 2;
-    const x = Math.random() * W, y = Math.random() * H;
-    const color = SNAKE_COLORS[i % SNAKE_COLORS.length];
-    // Pre-fill trail so snake appears full-length immediately
+  function makeSnake(cfg, W, H) {
+    const pad = 180;
+    const x = cfg.zoneX === 0 ? pad + Math.random() * 120 : W - pad - Math.random() * 120;
+    const y = cfg.zoneY === 0 ? pad + Math.random() * 100 : H - pad - Math.random() * 120;
     const trail = [];
-    for (let t = 0; t < TRAIL; t++) {
-      trail.push({ x: x - Math.cos(angle) * t * SPEED, y: y - Math.sin(angle) * t * SPEED });
-    }
-    return { x, y, angle, color, trail, turnDir: (Math.random() < 0.5 ? 1 : -1), turnTimer: 0 };
+    for (let t = 0; t < TRAIL; t++)
+      trail.push({ x: x - Math.cos(cfg.angle) * t * SPEED, y: y - Math.sin(cfg.angle) * t * SPEED });
+    return { x, y, angle: cfg.angle, color: cfg.color, trail, turnDir: 1, turnTimer: 60, zone: cfg };
   }
 
-  const snakes = Array.from({ length: 6 }, (_, i) => makeSnake(i));
-
+  let snakes = [];
   function resize() {
     canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
+    snakes = CONFIGS.map(c => makeSnake(c, canvas.width, canvas.height));
   }
   resize();
   window.addEventListener('resize', resize);
 
   function update(s) {
     const W = canvas.width, H = canvas.height;
-
-    // Occasionally change turn direction
     s.turnTimer--;
     if (s.turnTimer <= 0) {
-      s.turnDir   = Math.random() < 0.5 ? 1 : -1;
-      s.turnTimer = 40 + Math.random() * 120;
+      s.turnDir   = -s.turnDir;
+      s.turnTimer = 70 + Math.random() * 110;
     }
 
-    // Steer away from edges
-    const margin = 120;
-    if (s.x < margin)        s.angle += TURN * 2;
-    else if (s.x > W - margin) s.angle -= TURN * 2;
-    if (s.y < margin)        s.angle += TURN * 2;
-    else if (s.y > H - margin) s.angle -= TURN * 2;
+    // Stay in zone (corner area)
+    const zx = s.zone.zoneX === 0 ? 0 : W;
+    const zy = s.zone.zoneY === 0 ? 0 : H;
+    const dx = zx - s.x, dy = zy - s.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > 340) {
+      const toward = Math.atan2(dy, dx);
+      let diff = toward - s.angle;
+      while (diff >  Math.PI) diff -= 2 * Math.PI;
+      while (diff < -Math.PI) diff += 2 * Math.PI;
+      s.angle += Math.sign(diff) * TURN * 1.8;
+    } else {
+      s.angle += s.turnDir * TURN;
+    }
 
-    s.angle += s.turnDir * TURN * (0.3 + Math.random() * 0.7);
     s.x += Math.cos(s.angle) * SPEED;
     s.y += Math.sin(s.angle) * SPEED;
-
-    // Soft clamp
-    s.x = Math.max(RADIUS, Math.min(W - RADIUS, s.x));
-    s.y = Math.max(RADIUS, Math.min(H - RADIUS, s.y));
-
+    s.x = Math.max(R, Math.min(W - R, s.x));
+    s.y = Math.max(R, Math.min(H - R, s.y));
     s.trail.unshift({ x: s.x, y: s.y });
     if (s.trail.length > TRAIL) s.trail.pop();
   }
 
   function drawSnake(s) {
-    if (s.trail.length < 2) return;
+    if (s.trail.length < 4) return;
     ctx.save();
-    ctx.globalAlpha = 0.55;
     ctx.lineCap  = 'round';
     ctx.lineJoin = 'round';
 
-    // Body — draw as connected path
-    const segs = s.trail.length;
+    // Body
     ctx.beginPath();
     ctx.moveTo(s.trail[0].x, s.trail[0].y);
-    for (let i = 1; i < segs; i++) ctx.lineTo(s.trail[i].x, s.trail[i].y);
-    const fade = ctx.createLinearGradient(
-      s.trail[0].x, s.trail[0].y,
-      s.trail[segs - 1].x, s.trail[segs - 1].y
-    );
-    fade.addColorStop(0,   s.color);
-    fade.addColorStop(0.6, s.color + 'aa');
-    fade.addColorStop(1,   s.color + '00');
-    ctx.strokeStyle = fade;
-    ctx.lineWidth   = RADIUS * 2;
+    for (let i = 1; i < s.trail.length; i++) ctx.lineTo(s.trail[i].x, s.trail[i].y);
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth   = R * 2;
+    ctx.globalAlpha = 0.92;
     ctx.stroke();
 
-    // Head circle
-    ctx.globalAlpha = 0.7;
+    // Sheen on body
     ctx.beginPath();
-    ctx.arc(s.x, s.y, RADIUS + 2, 0, Math.PI * 2);
+    ctx.moveTo(s.trail[0].x, s.trail[0].y);
+    for (let i = 1; i < s.trail.length; i++) ctx.lineTo(s.trail[i].x, s.trail[i].y);
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.lineWidth   = R * 0.65;
+    ctx.stroke();
+
+    // Head — bigger dome
+    const HR = R + 5;
+    ctx.globalAlpha = 0.95;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, HR, 0, Math.PI * 2);
     ctx.fillStyle = s.color;
     ctx.fill();
 
-    // Eyes
+    // Head sheen
+    ctx.beginPath();
+    ctx.arc(s.x - HR * 0.22, s.y - HR * 0.22, HR * 0.48, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fill();
+
+    // Eyes — large and round like DamnBruh
     ctx.globalAlpha = 1;
-    const eyeAngle1 = s.angle - 0.45;
-    const eyeAngle2 = s.angle + 0.45;
-    const eyeDist   = RADIUS * 0.65;
-    [[eyeAngle1], [eyeAngle2]].forEach(([a]) => {
-      const ex = s.x + Math.cos(a) * eyeDist;
-      const ey = s.y + Math.sin(a) * eyeDist;
-      ctx.beginPath(); ctx.arc(ex, ey, 3.5, 0, Math.PI * 2);
-      ctx.fillStyle = '#fff'; ctx.fill();
-      ctx.beginPath(); ctx.arc(ex + 0.8, ey + 0.8, 1.5, 0, Math.PI * 2);
-      ctx.fillStyle = '#111'; ctx.fill();
-    });
+    const perpX = -Math.sin(s.angle), perpY = Math.cos(s.angle);
+    const fwdX  =  Math.cos(s.angle), fwdY  = Math.sin(s.angle);
+    const eyeDist = HR * 0.52;
+    const eyeFwd  = HR * 0.38;
+    const eyeR    = HR * 0.40;
+
+    for (const side of [-1, 1]) {
+      const ex = s.x + perpX * eyeDist * side + fwdX * eyeFwd;
+      const ey = s.y + perpY * eyeDist * side + fwdY * eyeFwd;
+      // White
+      ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff'; ctx.fill();
+      // Pupil
+      ctx.beginPath();
+      ctx.arc(ex + fwdX * eyeR * 0.28, ey + fwdY * eyeR * 0.28, eyeR * 0.52, 0, Math.PI * 2);
+      ctx.fillStyle = '#1a1a1a'; ctx.fill();
+      // Eye glint
+      ctx.beginPath();
+      ctx.arc(ex - eyeR * 0.2, ey - eyeR * 0.2, eyeR * 0.22, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fill();
+    }
 
     ctx.restore();
   }
