@@ -23,26 +23,26 @@
   }
 
   function drawHex(cx, cy) {
-    // Gap — dark navy
-    p(OV, cx, cy); ctx.fillStyle = '#0c1020'; ctx.fill();
-    // Hex face — blue-slate like slither.io
-    p(IV, cx, cy); ctx.fillStyle = '#1d2540'; ctx.fill();
-    // Top-left highlight
+    // Gap — very dark near-black navy
+    p(OV, cx, cy); ctx.fillStyle = '#070b12'; ctx.fill();
+    // Hex face — rich blue-slate
+    p(IV, cx, cy); ctx.fillStyle = '#1b2a3e'; ctx.fill();
+    // Top-left highlight — bright, thick
     ctx.beginPath();
     ctx.moveTo(cx+IV[4].x,cy+IV[4].y); ctx.lineTo(cx+IV[5].x,cy+IV[5].y);
     ctx.lineTo(cx+IV[0].x,cy+IV[0].y); ctx.lineTo(cx+IV[1].x,cy+IV[1].y);
-    ctx.strokeStyle='rgba(255,255,255,0.10)'; ctx.lineWidth=2; ctx.stroke();
-    // Bottom-right shadow
+    ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=3; ctx.stroke();
+    // Bottom-right shadow — dark, thick
     ctx.beginPath();
     ctx.moveTo(cx+IV[1].x,cy+IV[1].y); ctx.lineTo(cx+IV[2].x,cy+IV[2].y);
     ctx.lineTo(cx+IV[3].x,cy+IV[3].y); ctx.lineTo(cx+IV[4].x,cy+IV[4].y);
-    ctx.strokeStyle='rgba(0,0,0,0.30)'; ctx.lineWidth=2; ctx.stroke();
+    ctx.strokeStyle='rgba(0,0,0,0.50)'; ctx.lineWidth=3; ctx.stroke();
   }
 
   function draw() {
     canvas.width = window.innerWidth; canvas.height = window.innerHeight;
     const W = canvas.width, H = canvas.height;
-    ctx.fillStyle = '#0c1020'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#070b12'; ctx.fillRect(0, 0, W, H);
     const cols = Math.ceil(W / COL_STEP) + 3, rows = Math.ceil(H / ROW_STEP) + 3;
     for (let col = -1; col < cols; col++)
       for (let row = -1; row < rows; row++) {
