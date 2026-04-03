@@ -161,8 +161,9 @@ body {
   gap: 14px;
   flex-shrink: 0;
 }
-.lobby-col { display: flex; flex-direction: column; gap: 14px; align-self: start; }
-.lobby-col-center { align-self: start; }
+.lobby-col { display: flex; flex-direction: column; gap: 14px; }
+.lobby-col > .card:last-child { flex: 1; }
+.lobby-col-center { }
 
 /* ── Card ─────────────────────────────────────────────────────────────── */
 .card {
@@ -294,9 +295,13 @@ body {
 
 /* ── Wallet card ──────────────────────────────────────────────────────── */
 .wallet-balance-block { text-align: center; padding: 8px 0; }
-.wallet-balance-num {
+.wallet-balance-usd {
   font-size: 1.8rem; font-weight: 800; color: var(--gold);
   text-shadow: 0 0 24px rgba(240,180,41,0.3);
+  line-height: 1.1;
+}
+.wallet-balance-sol {
+  font-size: 0.82rem; color: #666; margin-top: 3px;
 }
 .wallet-action-row { display: flex; gap: 8px; width: 100%; }
 .btn-add-funds {

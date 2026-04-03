@@ -203,16 +203,31 @@ function escHtml(s) {
 
 // ─── Wallet ───────────────────────────────────────────────────────────────────
 let walletInfo = null;
+let solPriceUsd = null;
 
 fetch('/wallet/info').then(r => r.json()).then(info => {
   if (info && info.escrowAddress) walletInfo = info;
 }).catch(() => {});
 
+// Fetch SOL/USD price once, cache it
+fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd')
+  .then(r => r.json())
+  .then(d => { solPriceUsd = d?.solana?.usd || null; })
+  .catch(() => {});
+
 function setBalance(bal) {
-  const formatted = parseFloat(bal).toFixed(4);
-  document.getElementById('game-balance').textContent = formatted + ' SOL';
+  const sol = parseFloat(bal) || 0;
+  document.getElementById('game-balance').textContent = sol.toFixed(4) + ' SOL';
+  const usdEl = document.getElementById('game-balance-usd');
+  if (usdEl) {
+    if (solPriceUsd !== null) {
+      usdEl.textContent = '$' + (sol * solPriceUsd).toFixed(2);
+    } else {
+      usdEl.textContent = '$—';
+    }
+  }
   const sb = document.getElementById('sidebar-balance');
-  if (sb) sb.textContent = formatted;
+  if (sb) sb.textContent = sol.toFixed(4);
 }
 
 function walletStatus(msg, isError) {
