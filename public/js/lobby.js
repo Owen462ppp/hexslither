@@ -137,8 +137,10 @@ function showLobby() {
   document.getElementById('account-email').textContent  = account.email || '';
   document.getElementById('stat-highscore').textContent = account.highScore  || 0;
   document.getElementById('stat-games').textContent     = account.gamesPlayed || 0;
-  document.getElementById('player-name').value          = account.name || 'Player';
-  document.getElementById('play-username').textContent  = account.name || 'Player';
+  const savedName = localStorage.getItem('hexslither_playername');
+  const displayName = savedName || account.name || 'Player';
+  document.getElementById('player-name').value          = displayName;
+  document.getElementById('play-username').textContent  = displayName;
   document.getElementById('topbar-name').textContent    = account.name || 'Player';
 
   // Topbar avatar
@@ -342,9 +344,17 @@ document.getElementById('confirm-withdraw').addEventListener('click', async () =
   document.getElementById('withdraw-wallet').value = '';
 });
 
+// Save custom name to localStorage as user types
+document.getElementById('player-name').addEventListener('input', function() {
+  const v = this.value.trim();
+  if (v) localStorage.setItem('hexslither_playername', v);
+  document.getElementById('play-username').textContent = v || account?.name || 'Player';
+});
+
 // ─── Play ─────────────────────────────────────────────────────────────────────
 document.getElementById('btn-play').addEventListener('click', () => {
   const name = document.getElementById('player-name').value.trim() || account?.name || 'Player';
+  localStorage.setItem('hexslither_playername', name);
   sessionStorage.setItem('playerName',    name);
   sessionStorage.setItem('walletAddress', account?.walletAddress || '');
   sessionStorage.setItem('googleId',      account?.googleId || '');
