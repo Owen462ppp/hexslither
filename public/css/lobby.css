@@ -161,8 +161,8 @@ body {
   gap: 14px;
   flex-shrink: 0;
 }
-.lobby-col { display: flex; flex-direction: column; gap: 14px; }
-.lobby-col-center { }
+.lobby-col { display: flex; flex-direction: column; gap: 14px; align-self: start; }
+.lobby-col-center { align-self: start; }
 
 /* ── Card ─────────────────────────────────────────────────────────────── */
 .card {

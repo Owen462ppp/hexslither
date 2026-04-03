@@ -133,6 +133,17 @@ class Renderer {
     ctx.lineWidth   = bodyWidth;
     ctx.stroke();
 
+    // 1b. White boost glow through body
+    if (boosting) {
+      ctx.beginPath();
+      ctx.moveTo(segs[0], segs[1]);
+      for (let i = 2; i < segs.length; i += 2) ctx.lineTo(segs[i], segs[i + 1]);
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.lineWidth   = bodyWidth * 1.1;
+      ctx.globalAlpha = 1;
+      ctx.stroke();
+    }
+
     // 2. Bottom shadow → 3D tube
     ctx.beginPath();
     ctx.moveTo(segs[0], segs[1]);

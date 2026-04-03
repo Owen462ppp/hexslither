@@ -40,6 +40,13 @@ class Snake {
     return Math.min(1, this.boostFuel / max);
   }
 
+  // Turn rate degrades as snake grows, recovers when boosting/shrinking
+  get turnRate() {
+    // Base rate degrades by up to 55% at 500 segments, recovers proportionally
+    const sizePenalty = Math.min(0.55, (this.length - MIN_SEGMENTS) / 500);
+    return C.MAX_TURN_RATE * (1 - sizePenalty);
+  }
+
   setInput(targetAngle, boosting) {
     this.targetAngle = targetAngle;
     // Can only boost if there is size to burn
@@ -49,12 +56,13 @@ class Snake {
   update() {
     if (!this.alive) return;
 
-    // Turn toward target (limited turn rate)
+    // Turn toward target — rate gets worse as snake grows
     let delta = this.targetAngle - this.angle;
     while (delta >  Math.PI) delta -= Math.PI * 2;
     while (delta < -Math.PI) delta += Math.PI * 2;
-    if (Math.abs(delta) > C.MAX_TURN_RATE) {
-      this.angle += Math.sign(delta) * C.MAX_TURN_RATE;
+    const tr = this.turnRate;
+    if (Math.abs(delta) > tr) {
+      this.angle += Math.sign(delta) * tr;
     } else {
       this.angle = this.targetAngle;
     }
@@ -64,12 +72,18 @@ class Snake {
     if (this.boosting) {
       if (this.boostFuel > 0) {
         speed = C.SNAKE_BOOST_SPEED;
-        // Burn one tail segment per tick as fuel
-        this.segments.pop();
+        // Burn only every 4 ticks instead of every tick — much less shrink
+        if (this._boostTick === undefined) this._boostTick = 0;
+        this._boostTick++;
+        if (this._boostTick >= 4) {
+          this._boostTick = 0;
+          this.segments.pop();
+        }
       } else {
-        // Out of fuel — stop boosting
         this.boosting = false;
       }
+    } else {
+      this._boostTick = 0;
     }
 
     // Advance head
