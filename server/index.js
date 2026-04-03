@@ -159,14 +159,14 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on(C.EVENTS.PLAY, ({ name, walletAddress, googleId } = {}) => {
+  socket.on(C.EVENTS.PLAY, ({ name, walletAddress, googleId, color } = {}) => {
     const playerName = (name || 'Player').slice(0, 20);
     if (googleId) {
       socket._googleId = googleId;
       lobbySocketsByGoogleId.set(googleId, socket);
     }
     console.log(`[>] ${playerName} joins game`);
-    gameRoom.addPlayer(socket, playerName, walletAddress || null);
+    gameRoom.addPlayer(socket, playerName, walletAddress || null, color || null);
   });
 
   socket.on(C.EVENTS.INPUT, ({ angle, boost }) => {

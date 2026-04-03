@@ -32,8 +32,10 @@ let displayState = { snakes: [], food: [], worldRadius: CONSTANTS.BASE_WORLD_RAD
 // Socket
 const socket = io();
 
+const snakeColor = sessionStorage.getItem('snakeColor') || localStorage.getItem('hexslither_skin_color') || '#E8756A';
+
 socket.on('connect', () => {
-  socket.emit(CONSTANTS.EVENTS.PLAY, { name: playerName, walletAddress, googleId });
+  socket.emit(CONSTANTS.EVENTS.PLAY, { name: playerName, walletAddress, googleId, color: snakeColor });
 });
 
 socket.on(CONSTANTS.EVENTS.GAME_JOINED, ({ playerId, worldRadius, snakeColor, food }) => {

@@ -390,48 +390,111 @@ document.getElementById('btn-play').addEventListener('click', () => {
   let currentCat  = 'skins';
   let previewAnim = null;
 
-  // ── Mini canvas preview in card ─────────────────────────────────────────────
+  // ── Snake preview drawing ────────────────────────────────────────────────────
   function drawMiniSnake(canvas, color) {
-    const W = canvas.width = canvas.offsetWidth || 224;
-    const H = canvas.height = canvas.offsetHeight || 100;
+    const W = canvas.width  = canvas.offsetWidth  || 400;
+    const H = canvas.height = canvas.offsetHeight || 130;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, W, H);
-    const R = 11;
+
+    const R  = Math.max(9, H * 0.085);
+    const cx = W * 0.78, cy = H * 0.5;
+    const amp = H * 0.22, freq = 0.055, step = 3.5;
+    const N = Math.floor((W * 0.85) / step);
+
+    // Build smooth points: gentle horizontal S-curve
     const pts = [];
-    const cx = W / 2, cy = H / 2;
-    for (let i = 0; i < 120; i++) {
-      pts.push({ x: cx - i * 1.7 + Math.sin(i * 0.22) * 14, y: cy + Math.sin(i * 0.18 + 1) * 10 });
+    for (let i = 0; i < N; i++) {
+      pts.push({
+        x: cx - i * step,
+        y: cy + Math.sin(i * freq) * amp,
+      });
     }
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    // body
-    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-    ctx.strokeStyle = color; ctx.lineWidth = R * 2; ctx.stroke();
-    // shadow
-    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-    ctx.strokeStyle = 'rgba(0,0,0,0.28)'; ctx.lineWidth = R * 1.2; ctx.stroke();
-    // highlight
-    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-    ctx.strokeStyle = 'rgba(255,255,255,0.28)'; ctx.lineWidth = R * 0.65; ctx.stroke();
-    // head
+
+    function strokePath(lw, style) {
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length - 1; i++) {
+        const mx = (pts[i].x + pts[i+1].x) / 2;
+        const my = (pts[i].y + pts[i+1].y) / 2;
+        ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+      }
+      ctx.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
+      ctx.strokeStyle = style;
+      ctx.lineWidth   = lw;
+      ctx.lineCap     = 'round';
+      ctx.lineJoin    = 'round';
+      ctx.stroke();
+    }
+
+    // Segment rings
+    let dist = 0;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const dx = pts[i].x - pts[i-1].x, dy = pts[i].y - pts[i-1].y;
+      dist += Math.sqrt(dx*dx + dy*dy);
+      if (dist >= R * 1.3) {
+        dist -= R * 1.3;
+        const ax = pts[Math.min(i+1,pts.length-1)].x - pts[i-1].x;
+        const ay = pts[Math.min(i+1,pts.length-1)].y - pts[i-1].y;
+        const al = Math.sqrt(ax*ax + ay*ay) || 1;
+        const px = -ay/al, py = ax/al;
+        ctx.beginPath();
+        ctx.moveTo(pts[i].x + px*(R-1), pts[i].y + py*(R-1));
+        ctx.lineTo(pts[i].x - px*(R-1), pts[i].y - py*(R-1));
+        ctx.strokeStyle = 'rgba(0,0,0,0.20)';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      }
+    }
+
+    strokePath(R * 2,    color);
+    strokePath(R * 1.15, 'rgba(0,0,0,0.28)');
+    strokePath(R * 0.65, 'rgba(255,255,255,0.28)');
+
+    // Segment rings on top
+    dist = 0;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const dx = pts[i].x - pts[i-1].x, dy = pts[i].y - pts[i-1].y;
+      dist += Math.sqrt(dx*dx + dy*dy);
+      if (dist >= R * 1.3) {
+        dist -= R * 1.3;
+        const ax = pts[Math.min(i+1,pts.length-1)].x - pts[i-1].x;
+        const ay = pts[Math.min(i+1,pts.length-1)].y - pts[i-1].y;
+        const al = Math.sqrt(ax*ax + ay*ay) || 1;
+        const px = -ay/al, py = ax/al;
+        ctx.beginPath();
+        ctx.moveTo(pts[i].x + px*(R-1), pts[i].y + py*(R-1));
+        ctx.lineTo(pts[i].x - px*(R-1), pts[i].y - py*(R-1));
+        ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+        ctx.lineWidth = 1.8;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      }
+    }
+
+    // Head
     const hx = pts[0].x, hy = pts[0].y;
-    const HR = R + 4;
-    ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI * 2);
+    const HR = R + Math.max(3, R * 0.35);
+    ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI*2);
     ctx.fillStyle = color; ctx.fill();
-    ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI * 2);
+    ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI*2);
     ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fill();
-    // eyes
-    const ang = Math.atan2(pts[0].y - pts[1].y, pts[0].x - pts[1].x);
-    const px = -Math.sin(ang), py = Math.cos(ang);
-    const eyeR = HR * 0.40;
+    ctx.beginPath(); ctx.arc(hx - HR*0.18, hy - HR*0.22, HR*0.55, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI*2);
+    ctx.fillStyle = color; ctx.globalAlpha = 0.4; ctx.fill(); ctx.globalAlpha = 1;
+
+    // Eyes
+    const ang  = Math.atan2(pts[0].y - pts[1].y, pts[0].x - pts[1].x);
+    const perpX = -Math.sin(ang), perpY = Math.cos(ang);
+    const eyeR  = HR * 0.40;
     for (const s of [-1, 1]) {
-      const ex = hx + px * HR * 0.34 * s + Math.cos(ang) * HR * 0.48;
-      const ey = hy + py * HR * 0.34 * s + Math.sin(ang) * HR * 0.48;
-      ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI * 2);
+      const ex = hx + perpX*HR*0.36*s + Math.cos(ang)*HR*0.50;
+      const ey = hy + perpY*HR*0.36*s + Math.sin(ang)*HR*0.50;
+      ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI*2);
       ctx.fillStyle = '#f2f2f2'; ctx.fill();
-      ctx.beginPath(); ctx.arc(ex + Math.cos(ang) * eyeR * 0.2, ey + Math.sin(ang) * eyeR * 0.2, eyeR * 0.62, 0, Math.PI * 2);
+      ctx.beginPath(); ctx.arc(ex + Math.cos(ang)*eyeR*0.2, ey + Math.sin(ang)*eyeR*0.2, eyeR*0.62, 0, Math.PI*2);
       ctx.fillStyle = '#111'; ctx.fill();
     }
   }
@@ -516,11 +579,62 @@ document.getElementById('btn-play').addEventListener('click', () => {
     refreshMiniCanvas();
   });
 
+  // ── Shop tab content ─────────────────────────────────────────────────────────
+  function showShop() {
+    const body = document.querySelector('.cust-body');
+    body.innerHTML = `
+      <div class="cust-shop-panel">
+        <div class="cust-shop-badge">⭐ HexSlither Premium</div>
+        <div class="cust-shop-price">$6.49 <span>USD / Month</span></div>
+        <ul class="cust-shop-perks">
+          <li><span class="perk-icon">⚪</span> Circle Scripts</li>
+          <li><span class="perk-icon">🌐</span> Infinite Viewing Range</li>
+          <li><span class="perk-icon">🎨</span> Access to All Skins &amp; Hats</li>
+          <li><span class="perk-icon">👑</span> Legendary Crown</li>
+        </ul>
+        <button class="btn-subscribe">Subscribe Now</button>
+        <div class="cust-shop-note">Cancel anytime &nbsp;·&nbsp; Billed monthly</div>
+      </div>
+    `;
+  }
+
+  function showInventory() {
+    const body = document.querySelector('.cust-body');
+    body.innerHTML = `
+      <div class="cust-grid-wrap">
+        <div class="cust-grid" id="cust-grid"></div>
+      </div>
+      <div class="cust-details">
+        <div class="cust-det-swatch" id="cust-det-swatch"></div>
+        <div class="cust-det-name"   id="cust-det-name">Select a skin</div>
+        <div class="cust-det-badge hidden" id="cust-det-badge">● Equipped</div>
+        <div class="cust-det-divider">DETAILS</div>
+        <div class="cust-det-row"><span>Type</span><strong id="cust-det-type">—</strong></div>
+        <button class="btn-equip hidden" id="btn-equip">Equip</button>
+      </div>
+    `;
+    document.getElementById('btn-equip').addEventListener('click', () => {
+      const skin = SKINS.find(s => s.id === selectedId);
+      if (!skin || skin.locked) return;
+      equippedId = skin.id;
+      localStorage.setItem('hexslither_skin_id',    skin.id);
+      localStorage.setItem('hexslither_skin_color', skin.color);
+      updateDetails();
+      refreshMiniCanvas();
+    });
+    renderGrid();
+  }
+
   // ── Tabs ─────────────────────────────────────────────────────────────────────
   document.querySelectorAll('.cust-top-tab').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.cust-top-tab').forEach(b => b.classList.remove('ctt-active'));
       btn.classList.add('ctt-active');
+      if (btn.dataset.top === 'shop') {
+        showShop();
+      } else {
+        showInventory();
+      }
     });
   });
 

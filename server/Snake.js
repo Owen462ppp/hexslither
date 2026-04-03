@@ -9,10 +9,10 @@ const COLORS = [
 const MIN_SEGMENTS = C.SNAKE_MIN_SEGMENTS * 2; // hard floor — can never shrink below this
 
 class Snake {
-  constructor(id, name, x, y) {
+  constructor(id, name, x, y, color) {
     this.id = id;
     this.name = name || 'Player';
-    this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+    this.color = color || COLORS[Math.floor(Math.random() * COLORS.length)];
     this.angle = Math.random() * Math.PI * 2;
     this.targetAngle = this.angle;
     this.boosting = false;
