@@ -145,7 +145,8 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 24px 16px 40px;
+  justify-content: safe center;
+  padding: 24px 16px;
   gap: 20px;
 }
 .lobby-title-block { text-align: center; }
