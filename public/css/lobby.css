@@ -385,3 +385,162 @@ body {
   border: none; border-radius: 10px; cursor: pointer; transition: opacity 0.2s;
 }
 .btn-confirm-deposit:hover { opacity: 0.85; }
+
+/* ── Customize card ───────────────────────────────────────────────────────── */
+.cust-mini-canvas {
+  display: block; width: 100%; height: 100px;
+  border-radius: 8px; background: rgba(255,255,255,0.03);
+}
+.btn-change-appearance {
+  width: 100%; padding: 11px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 8px; color: #fff;
+  font-size: 0.88rem; font-weight: 600;
+  cursor: pointer; transition: background 0.2s;
+  text-align: center;
+}
+.btn-change-appearance:hover { background: rgba(255,255,255,0.12); }
+
+/* ── Customize modal ──────────────────────────────────────────────────────── */
+.modal-cust {
+  width: min(860px, 95vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  gap: 0;
+  padding: 0;
+  background: #111;
+  border: 1px solid #222;
+}
+.cust-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid #222;
+}
+.cust-header-left { display: flex; align-items: center; gap: 10px; font-size: 1rem; }
+.btn-cust-close {
+  background: none; border: none; color: #888; font-size: 1.1rem;
+  cursor: pointer; line-height: 1; transition: color 0.2s;
+}
+.btn-cust-close:hover { color: #fff; }
+
+/* top tabs (Inventory / Shop) */
+.cust-top-tabs {
+  display: flex; gap: 0;
+  padding: 14px 22px 0;
+}
+.cust-top-tab {
+  flex: 1; padding: 11px;
+  background: transparent;
+  border: 2px solid var(--gold);
+  color: var(--gold);
+  font-size: 0.9rem; font-weight: 700;
+  cursor: pointer; transition: background 0.2s;
+}
+.cust-top-tab:first-child { border-radius: 8px 0 0 8px; }
+.cust-top-tab:last-child  { border-radius: 0 8px 8px 0; }
+.cust-top-tab.ctt-active  { background: var(--gold); color: #000; }
+
+/* snake preview canvas */
+.cust-snake-canvas {
+  display: block; width: 100%; height: 130px;
+  margin: 14px 0 0;
+  background: rgba(255,255,255,0.02);
+}
+
+/* category tabs (Skins / Hats / Boosts) */
+.cust-cat-bar {
+  display: flex; gap: 8px;
+  padding: 14px 22px;
+  border-bottom: 1px solid #222;
+}
+.cust-cat {
+  padding: 9px 18px;
+  background: transparent;
+  border: 2px solid var(--gold);
+  border-radius: 8px; color: var(--gold);
+  font-size: 0.85rem; font-weight: 700;
+  cursor: pointer; transition: background 0.2s;
+}
+.cust-cat.cc-active { background: var(--gold); color: #000; }
+
+/* body layout */
+.cust-body {
+  display: flex;
+  padding: 16px 22px 22px;
+  gap: 16px;
+  min-height: 320px;
+}
+.cust-grid-wrap { flex: 1; overflow-y: auto; }
+.cust-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.cust-swatch {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  cursor: pointer;
+  position: relative;
+  border: 3px solid transparent;
+  transition: border-color 0.15s, transform 0.1s;
+  overflow: hidden;
+}
+.cust-swatch:hover   { transform: scale(1.04); }
+.cust-swatch.cs-sel  { border-color: var(--gold); }
+.cust-swatch.cs-lock {
+  filter: brightness(0.35);
+  cursor: default;
+}
+.cust-swatch.cs-lock::after {
+  content: '🔒';
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem;
+  filter: brightness(2.5);
+}
+.cust-placeholder {
+  display: flex; align-items: center; justify-content: center;
+  color: #444; font-size: 0.85rem; padding: 20px;
+  grid-column: 1 / -1;
+}
+
+/* details panel */
+.cust-details {
+  width: 160px; flex-shrink: 0;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 10px; padding-top: 4px;
+}
+.cust-det-swatch {
+  width: 90px; height: 90px;
+  border-radius: 12px;
+  background: #222;
+  border: 2px solid #333;
+}
+.cust-det-name  { font-size: 0.92rem; font-weight: 700; text-align: center; }
+.cust-det-badge {
+  background: rgba(20,241,149,0.15);
+  border: 1px solid rgba(20,241,149,0.35);
+  color: var(--green);
+  border-radius: 20px; padding: 3px 12px;
+  font-size: 0.75rem; font-weight: 700;
+}
+.cust-det-divider {
+  font-size: 0.68rem; color: #555;
+  text-transform: uppercase; letter-spacing: 1.5px;
+  align-self: stretch; padding-top: 6px;
+  border-top: 1px solid #222;
+}
+.cust-det-row {
+  display: flex; justify-content: space-between;
+  align-self: stretch; font-size: 0.82rem; color: #aaa;
+}
+.cust-det-row strong { color: #fff; }
+.btn-equip {
+  width: 100%; padding: 10px;
+  background: var(--gold); color: #000;
+  border: none; border-radius: 8px;
+  font-size: 0.88rem; font-weight: 800;
+  cursor: pointer; transition: opacity 0.2s; margin-top: auto;
+}
+.btn-equip:hover { opacity: 0.85; }

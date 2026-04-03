@@ -358,8 +358,206 @@ document.getElementById('btn-play').addEventListener('click', () => {
   sessionStorage.setItem('playerName',    name);
   sessionStorage.setItem('walletAddress', account?.walletAddress || '');
   sessionStorage.setItem('googleId',      account?.googleId || '');
+  sessionStorage.setItem('snakeColor',    localStorage.getItem('hexslither_skin_color') || '#E8756A');
   window.location.href = '/game.html';
 });
+
+// ─── Customize ────────────────────────────────────────────────────────────────
+(function() {
+  const SKINS = [
+    { id: 'coral',   name: 'Coral Red Snake',  color: '#E8756A', locked: false },
+    { id: 'teal',    name: 'Teal Snake',        color: '#4FC3C3', locked: false },
+    { id: 'gold',    name: 'Gold Snake',        color: '#F5C842', locked: false },
+    { id: 'pink',    name: 'Pink Snake',        color: '#E87FD4', locked: false },
+    { id: 'purple',  name: 'Purple Snake',      color: '#8B5CF6', locked: false },
+    { id: 'cyan',    name: 'Cyan Snake',        color: '#22D3EE', locked: false },
+    { id: 'green',   name: 'Emerald Snake',     color: '#10B981', locked: false },
+    { id: 'orange',  name: 'Orange Snake',      color: '#F97316', locked: false },
+    { id: 'blue',    name: 'Blue Snake',        color: '#3B82F6', locked: false },
+    { id: 'crimson', name: 'Crimson Snake',     color: '#EF4444', locked: true  },
+    { id: 'mint',    name: 'Mint Snake',        color: '#6EE7B7', locked: true  },
+    { id: 'indigo',  name: 'Indigo Snake',      color: '#6366F1', locked: true  },
+    { id: 'rose',    name: 'Rose Snake',        color: '#FB7185', locked: true  },
+    { id: 'amber',   name: 'Amber Snake',       color: '#F59E0B', locked: true  },
+    { id: 'sky',     name: 'Sky Snake',         color: '#38BDF8', locked: true  },
+    { id: 'lime',    name: 'Lime Snake',        color: '#84CC16', locked: true  },
+    { id: 'galaxy',  name: 'Galaxy Snake',      color: '#7C3AED', locked: true  },
+    { id: 'shadow',  name: 'Shadow Snake',      color: '#374151', locked: true  },
+  ];
+
+  let equippedId  = localStorage.getItem('hexslither_skin_id')    || 'coral';
+  let selectedId  = equippedId;
+  let currentCat  = 'skins';
+  let previewAnim = null;
+
+  // ── Mini canvas preview in card ─────────────────────────────────────────────
+  function drawMiniSnake(canvas, color) {
+    const W = canvas.width = canvas.offsetWidth || 224;
+    const H = canvas.height = canvas.offsetHeight || 100;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, W, H);
+    const R = 11;
+    const pts = [];
+    const cx = W / 2, cy = H / 2;
+    for (let i = 0; i < 120; i++) {
+      pts.push({ x: cx - i * 1.7 + Math.sin(i * 0.22) * 14, y: cy + Math.sin(i * 0.18 + 1) * 10 });
+    }
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    // body
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.strokeStyle = color; ctx.lineWidth = R * 2; ctx.stroke();
+    // shadow
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.strokeStyle = 'rgba(0,0,0,0.28)'; ctx.lineWidth = R * 1.2; ctx.stroke();
+    // highlight
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.strokeStyle = 'rgba(255,255,255,0.28)'; ctx.lineWidth = R * 0.65; ctx.stroke();
+    // head
+    const hx = pts[0].x, hy = pts[0].y;
+    const HR = R + 4;
+    ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI * 2);
+    ctx.fillStyle = color; ctx.fill();
+    ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fill();
+    // eyes
+    const ang = Math.atan2(pts[0].y - pts[1].y, pts[0].x - pts[1].x);
+    const px = -Math.sin(ang), py = Math.cos(ang);
+    const eyeR = HR * 0.40;
+    for (const s of [-1, 1]) {
+      const ex = hx + px * HR * 0.34 * s + Math.cos(ang) * HR * 0.48;
+      const ey = hy + py * HR * 0.34 * s + Math.sin(ang) * HR * 0.48;
+      ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI * 2);
+      ctx.fillStyle = '#f2f2f2'; ctx.fill();
+      ctx.beginPath(); ctx.arc(ex + Math.cos(ang) * eyeR * 0.2, ey + Math.sin(ang) * eyeR * 0.2, eyeR * 0.62, 0, Math.PI * 2);
+      ctx.fillStyle = '#111'; ctx.fill();
+    }
+  }
+
+  function refreshMiniCanvas() {
+    const skin = SKINS.find(s => s.id === equippedId) || SKINS[0];
+    const c = document.getElementById('customize-preview');
+    if (c) drawMiniSnake(c, skin.color);
+  }
+
+  // ── Modal preview ───────────────────────────────────────────────────────────
+  function drawModalSnake(color) {
+    const canvas = document.getElementById('cust-snake-canvas');
+    if (!canvas) return;
+    canvas.width  = canvas.offsetWidth  || 820;
+    canvas.height = canvas.offsetHeight || 130;
+    drawMiniSnake(canvas, color);
+  }
+
+  // ── Grid rendering ──────────────────────────────────────────────────────────
+  function renderGrid() {
+    const grid = document.getElementById('cust-grid');
+    grid.innerHTML = '';
+
+    if (currentCat === 'hats' || currentCat === 'boosts') {
+      grid.innerHTML = `<div class="cust-placeholder">Coming soon...</div>`;
+      document.getElementById('cust-det-swatch').style.background = '#222';
+      document.getElementById('cust-det-name').textContent = '—';
+      document.getElementById('cust-det-badge').classList.add('hidden');
+      document.getElementById('cust-det-type').textContent = '—';
+      document.getElementById('btn-equip').classList.add('hidden');
+      return;
+    }
+
+    SKINS.forEach(skin => {
+      const div = document.createElement('div');
+      div.className = 'cust-swatch' + (skin.locked ? ' cs-lock' : '') + (skin.id === selectedId ? ' cs-sel' : '');
+      div.style.background = skin.color;
+      div.dataset.id = skin.id;
+      if (!skin.locked) {
+        div.addEventListener('click', () => selectSkin(skin.id));
+      }
+      grid.appendChild(div);
+    });
+    updateDetails();
+  }
+
+  function selectSkin(id) {
+    selectedId = id;
+    document.querySelectorAll('.cust-swatch').forEach(el => el.classList.toggle('cs-sel', el.dataset.id === id));
+    updateDetails();
+    const skin = SKINS.find(s => s.id === id);
+    if (skin) drawModalSnake(skin.color);
+  }
+
+  function updateDetails() {
+    const skin = SKINS.find(s => s.id === selectedId);
+    if (!skin) return;
+    const swatch = document.getElementById('cust-det-swatch');
+    swatch.style.background = skin.color;
+    document.getElementById('cust-det-name').textContent = skin.name;
+    document.getElementById('cust-det-type').textContent = 'Color';
+    const badge  = document.getElementById('cust-det-badge');
+    const equip  = document.getElementById('btn-equip');
+    if (skin.id === equippedId) {
+      badge.classList.remove('hidden');
+      equip.classList.add('hidden');
+    } else {
+      badge.classList.add('hidden');
+      equip.classList.remove('hidden');
+    }
+  }
+
+  // ── Equip ───────────────────────────────────────────────────────────────────
+  document.getElementById('btn-equip').addEventListener('click', () => {
+    const skin = SKINS.find(s => s.id === selectedId);
+    if (!skin || skin.locked) return;
+    equippedId = skin.id;
+    localStorage.setItem('hexslither_skin_id',    skin.id);
+    localStorage.setItem('hexslither_skin_color', skin.color);
+    updateDetails();
+    refreshMiniCanvas();
+  });
+
+  // ── Tabs ─────────────────────────────────────────────────────────────────────
+  document.querySelectorAll('.cust-top-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.cust-top-tab').forEach(b => b.classList.remove('ctt-active'));
+      btn.classList.add('ctt-active');
+    });
+  });
+
+  document.querySelectorAll('.cust-cat').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.cust-cat').forEach(b => b.classList.remove('cc-active'));
+      btn.classList.add('cc-active');
+      currentCat = btn.dataset.cat;
+      renderGrid();
+    });
+  });
+
+  // ── Open / close ─────────────────────────────────────────────────────────────
+  document.getElementById('btn-change-appearance').addEventListener('click', () => {
+    selectedId = equippedId;
+    currentCat = 'skins';
+    document.querySelectorAll('.cust-cat').forEach(b => b.classList.toggle('cc-active', b.dataset.cat === 'skins'));
+    document.querySelectorAll('.cust-top-tab').forEach(b => b.classList.toggle('ctt-active', b.dataset.top === 'inventory'));
+    document.getElementById('modal-customize').classList.add('active');
+    renderGrid();
+    requestAnimationFrame(() => {
+      const skin = SKINS.find(s => s.id === equippedId) || SKINS[0];
+      drawModalSnake(skin.color);
+    });
+  });
+
+  document.getElementById('close-customize').addEventListener('click', () => {
+    document.getElementById('modal-customize').classList.remove('active');
+  });
+
+  document.getElementById('modal-customize').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('active');
+  });
+
+  // Draw mini canvas on load (after a tick so layout is done)
+  setTimeout(refreshMiniCanvas, 100);
+})();
 
 // ─── Lobby snake animation ────────────────────────────────────────────────────
 (function() {

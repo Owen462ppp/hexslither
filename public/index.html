@@ -143,6 +143,18 @@
           </div>
           <div class="wallet-status-msg" id="wallet-status"></div>
         </div>
+
+        <!-- Customize card -->
+        <div class="card customize-card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <span class="card-icon">👕</span>
+              <span class="card-title">Customize</span>
+            </div>
+          </div>
+          <canvas id="customize-preview" class="cust-mini-canvas"></canvas>
+          <button class="btn-change-appearance" id="btn-change-appearance">Change Appearance</button>
+        </div>
       </div>
 
     </div>
@@ -196,6 +208,43 @@
       <div class="modal-btns">
         <button class="btn-small btn-cancel" id="cancel-withdraw">Cancel</button>
         <button class="btn-small btn-confirm" id="confirm-withdraw">Withdraw</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Customize Appearance modal -->
+  <div class="modal-overlay" id="modal-customize">
+    <div class="modal modal-cust">
+      <div class="cust-header">
+        <div class="cust-header-left"><span>👕</span><strong>Customize Appearance</strong></div>
+        <button class="btn-cust-close" id="close-customize">✕</button>
+      </div>
+
+      <div class="cust-top-tabs">
+        <button class="cust-top-tab ctt-active" data-top="inventory">📦 Inventory</button>
+        <button class="cust-top-tab" data-top="shop">🛒 Shop</button>
+      </div>
+
+      <canvas id="cust-snake-canvas" class="cust-snake-canvas"></canvas>
+
+      <div class="cust-cat-bar">
+        <button class="cust-cat cc-active" data-cat="skins">👕 Skins</button>
+        <button class="cust-cat" data-cat="hats">👑 Hats</button>
+        <button class="cust-cat" data-cat="boosts">⚡ Boosts</button>
+      </div>
+
+      <div class="cust-body">
+        <div class="cust-grid-wrap">
+          <div class="cust-grid" id="cust-grid"></div>
+        </div>
+        <div class="cust-details">
+          <div class="cust-det-swatch" id="cust-det-swatch"></div>
+          <div class="cust-det-name"   id="cust-det-name">Select a skin</div>
+          <div class="cust-det-badge hidden" id="cust-det-badge">● Equipped</div>
+          <div class="cust-det-divider">DETAILS</div>
+          <div class="cust-det-row"><span>Type</span><strong id="cust-det-type">—</strong></div>
+          <button class="btn-equip hidden" id="btn-equip">Equip</button>
+        </div>
       </div>
     </div>
   </div>
