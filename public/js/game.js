@@ -142,9 +142,64 @@ canvas.addEventListener('touchmove', (e) => {
 canvas.addEventListener('touchstart', (e) => { if (e.touches.length > 1) boostActive = true; });
 canvas.addEventListener('touchend',   (e) => { if (e.touches.length === 0) boostActive = false; });
 
+// ─── Spectate ─────────────────────────────────────────────────────────────────
+let spectating   = false;
+let spectateIndex = 0;
+
+function getSpectateTargets() {
+  return displayState.snakes.filter(s => s.id !== myId);
+}
+
+function enterSpectate() {
+  spectating = true;
+  spectateIndex = 0;
+  document.getElementById('death-screen').classList.remove('active');
+  document.getElementById('spectate-bar').classList.add('active');
+  updateSpectateLabel();
+}
+
+function exitSpectate() {
+  spectating = false;
+  document.getElementById('spectate-bar').classList.remove('active');
+}
+
+function updateSpectateLabel() {
+  const targets = getSpectateTargets();
+  const label = document.getElementById('spectate-label');
+  if (targets.length === 0) {
+    label.textContent = 'No players to spectate';
+  } else {
+    const t = targets[spectateIndex % targets.length];
+    label.textContent = 'Spectating: ' + (t.name || 'Player');
+  }
+}
+
+document.getElementById('btn-spectate').addEventListener('click', enterSpectate);
+
+document.getElementById('spectate-prev').addEventListener('click', () => {
+  const n = getSpectateTargets().length;
+  if (n === 0) return;
+  spectateIndex = (spectateIndex - 1 + n) % n;
+  updateSpectateLabel();
+});
+
+document.getElementById('spectate-next').addEventListener('click', () => {
+  const n = getSpectateTargets().length;
+  if (n === 0) return;
+  spectateIndex = (spectateIndex + 1) % n;
+  updateSpectateLabel();
+});
+
+document.getElementById('spectate-stop').addEventListener('click', () => {
+  exitSpectate();
+  document.getElementById('death-screen').classList.add('active');
+});
+
 // Death screen
 document.getElementById('btn-respawn').addEventListener('click', () => {
   isDead = false;
+  spectating = false;
+  exitSpectate();
   socket.emit(CONSTANTS.EVENTS.RESPAWN);
   document.getElementById('death-screen').classList.remove('active');
 });
@@ -202,7 +257,12 @@ const fpsEl = document.getElementById('fps-counter');
 // Main render loop — runs at monitor refresh rate (60/144/240Hz)
 function gameLoop(now) {
   interpolateState(now);
-  renderer.render(displayState, myId, mousePos);
+  let spectateSnake = null;
+  if (spectating) {
+    const targets = getSpectateTargets();
+    if (targets.length > 0) spectateSnake = targets[spectateIndex % targets.length];
+  }
+  renderer.render(displayState, myId, mousePos, spectateSnake);
   if (minimapCtx) renderer.drawMinimap(minimapCtx, displayState, myId);
 
   // FPS

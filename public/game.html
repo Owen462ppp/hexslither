@@ -36,8 +36,17 @@
     </div>
     <div class="death-btns">
       <button class="btn btn-respawn" id="btn-respawn">Play Again</button>
+      <button class="btn btn-spectate" id="btn-spectate">👁 Spectate</button>
       <button class="btn btn-lobby" id="btn-lobby">Lobby</button>
     </div>
+  </div>
+
+  <!-- Spectate HUD -->
+  <div id="spectate-bar">
+    <button id="spectate-prev">&#8592;</button>
+    <span id="spectate-label">Spectating: —</span>
+    <button id="spectate-next">&#8594;</button>
+    <button id="spectate-stop">Stop</button>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>

@@ -182,3 +182,43 @@ body {
   color: #fff;
   border: 1px solid rgba(255,255,255,0.2);
 }
+.btn-spectate {
+  background: rgba(100,180,255,0.15);
+  color: #7dd3fc;
+  border: 1px solid rgba(100,180,255,0.35);
+}
+
+/* Spectate bar */
+#spectate-bar {
+  display: none;
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  background: rgba(0,0,0,0.75);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 30px;
+  padding: 8px 16px;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  pointer-events: all;
+  backdrop-filter: blur(6px);
+}
+#spectate-bar.active { display: flex; }
+#spectate-bar button {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 20px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 4px 14px;
+  transition: background 0.15s;
+}
+#spectate-bar button:hover { background: rgba(255,255,255,0.22); }
+#spectate-prev, #spectate-next { font-size: 1.1rem; padding: 4px 12px; }
+#spectate-label { min-width: 160px; text-align: center; color: #7dd3fc; }

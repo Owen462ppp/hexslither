@@ -11,15 +11,16 @@ class Renderer {
     this.canvas.height = window.innerHeight;
   }
 
-  render(state, myId, mousePos) {
+  render(state, myId, mousePos, spectateSnake) {
     const { ctx, canvas, camera } = this;
     const W = canvas.width, H = canvas.height;
 
     const mySnake = state.snakes.find(s => s.id === myId);
+    const followSnake = spectateSnake || mySnake;
 
-    if (mySnake) {
-      camera.setScale(state.worldRadius, W, H, mySnake.length);
-      camera.follow(mySnake.segs[0], mySnake.segs[1], W, H);
+    if (followSnake) {
+      camera.setScale(state.worldRadius, W, H, followSnake.length);
+      camera.follow(followSnake.segs[0], followSnake.segs[1], W, H);
     }
     camera.update();
 
