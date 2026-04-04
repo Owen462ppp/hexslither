@@ -8,7 +8,7 @@ body {
 
 #game-canvas {
   display: block;
-  cursor: none;
+  cursor: default;
 }
 
 /* HUD */

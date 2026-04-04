@@ -191,8 +191,7 @@ document.getElementById('spectate-next').addEventListener('click', () => {
 });
 
 document.getElementById('spectate-stop').addEventListener('click', () => {
-  exitSpectate();
-  document.getElementById('death-screen').classList.add('active');
+  window.location.href = '/';
 });
 
 // Death screen

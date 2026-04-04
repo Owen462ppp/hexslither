@@ -49,10 +49,6 @@ class Renderer {
 
     this._drawBorder(ctx, state.worldRadius);
 
-    if (mousePos && mySnake) {
-      camera.reset(ctx);
-      this._drawCursor(ctx, mousePos.x, mousePos.y);
-    }
     camera.reset(ctx);
   }
 
