@@ -178,7 +178,7 @@ io.on('connection', (socket) => {
       socket._googleId = googleId;
       lobbySocketsByGoogleId.set(googleId, socket);
     }
-    console.log(`[>] ${playerName} joins game`);
+    console.log(`[>] ${playerName} joins game | googleId: ${googleId || 'none'}`);
     gameRoom.addPlayer(socket, playerName, walletAddress || null, color || null);
   });
 
