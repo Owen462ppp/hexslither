@@ -143,20 +143,33 @@ const gameRoom = new GameRoom(io);
 gameRoom.start();
 
 const lobbySocketsByGoogleId = new Map();
+const lobbyConnections = new Set(); // sockets that are on the lobby page
+
+function broadcastLobbyState() {
+  const state = {
+    playerCount:   gameRoom.playerCount,
+    lobbyCount:    lobbyConnections.size,
+    leaderboard:   gameRoom.buildLeaderboard(),
+  };
+  for (const sock of lobbyConnections) sock.emit(C.EVENTS.LOBBY_STATE, state);
+}
 
 io.on('connection', (socket) => {
   console.log(`[+] Connected: ${socket.id}`);
 
   socket.emit(C.EVENTS.LOBBY_STATE, {
     playerCount: gameRoom.playerCount,
+    lobbyCount:  lobbyConnections.size,
     leaderboard: gameRoom.buildLeaderboard(),
   });
 
   socket.on('lobby:join', ({ googleId } = {}) => {
+    lobbyConnections.add(socket);
     if (googleId) {
       socket._googleId = googleId;
       lobbySocketsByGoogleId.set(googleId, socket);
     }
+    broadcastLobbyState();
   });
 
   socket.on(C.EVENTS.PLAY, ({ name, walletAddress, googleId, color } = {}) => {
@@ -185,7 +198,9 @@ io.on('connection', (socket) => {
       await db.recordGameResult(socket._googleId, snake.score).catch(() => {});
     }
     if (socket._googleId) lobbySocketsByGoogleId.delete(socket._googleId);
+    lobbyConnections.delete(socket);
     gameRoom.removePlayer(socket.id);
+    broadcastLobbyState();
   });
 });
 

@@ -101,11 +101,13 @@ if (new URLSearchParams(location.search).get('error') === 'auth') {
 }
 
 // ─── Socket ───────────────────────────────────────────────────────────────────
-socket.on(CONSTANTS.EVENTS.LOBBY_STATE, ({ playerCount, leaderboard }) => {
-  const a = document.getElementById('stat-players');
-  const b = document.getElementById('stat-players-login');
-  if (a) a.textContent = playerCount;
-  if (b) b.textContent = playerCount;
+socket.on(CONSTANTS.EVENTS.LOBBY_STATE, ({ playerCount, lobbyCount, leaderboard }) => {
+  const ig = document.getElementById('stat-players-ingame');
+  const il = document.getElementById('stat-players-inlobby');
+  const b  = document.getElementById('stat-players-login');
+  if (ig) ig.textContent = playerCount;
+  if (il) il.textContent = lobbyCount ?? 0;
+  if (b)  b.textContent  = (playerCount || 0) + (lobbyCount || 0);
   updateLobbyLeaderboard(leaderboard);
 });
 

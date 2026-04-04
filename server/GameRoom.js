@@ -103,12 +103,21 @@ class GameRoom {
         continue;
       }
 
-      // Food collision
+      // Food magnetism + collision
+      const PULL_RADIUS = 90;
+      const PULL_SPEED  = 4.5;
       for (const food of this.foodManager.getAll()) {
-        const d = Math.hypot(snake.head.x - food.x, snake.head.y - food.y);
+        const dx = snake.head.x - food.x;
+        const dy = snake.head.y - food.y;
+        const d  = Math.hypot(dx, dy);
         if (d < C.FOOD_EAT_RADIUS) {
           snake.grow(food.value);
           this.foodManager.remove(food.id);
+        } else if (d < PULL_RADIUS) {
+          // Pull food toward head proportionally — faster when closer
+          const strength = (1 - d / PULL_RADIUS) * PULL_SPEED;
+          food.x += (dx / d) * strength;
+          food.y += (dy / d) * strength;
         }
       }
     }
