@@ -138,18 +138,30 @@ app.use((req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next()
 app.use(express.static(path.join(__dirname, '../public')));
 app.use('/shared', express.static(path.join(__dirname, '../shared')));
 
-// ─── Game ─────────────────────────────────────────────────────────────────────
-const gameRoom = new GameRoom(io);
-gameRoom.start();
+// ─── Game rooms (one per lobby type) ─────────────────────────────────────────
+const gameRooms = {
+  free:   new GameRoom(io),
+  dime:   new GameRoom(io),
+  dollar: new GameRoom(io),
+};
+Object.values(gameRooms).forEach(r => r.start());
+
+function getRoomForType(t) {
+  return gameRooms[t] || gameRooms.free;
+}
 
 const lobbySocketsByGoogleId = new Map();
-const lobbyConnections = new Set(); // sockets that are on the lobby page
+const lobbyConnections = new Set();
+
+function totalInGame() {
+  return Object.values(gameRooms).reduce((s, r) => s + r.playerCount, 0);
+}
 
 function broadcastLobbyState() {
   const state = {
-    playerCount:   gameRoom.playerCount,
-    lobbyCount:    lobbyConnections.size,
-    leaderboard:   gameRoom.buildLeaderboard(),
+    playerCount: totalInGame(),
+    lobbyCount:  lobbyConnections.size,
+    leaderboard: gameRooms.free.buildLeaderboard(),
   };
   for (const sock of lobbyConnections) sock.emit(C.EVENTS.LOBBY_STATE, state);
 }
@@ -158,9 +170,9 @@ io.on('connection', (socket) => {
   console.log(`[+] Connected: ${socket.id}`);
 
   socket.emit(C.EVENTS.LOBBY_STATE, {
-    playerCount: gameRoom.playerCount,
+    playerCount: totalInGame(),
     lobbyCount:  lobbyConnections.size,
-    leaderboard: gameRoom.buildLeaderboard(),
+    leaderboard: gameRooms.free.buildLeaderboard(),
   });
 
   socket.on('lobby:join', ({ googleId } = {}) => {
@@ -172,42 +184,50 @@ io.on('connection', (socket) => {
     broadcastLobbyState();
   });
 
-  socket.on(C.EVENTS.PLAY, ({ name, walletAddress, googleId, color } = {}) => {
+  socket.on(C.EVENTS.PLAY, ({ name, walletAddress, googleId, color, lobbyType } = {}) => {
     const playerName = (name || 'Player').slice(0, 20);
     if (googleId) {
       socket._googleId = googleId;
       lobbySocketsByGoogleId.set(googleId, socket);
     }
-    console.log(`[>] ${playerName} joins game`);
-    gameRoom.addPlayer(socket, playerName, walletAddress || null, color || null);
+    const room = getRoomForType(lobbyType);
+    socket._room = room;
+    console.log(`[>] ${playerName} joins ${lobbyType || 'free'} lobby`);
+    room.addPlayer(socket, playerName, walletAddress || null, color || null);
+    lobbyConnections.delete(socket);
+    broadcastLobbyState();
   });
 
   socket.on(C.EVENTS.INPUT, ({ angle, boost }) => {
     if (typeof angle !== 'number') return;
-    gameRoom.handleInput(socket.id, angle, !!boost);
+    if (socket._room) socket._room.handleInput(socket.id, angle, !!boost);
   });
 
   socket.on(C.EVENTS.RESPAWN, () => {
-    gameRoom.respawnPlayer(socket.id);
+    if (socket._room) socket._room.respawnPlayer(socket.id);
   });
 
   socket.on('admin:spawnbot', ({ count } = {}) => {
     const ownerGoogleId = process.env.OWNER_GOOGLE_ID;
     if (!ownerGoogleId || socket._googleId !== ownerGoogleId) return;
     const n = Math.min(Math.max(1, parseInt(count) || 1), 10);
-    for (let i = 0; i < n; i++) gameRoom.addBot();
-    socket.emit('admin:ack', { message: `Spawned ${n} bot(s)` });
+    const room = socket._room || gameRooms.free;
+    for (let i = 0; i < n; i++) room.addBot();
+    socket.emit('admin:ack', { message: `Spawned ${n} bot(s) in ${room === gameRooms.free ? 'free' : room === gameRooms.dime ? 'dime' : 'dollar'} lobby` });
   });
 
   socket.on('disconnect', async () => {
     console.log(`[-] Disconnected: ${socket.id}`);
-    const snake = gameRoom.snakes && gameRoom.snakes.get(socket.id);
-    if (snake && socket._googleId) {
-      await db.recordGameResult(socket._googleId, snake.score).catch(() => {});
+    const room = socket._room;
+    if (room) {
+      const snake = room.snakes && room.snakes.get(socket.id);
+      if (snake && socket._googleId) {
+        await db.recordGameResult(socket._googleId, snake.score).catch(() => {});
+      }
+      room.removePlayer(socket.id);
     }
     if (socket._googleId) lobbySocketsByGoogleId.delete(socket._googleId);
     lobbyConnections.delete(socket);
-    gameRoom.removePlayer(socket.id);
     broadcastLobbyState();
   });
 });

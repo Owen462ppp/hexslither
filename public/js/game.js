@@ -14,6 +14,7 @@ const minimapCtx = minimapCanvas.getContext('2d');
 const playerName    = sessionStorage.getItem('playerName')    || 'Player';
 const walletAddress = sessionStorage.getItem('walletAddress') || null;
 const googleId      = sessionStorage.getItem('googleId')      || null;
+const lobbyType     = sessionStorage.getItem('lobbyType')     || 'free';
 
 let myId = null;
 let isDead = false;
@@ -35,7 +36,7 @@ const socket = io();
 const snakeColor = sessionStorage.getItem('snakeColor') || localStorage.getItem('hexslither_skin_color') || '#E8756A';
 
 socket.on('connect', () => {
-  socket.emit(CONSTANTS.EVENTS.PLAY, { name: playerName, walletAddress, googleId, color: snakeColor });
+  socket.emit(CONSTANTS.EVENTS.PLAY, { name: playerName, walletAddress, googleId, color: snakeColor, lobbyType });
 });
 
 socket.on(CONSTANTS.EVENTS.GAME_JOINED, ({ playerId, worldRadius, snakeColor, food }) => {

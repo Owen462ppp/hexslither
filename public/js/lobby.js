@@ -368,6 +368,20 @@ document.getElementById('player-name').addEventListener('input', function() {
   document.getElementById('play-username').textContent = v || account?.name || 'Player';
 });
 
+// ─── Lobby type selection ──────────────────────────────────────────────────────
+let selectedLobbyType = 'free';
+const LOBBY_LABELS = { free: 'FREE PLAY', dime: '▶ 10¢ LOBBY', dollar: '▶ $1 LOBBY' };
+
+document.querySelectorAll('.btn-lobby-type').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.btn-lobby-type').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedLobbyType = btn.dataset.type;
+    const playBtn = document.getElementById('btn-play');
+    playBtn.textContent = (selectedLobbyType === 'free' ? '▶ ' : '') + LOBBY_LABELS[selectedLobbyType];
+  });
+});
+
 // ─── Play ─────────────────────────────────────────────────────────────────────
 document.getElementById('btn-play').addEventListener('click', () => {
   const name = document.getElementById('player-name').value.trim() || account?.name || 'Player';
@@ -376,6 +390,7 @@ document.getElementById('btn-play').addEventListener('click', () => {
   sessionStorage.setItem('walletAddress', account?.walletAddress || '');
   sessionStorage.setItem('googleId',      account?.googleId || '');
   sessionStorage.setItem('snakeColor',    localStorage.getItem('hexslither_skin_color') || '#E8756A');
+  sessionStorage.setItem('lobbyType',     selectedLobbyType);
   window.location.href = '/game.html';
 });
 

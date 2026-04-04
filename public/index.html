@@ -108,7 +108,13 @@
 
           <input type="text" class="name-input" id="player-name" placeholder="Display name..." maxlength="20">
 
-          <button class="btn-play" id="btn-play">&#9654; JOIN GAME</button>
+          <div class="lobby-type-row">
+            <button class="btn-lobby-type active" data-type="free">Free Play</button>
+            <button class="btn-lobby-type" data-type="dime">10¢</button>
+            <button class="btn-lobby-type" data-type="dollar">$1</button>
+          </div>
+
+          <button class="btn-play" id="btn-play">&#9654; FREE PLAY</button>
 
           <div class="server-stats-row">
             <div class="server-stat">

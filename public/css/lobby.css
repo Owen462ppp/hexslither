@@ -268,6 +268,26 @@ body {
 }
 .name-input:focus { border-color: var(--gold); }
 .name-input::placeholder { color: #444; }
+.lobby-type-row {
+  display: flex; gap: 8px; width: 100%;
+}
+.btn-lobby-type {
+  flex: 1; padding: 11px 6px;
+  background: transparent;
+  border: 2px solid var(--gold);
+  border-radius: 8px;
+  color: var(--gold);
+  font-size: 0.92rem; font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  letter-spacing: 0.5px;
+}
+.btn-lobby-type:hover { background: rgba(240,180,41,0.12); }
+.btn-lobby-type.active {
+  background: var(--gold);
+  color: #000;
+}
+
 .btn-play {
   width: 100%; padding: 18px;
   background: linear-gradient(135deg, var(--gold), var(--gold-dark));
