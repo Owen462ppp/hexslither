@@ -5,13 +5,31 @@ const BOT_COLORS = [
   '#DDA0DD', '#98FB98', '#F0E68C', '#FFB347', '#87CEEB',
 ];
 
-let botCount = 0;
+const BOT_NAMES = [
+  'aidan6969', 'jacobtheweiner78', 'quantum', 'Mr-1221z', 'slitherkinggg',
+  'xX_snake_Xx', 'noodleman', 'cobrakai99', 'bigworm42', 'snek_lord',
+  'viper0011', 'hisssss', 'eaturdust', 'n00bslayer', 'wormhole_',
+  'slurpmaster', 'gg_no_re', 'tryhard99', 'just_a_worm', 'toxic_snek',
+  'GigaWorm', 'boostgang', 'curvy_boi', 'nomnom_snek', 'ieatbots',
+  'deathcoil', 'zoomzoom22', 'slimy_steve', 'wiggleking', 'ouroboros_',
+  'snekattack', 'longneck', 'ratboi420', 'fastaf_boii', 'lmaosnek',
+  'noobmaster_', 'slitherio_pro', 'wormy_mcworm', 'danger_noodle', 'mr_slithers',
+];
+
+const usedNames = new Set();
+
+function pickBotName() {
+  const available = BOT_NAMES.filter(n => !usedNames.has(n));
+  const pool = available.length > 0 ? available : BOT_NAMES;
+  const name = pool[Math.floor(Math.random() * pool.length)];
+  usedNames.add(name);
+  return name;
+}
 
 class Bot extends Snake {
   constructor(id, x, y) {
     const color = BOT_COLORS[Math.floor(Math.random() * BOT_COLORS.length)];
-    botCount++;
-    super(id, `Bot_${botCount}`, x, y, color);
+    super(id, pickBotName(), x, y, color);
     this.isBot = true;
     this._turnDir  = (Math.random() < 0.5 ? 1 : -1);
     this._turnTimer = 80 + Math.random() * 120;
