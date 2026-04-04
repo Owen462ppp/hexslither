@@ -95,6 +95,40 @@ body {
 }
 
 
+/* Admin console */
+#admin-console {
+  display: none;
+  position: fixed;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  background: rgba(0,0,0,0.88);
+  border: 1px solid rgba(240,180,41,0.5);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 320px;
+}
+#admin-console.open { display: flex; }
+#admin-console-label {
+  font-size: 0.62rem; letter-spacing: 2px;
+  color: #F0B429; font-weight: 700;
+}
+#admin-input {
+  background: transparent;
+  border: none; outline: none;
+  color: #fff; font-size: 0.95rem;
+  font-family: monospace;
+  width: 100%;
+}
+#admin-feedback {
+  font-size: 0.75rem; color: #14F195;
+  min-height: 12px; font-family: monospace;
+}
+
 /* Death screen overlay */
 #death-screen {
   display: none;

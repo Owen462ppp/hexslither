@@ -217,3 +217,57 @@ function gameLoop(now) {
   requestAnimationFrame(gameLoop);
 }
 requestAnimationFrame(gameLoop);
+
+// ─── Admin console (press ` to toggle) ───────────────────────────────────────
+(function() {
+  const consoleEl  = document.getElementById('admin-console');
+  const inputEl    = document.getElementById('admin-input');
+  const feedbackEl = document.getElementById('admin-feedback');
+
+  function openConsole() {
+    consoleEl.classList.add('open');
+    inputEl.value = '';
+    feedbackEl.textContent = '';
+    inputEl.focus();
+  }
+  function closeConsole() { consoleEl.classList.remove('open'); }
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === '`' || e.key === '~') {
+      e.preventDefault();
+      consoleEl.classList.contains('open') ? closeConsole() : openConsole();
+      return;
+    }
+    if (e.key === 'Escape' && consoleEl.classList.contains('open')) closeConsole();
+  });
+
+  inputEl.addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key !== 'Enter') return;
+    const raw = inputEl.value.trim().toLowerCase();
+    if (!raw) { closeConsole(); return; }
+
+    const parts = raw.split(/\s+/);
+    const cmd   = parts[0];
+
+    if (cmd === 'bot' || cmd === 'bots') {
+      const count  = parseInt(parts[1]) || 1;
+      let secret   = localStorage.getItem('hexslither_admin_secret') || '';
+      if (!secret) { secret = prompt('Enter admin secret:') || ''; }
+      if (secret)  localStorage.setItem('hexslither_admin_secret', secret);
+      socket.emit('admin:spawnbot', { secret, count });
+      feedbackEl.textContent = `Requesting ${count} bot(s)...`;
+    } else if (cmd === 'setsecret') {
+      localStorage.setItem('hexslither_admin_secret', parts[1] || '');
+      feedbackEl.textContent = 'Secret saved.';
+    } else {
+      feedbackEl.textContent = 'Commands: bot [n], setsecret <s>';
+    }
+    inputEl.value = '';
+  });
+
+  socket.on('admin:ack', ({ message }) => {
+    feedbackEl.textContent = '✓ ' + message;
+    setTimeout(closeConsole, 1800);
+  });
+})();

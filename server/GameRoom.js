@@ -1,5 +1,6 @@
 const C = require('../shared/constants');
 const Snake = require('./Snake');
+const Bot   = require('./Bot');
 const FoodManager = require('./Food');
 const { v4: uuidv4 } = require('uuid');
 
@@ -90,10 +91,20 @@ class GameRoom {
     return { x: 0, y: 0 };
   }
 
+  addBot() {
+    const id = 'bot_' + uuidv4();
+    const { x, y } = this.safeSpawnPoint();
+    const bot = new Bot(id, x, y);
+    this.snakes.set(id, bot);
+    return bot;
+  }
+
   tick() {
+    const foodList = this.foodManager.getAll();
     // Update snakes
     for (const snake of this.snakes.values()) {
       if (!snake.alive) continue;
+      if (snake.isBot) snake.updateAI(foodList, this.worldRadius);
       snake.update();
 
       // Border collision

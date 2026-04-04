@@ -191,6 +191,14 @@ io.on('connection', (socket) => {
     gameRoom.respawnPlayer(socket.id);
   });
 
+  socket.on('admin:spawnbot', ({ secret, count } = {}) => {
+    const ADMIN_SECRET = process.env.ADMIN_SECRET || 'hexslither-admin';
+    if (secret !== ADMIN_SECRET) return;
+    const n = Math.min(Math.max(1, parseInt(count) || 1), 10);
+    for (let i = 0; i < n; i++) gameRoom.addBot();
+    socket.emit('admin:ack', { message: `Spawned ${n} bot(s)` });
+  });
+
   socket.on('disconnect', async () => {
     console.log(`[-] Disconnected: ${socket.id}`);
     const snake = gameRoom.snakes && gameRoom.snakes.get(socket.id);
