@@ -62,49 +62,31 @@ class Renderer {
     const halfW = W / (2 * scale) + margin;
     const halfH = H / (2 * scale) + margin;
 
-    const t = Date.now() / 1000;
-
     for (const f of food) {
-      // Visible hover drift using position as phase seed
-      const phase = (f.x * 0.13 + f.y * 0.09) % (Math.PI * 2);
-      const fx = f.x + Math.sin(t * 1.1 + phase) * 7;
-      const fy = f.y + Math.cos(t * 0.85 + phase * 1.4) * 7;
-
-      if (Math.abs(fx - worldCX) > halfW || Math.abs(fy - worldCY) > halfH) continue;
+      if (Math.abs(f.x - worldCX) > halfW || Math.abs(f.y - worldCY) > halfH) continue;
 
       const r = BASE_R * (f.size || 1);
-      const glowR = r * 4.5;
-
-      // Subtle glow
-      const grd = ctx.createRadialGradient(fx, fy, 0, fx, fy, glowR);
-      grd.addColorStop(0,   f.color + '40');
-      grd.addColorStop(0.5, f.color + '18');
-      grd.addColorStop(1,   f.color + '00');
-      ctx.beginPath();
-      ctx.arc(fx, fy, glowR, 0, Math.PI * 2);
-      ctx.fillStyle = grd;
-      ctx.fill();
 
       // Core orb — solid base color
       ctx.beginPath();
-      ctx.arc(fx, fy, r, 0, Math.PI * 2);
+      ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
       ctx.fillStyle = f.color;
       ctx.fill();
 
-      // Dark radial overlay: transparent center → dark edge (gives darker-shade-toward-perimeter look)
-      const darkOverlay = ctx.createRadialGradient(fx, fy, 0, fx, fy, r);
+      // Dark radial overlay: transparent center → dark edge
+      const darkOverlay = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, r);
       darkOverlay.addColorStop(0, 'rgba(0,0,0,0)');
-      darkOverlay.addColorStop(1, 'rgba(0,0,0,0.58)');
+      darkOverlay.addColorStop(1, 'rgba(0,0,0,0.55)');
       ctx.beginPath();
-      ctx.arc(fx, fy, r, 0, Math.PI * 2);
+      ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
       ctx.fillStyle = darkOverlay;
       ctx.fill();
 
       // Thin black outline
       ctx.beginPath();
-      ctx.arc(fx, fy, r, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(0,0,0,0.85)';
-      ctx.lineWidth = 0.7;
+      ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+      ctx.lineWidth = 0.6;
       ctx.stroke();
     }
   }
@@ -116,7 +98,7 @@ class Renderer {
     const growthScale = 1 + Math.min(1.5, (snake.length || 20) / 200);
     const headRadius  = CONSTANTS.SNAKE_HEAD_RADIUS * growthScale;
     const bodyWidth   = headRadius * 2.2;
-    const bodyColor   = isMe ? this._lighten(color, 25) : color;
+    const bodyColor   = color;
 
     ctx.save();
     ctx.lineCap  = 'round';
@@ -194,17 +176,9 @@ class Renderer {
 
     // Head top highlight
     ctx.beginPath();
-    ctx.arc(hx - HR * 0.18, hy - HR * 0.22, HR * 0.58, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255,255,255,0.26)';
+    ctx.arc(hx - HR * 0.18, hy - HR * 0.22, HR * 0.55, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.14)';
     ctx.fill();
-
-    // Restore head color center
-    ctx.beginPath();
-    ctx.arc(hx, hy, HR * 0.7, 0, Math.PI * 2);
-    ctx.fillStyle = bodyColor;
-    ctx.globalAlpha = 0.40;
-    ctx.fill();
-    ctx.globalAlpha = 1;
 
     // Boosting ring
     if (boosting) {
@@ -251,23 +225,17 @@ class Renderer {
 
   _drawBorder(ctx, worldRadius) {
     ctx.save();
-    // Subtle dark vignette outside border (hex tiles still visible through)
+    // Dark vignette outside border
     ctx.beginPath();
     ctx.arc(0, 0, worldRadius + 600, 0, Math.PI * 2);
     ctx.arc(0, 0, worldRadius, 0, Math.PI * 2, true);
     ctx.fillStyle = 'rgba(0,0,0,0.45)';
     ctx.fill();
-    // Red border ring
-    ctx.strokeStyle = '#ff3333';
-    ctx.lineWidth = 6;
+    // Single clean red border ring
     ctx.beginPath();
     ctx.arc(0, 0, worldRadius, 0, Math.PI * 2);
-    ctx.stroke();
-    // Second softer ring
-    ctx.strokeStyle = 'rgba(255,60,60,0.3)';
-    ctx.lineWidth = 18;
-    ctx.beginPath();
-    ctx.arc(0, 0, worldRadius - 8, 0, Math.PI * 2);
+    ctx.strokeStyle = '#ff3333';
+    ctx.lineWidth = 5;
     ctx.stroke();
     ctx.restore();
   }
