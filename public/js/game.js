@@ -314,17 +314,11 @@ requestAnimationFrame(gameLoop);
     const cmd   = parts[0];
 
     if (cmd === 'bot' || cmd === 'bots') {
-      const count  = parseInt(parts[1]) || 1;
-      let secret   = localStorage.getItem('hexslither_admin_secret') || '';
-      if (!secret) { secret = prompt('Enter admin secret:') || ''; }
-      if (secret)  localStorage.setItem('hexslither_admin_secret', secret);
-      socket.emit('admin:spawnbot', { secret, count });
+      const count = parseInt(parts[1]) || 1;
+      socket.emit('admin:spawnbot', { count });
       feedbackEl.textContent = `Requesting ${count} bot(s)...`;
-    } else if (cmd === 'setsecret') {
-      localStorage.setItem('hexslither_admin_secret', parts[1] || '');
-      feedbackEl.textContent = 'Secret saved.';
     } else {
-      feedbackEl.textContent = 'Commands: bot [n], setsecret <s>';
+      feedbackEl.textContent = 'Commands: bot [n]';
     }
     inputEl.value = '';
   });
