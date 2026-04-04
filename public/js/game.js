@@ -233,17 +233,7 @@ function updateHUD(snap) {
     const fill = document.getElementById('boost-bar-fill');
     if (fill) fill.style.width = pct + '%';
   }
-  const lb = snap.leaderboard || [];
-  const lbEl = document.getElementById('leaderboard-list');
-  if (lbEl) {
-    lbEl.innerHTML = lb.map(p =>
-      `<li class="${p.id === myId ? 'me' : ''}">
-        <span class="lb-rank">#${p.rank}</span>
-        <span>${escHtml(p.name)}</span>
-        <span class="lb-score">${p.score}</span>
-      </li>`
-    ).join('') || '<li style="color:#555">—</li>';
-  }
+  // Leaderboard updated separately in game loop
 }
 
 function escHtml(s) {
@@ -263,6 +253,20 @@ function gameLoop(now) {
     if (targets.length > 0) spectateSnake = targets[spectateIndex % targets.length];
   }
   renderer.render(displayState, myId, mousePos, spectateSnake);
+
+  // Leaderboard — filter to only snakes currently alive in displayState
+  const aliveIds = new Set(displayState.snakes.map(s => s.id));
+  const lb = (displayState.leaderboard || []).filter(p => aliveIds.has(p.id));
+  const lbEl = document.getElementById('leaderboard-list');
+  if (lbEl) {
+    lbEl.innerHTML = lb.map(p =>
+      `<li class="${p.id === myId ? 'me' : ''}">
+        <span class="lb-rank">#${p.rank}</span>
+        <span>${escHtml(p.name)}</span>
+        <span class="lb-score">${p.score}</span>
+      </li>`
+    ).join('') || '<li style="color:#555">—</li>';
+  }
   if (minimapCtx) renderer.drawMinimap(minimapCtx, displayState, myId);
 
   // FPS

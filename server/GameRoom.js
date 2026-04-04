@@ -206,7 +206,7 @@ class GameRoom {
       .filter(s => s.alive)
       .sort((a, b) => b.score - a.score)
       .slice(0, 10)
-      .map((s, i) => ({ rank: i + 1, name: s.name, score: s.score, length: s.length }));
+      .map((s, i) => ({ rank: i + 1, id: s.id, name: s.name, score: s.score, length: s.length }));
   }
 
   broadcastSnapshot() {
