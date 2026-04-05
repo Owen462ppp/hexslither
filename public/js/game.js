@@ -20,6 +20,7 @@ let myId = null;
 let isDead = false;
 let mousePos = { x: 0, y: 0 };
 let boostActive = false;
+let mySnakeRef = null; // latest head position, updated each snapshot
 
 // --- Interpolation buffers ---
 let snapBuffer   = [];    // [{t, state}]  — t is server Date.now() ms
@@ -55,6 +56,9 @@ socket.on(CONSTANTS.EVENTS.SNAPSHOT, (snap) => {
   if (snapBuffer.length > 8) snapBuffer.shift();
   updateHUD(snap);
   updateLeaderboard(snap);
+  // Cache local snake reference so sendInput doesn't O(n) search 120×/sec
+  const found = snap.snakes.find(s => s.id === myId);
+  if (found) mySnakeRef = found;
 });
 
 socket.on(CONSTANTS.EVENTS.PLAYER_DIED, ({ score, length }) => {
@@ -216,16 +220,14 @@ function resize() { renderer.resize(); }
 resize();
 window.addEventListener('resize', resize);
 
-// Send input at 60Hz (matches server tick rate)
+// Send input at 120Hz for maximum responsiveness
 function sendInput() {
-  if (!myId || isDead) return;
-  const mySnake = displayState.snakes.find(s => s.id === myId);
-  if (!mySnake) return;
+  if (!myId || isDead || !mySnakeRef) return;
   const worldPos = renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height);
-  const angle = Math.atan2(worldPos.y - mySnake.segs[1], worldPos.x - mySnake.segs[0]);
+  const angle = Math.atan2(worldPos.y - mySnakeRef.segs[1], worldPos.x - mySnakeRef.segs[0]);
   socket.emit(CONSTANTS.EVENTS.INPUT, { angle, boost: boostActive });
 }
-setInterval(sendInput, 1000 / 60);
+setInterval(sendInput, 1000 / 120);
 
 // HUD (updated on each snapshot, not each frame)
 function updateHUD(snap) {
@@ -270,6 +272,19 @@ const fpsEl = document.getElementById('fps-counter');
 // Main render loop — runs at monitor refresh rate (60/144/240Hz)
 function gameLoop(now) {
   interpolateState(now);
+
+  // Override local snake with latest snapshot data — zero perceived lag for self
+  if (myId && snapBuffer.length > 0) {
+    const latestSnakes = snapBuffer[snapBuffer.length - 1].state.snakes;
+    for (let i = 0; i < latestSnakes.length; i++) {
+      if (latestSnakes[i].id === myId) {
+        const idx = displayState.snakes.findIndex(s => s.id === myId);
+        if (idx >= 0) displayState.snakes[idx] = latestSnakes[i];
+        break;
+      }
+    }
+  }
+
   let spectateSnake = null;
   if (spectating) {
     const targets = getSpectateTargets();

@@ -94,55 +94,54 @@ class Renderer {
   _drawSnake(ctx, snake, isMe) {
     if (!snake.segs || snake.segs.length < 4) return;
     const { segs, color, boosting, name } = snake;
+    const n = segs.length;
 
     const growthScale = 1 + Math.min(1.5, (snake.length || 20) / 200);
     const headRadius  = CONSTANTS.SNAKE_HEAD_RADIUS * growthScale;
     const bodyWidth   = headRadius * 2.2;
-    const bodyColor   = color;
 
     ctx.save();
     ctx.lineCap  = 'round';
     ctx.lineJoin = 'round';
 
-    // 1. Base body
-    ctx.beginPath();
-    ctx.moveTo(segs[0], segs[1]);
-    for (let i = 2; i < segs.length; i += 2) ctx.lineTo(segs[i], segs[i + 1]);
-    ctx.strokeStyle = bodyColor;
-    ctx.lineWidth   = bodyWidth;
-    ctx.stroke();
+    // Build smooth body path once using quadratic Bézier through midpoints —
+    // reuse the same Path2D for every stroke layer (no repeated segment iteration)
+    const path = new Path2D();
+    path.moveTo(segs[0], segs[1]);
+    for (let i = 2; i < n - 2; i += 2) {
+      const mx = (segs[i] + segs[i + 2]) / 2;
+      const my = (segs[i + 1] + segs[i + 3]) / 2;
+      path.quadraticCurveTo(segs[i], segs[i + 1], mx, my);
+    }
+    path.lineTo(segs[n - 2], segs[n - 1]);
 
-    // 1b. White boost glow through body
+    // 1. Base body
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = bodyWidth;
+    ctx.stroke(path);
+
+    // 2. Boost glow
     if (boosting) {
-      ctx.beginPath();
-      ctx.moveTo(segs[0], segs[1]);
-      for (let i = 2; i < segs.length; i += 2) ctx.lineTo(segs[i], segs[i + 1]);
       ctx.strokeStyle = 'rgba(255,255,255,0.18)';
       ctx.lineWidth   = bodyWidth * 1.1;
-      ctx.globalAlpha = 1;
-      ctx.stroke();
+      ctx.stroke(path);
     }
 
-    // 2. Bottom shadow → 3D tube
-    ctx.beginPath();
-    ctx.moveTo(segs[0], segs[1]);
-    for (let i = 2; i < segs.length; i += 2) ctx.lineTo(segs[i], segs[i + 1]);
+    // 3. Bottom shadow → 3D tube depth
     ctx.strokeStyle = 'rgba(0,0,0,0.28)';
     ctx.lineWidth   = bodyWidth * 0.6;
-    ctx.stroke();
+    ctx.stroke(path);
 
-    // 3. Top highlight stripe
-    ctx.beginPath();
-    ctx.moveTo(segs[0], segs[1]);
-    for (let i = 2; i < segs.length; i += 2) ctx.lineTo(segs[i], segs[i + 1]);
+    // 4. Top highlight stripe
     ctx.strokeStyle = 'rgba(255,255,255,0.30)';
     ctx.lineWidth   = bodyWidth * 0.35;
-    ctx.stroke();
+    ctx.stroke(path);
 
-    // 4. Segment rings — perpendicular lines like slither.io
+    // 5. Segment rings — all batched into a single draw call
     const segSpacing = bodyWidth * 1.1;
     let dist = 0;
-    for (let i = 2; i < segs.length - 2; i += 2) {
+    ctx.beginPath();
+    for (let i = 2; i < n - 2; i += 2) {
       const dx = segs[i] - segs[i-2], dy = segs[i+1] - segs[i-1];
       dist += Math.sqrt(dx*dx + dy*dy);
       if (dist >= segSpacing) {
@@ -151,14 +150,13 @@ class Renderer {
         const al = Math.sqrt(ax*ax + ay*ay) || 1;
         const px = -ay/al, py = ax/al;
         const hw = bodyWidth * 0.48;
-        ctx.beginPath();
         ctx.moveTo(segs[i] + px*hw, segs[i+1] + py*hw);
         ctx.lineTo(segs[i] - px*hw, segs[i+1] - py*hw);
-        ctx.strokeStyle = 'rgba(0,0,0,0.22)';
-        ctx.lineWidth   = bodyWidth * 0.12;
-        ctx.stroke();
       }
     }
+    ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+    ctx.lineWidth   = bodyWidth * 0.12;
+    ctx.stroke(); // one GPU call for all rings
 
     // 5. Head — bigger dome
     const hx = segs[0], hy = segs[1];

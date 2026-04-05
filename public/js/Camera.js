@@ -6,7 +6,7 @@ class Camera {
     this.targetX = 0;
     this.targetY = 0;
     this.targetScale = 1;
-    this.LERP = 0.5;
+    this.LERP = 0.65;
   }
 
   follow(worldX, worldY, canvasW, canvasH) {
@@ -22,7 +22,7 @@ class Camera {
   }
 
   update() {
-    this.scale += (this.targetScale - this.scale) * 0.05;
+    this.scale += (this.targetScale - this.scale) * 0.1;
     this.x += (this.targetX - this.x) * this.LERP;
     this.y += (this.targetY - this.y) * this.LERP;
   }
