@@ -13,6 +13,7 @@ class GameRoom {
     this.players = new Map();     // socketId -> { socket, name, walletAddress }
     this.foodManager = new FoodManager();
     this.worldRadius = C.BASE_WORLD_RADIUS;
+    this.borderDrift = 0;  // positive = expanded, negative = contracted
     this.tickInterval = null;
     this.leaderboard = [];
   }
@@ -43,6 +44,9 @@ class GameRoom {
       food: this.foodManager.getAll(),
     });
 
+    // Each player joining shrinks the border
+    this.borderDrift = Math.max(this.borderDrift - 200, -1000);
+
     return snake;
   }
 
@@ -51,6 +55,8 @@ class GameRoom {
     if (player) player.socket.leave(this.socketRoomName);
     const snake = this.snakes.get(socketId);
     if (snake && snake.alive) {
+      // Player leaving counts as a death — expand the border
+      this.borderDrift = Math.min(this.borderDrift + 120, 1200);
       const drops = snake.die();
       const safeR = this.worldRadius * 0.95;
       drops.forEach(d => {
@@ -103,16 +109,17 @@ class GameRoom {
     const { x, y } = this.safeSpawnPoint();
     const bot = new Bot(id, x, y);
     this.snakes.set(id, bot);
+    // Bot joining shrinks the border
+    this.borderDrift = Math.max(this.borderDrift - 120, -1000);
     return bot;
   }
 
   tick() {
-    // Border shrinks as players join, expands as players die/leave
-    // At 10 players: BASE radius. Fewer → bigger. More → smaller.
+    // Border drifts outward on deaths, inward on joins, gradually fading back to base
+    this.borderDrift *= 0.995; // half-life ≈ 2.3 seconds — smooth fade back to base
     const targetRadius = Math.max(C.MIN_WORLD_RADIUS,
-      Math.min(C.MAX_WORLD_RADIUS,
-        C.BASE_WORLD_RADIUS + (10 - this.players.size) * C.BORDER_GROW_PER_JOIN));
-    this.worldRadius += (targetRadius - this.worldRadius) * 0.02;
+      Math.min(C.MAX_WORLD_RADIUS, C.BASE_WORLD_RADIUS + this.borderDrift));
+    this.worldRadius += (targetRadius - this.worldRadius) * 0.015; // ~2.5s to fully settle
 
     const foodList  = this.foodManager.getAll();
     const allSnakes = Array.from(this.snakes.values());
@@ -180,6 +187,8 @@ class GameRoom {
 
   killSnake(snake, killerId) {
     if (!snake.alive) return;
+    // Each death expands the border
+    this.borderDrift = Math.min(this.borderDrift + 120, 1200);
     const drops = snake.die();
     const safeR = this.worldRadius * 0.95;
     drops.forEach(d => {
