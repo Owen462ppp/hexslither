@@ -154,7 +154,7 @@ const lobbySocketsByGoogleId = new Map();
 const lobbyConnections = new Set();
 
 function totalInGame() {
-  return Object.values(gameRooms).reduce((s, r) => s + r.playerCount, 0);
+  return Object.values(gameRooms).reduce((s, r) => s + r.playerCount + r.botCount, 0);
 }
 
 function broadcastLobbyState() {

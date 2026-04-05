@@ -19,6 +19,11 @@ class GameRoom {
   }
 
   get playerCount() { return this.players.size; }
+  get botCount() {
+    let n = 0;
+    for (const s of this.snakes.values()) if (s.isBot && s.alive) n++;
+    return n;
+  }
 
   start() {
     this.foodManager.spawnInitial(this.worldRadius);

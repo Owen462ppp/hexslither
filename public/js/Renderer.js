@@ -33,20 +33,21 @@ class Renderer {
     // Hex grid
     this.hexGrid.draw(ctx, camera, state.worldRadius);
 
-    // Clip to world circle
+    // Clip food to world circle only
     ctx.save();
     ctx.beginPath();
     ctx.arc(0, 0, state.worldRadius, 0, Math.PI * 2);
     ctx.clip();
-
     this._drawFood(ctx, state.food, camera);
+    ctx.restore();
+
+    // Snakes drawn outside the clip so bodies stay visible under the red border zone
     for (const snake of state.snakes) {
       if (snake.id !== myId) this._drawSnake(ctx, snake, false);
     }
     if (mySnake) this._drawSnake(ctx, mySnake, true);
 
-    ctx.restore();
-
+    // Border overlay drawn last so red tint still appears on top of snakes
     this._drawBorder(ctx, state.worldRadius, camera);
 
     camera.reset(ctx);
