@@ -107,10 +107,11 @@ class GameRoom {
   }
 
   tick() {
-    // Smoothly adjust world radius based on current player count — no instant jumps
+    // Border shrinks as players join, expands as players die/leave
+    // At 10 players: BASE radius. Fewer → bigger. More → smaller.
     const targetRadius = Math.max(C.MIN_WORLD_RADIUS,
       Math.min(C.MAX_WORLD_RADIUS,
-        C.BASE_WORLD_RADIUS + this.players.size * C.BORDER_GROW_PER_JOIN));
+        C.BASE_WORLD_RADIUS + (10 - this.players.size) * C.BORDER_GROW_PER_JOIN));
     this.worldRadius += (targetRadius - this.worldRadius) * 0.02;
 
     const foodList  = this.foodManager.getAll();
