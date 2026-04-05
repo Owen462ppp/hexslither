@@ -113,11 +113,12 @@ class GameRoom {
         C.BASE_WORLD_RADIUS + this.players.size * C.BORDER_GROW_PER_JOIN));
     this.worldRadius += (targetRadius - this.worldRadius) * 0.02;
 
-    const foodList = this.foodManager.getAll();
+    const foodList  = this.foodManager.getAll();
+    const allSnakes = Array.from(this.snakes.values());
     // Update snakes
-    for (const snake of this.snakes.values()) {
+    for (const snake of allSnakes) {
       if (!snake.alive) continue;
-      if (snake.isBot) snake.updateAI(foodList, this.worldRadius);
+      if (snake.isBot) snake.updateAI(foodList, this.worldRadius, allSnakes);
       snake.update();
 
       // Border collision
