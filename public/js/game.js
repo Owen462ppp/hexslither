@@ -54,6 +54,7 @@ socket.on(CONSTANTS.EVENTS.SNAPSHOT, (snap) => {
   snapBuffer.push({ t: snap.t, state: snap });
   if (snapBuffer.length > 8) snapBuffer.shift();
   updateHUD(snap);
+  updateLeaderboard(snap);
 });
 
 socket.on(CONSTANTS.EVENTS.PLAYER_DIED, ({ score, length }) => {
@@ -95,10 +96,11 @@ function interpolateState(now) {
   displayState.leaderboard = after.state.leaderboard;
   displayState.food = after.state.food; // food doesn't need interpolation
 
-  // Interpolate each snake
+  // Interpolate each snake — O(1) Map lookup instead of O(n) find
+  const beforeMap = new Map(before.state.snakes.map(s => [s.id, s]));
   const interpolatedSnakes = [];
   for (const snakeAfter of after.state.snakes) {
-    const snakeBefore = before.state.snakes.find(s => s.id === snakeAfter.id);
+    const snakeBefore = beforeMap.get(snakeAfter.id);
     if (!snakeBefore) {
       interpolatedSnakes.push(snakeAfter);
       continue;
@@ -223,7 +225,7 @@ function sendInput() {
   const angle = Math.atan2(worldPos.y - mySnake.segs[1], worldPos.x - mySnake.segs[0]);
   socket.emit(CONSTANTS.EVENTS.INPUT, { angle, boost: boostActive });
 }
-setInterval(sendInput, 1000 / 120);
+setInterval(sendInput, 1000 / 60);
 
 // HUD (updated on each snapshot, not each frame)
 function updateHUD(snap) {
@@ -243,6 +245,24 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// Leaderboard — updated from snapshot (60Hz max), not render loop
+let _lastLbHtml = '';
+function updateLeaderboard(snap) {
+  const aliveIds = new Set(snap.snakes.map(s => s.id));
+  const lb = (snap.leaderboard || []).filter(p => aliveIds.has(p.id));
+  const html = lb.map(p =>
+    `<li class="${p.id === myId ? 'me' : ''}">` +
+    `<span class="lb-rank">#${p.rank}</span>` +
+    `<span>${escHtml(p.name)}</span>` +
+    `<span class="lb-score">${p.score}</span></li>`
+  ).join('') || '<li style="color:#555">—</li>';
+  if (html !== _lastLbHtml) {
+    const lbEl = document.getElementById('leaderboard-list');
+    if (lbEl) lbEl.innerHTML = html;
+    _lastLbHtml = html;
+  }
+}
+
 // FPS counter
 let fpsFrames = 0, fpsLast = performance.now(), fpsDisplay = 0;
 const fpsEl = document.getElementById('fps-counter');
@@ -257,19 +277,6 @@ function gameLoop(now) {
   }
   renderer.render(displayState, myId, mousePos, spectateSnake);
 
-  // Leaderboard — filter to only snakes currently alive in displayState
-  const aliveIds = new Set(displayState.snakes.map(s => s.id));
-  const lb = (displayState.leaderboard || []).filter(p => aliveIds.has(p.id));
-  const lbEl = document.getElementById('leaderboard-list');
-  if (lbEl) {
-    lbEl.innerHTML = lb.map(p =>
-      `<li class="${p.id === myId ? 'me' : ''}">
-        <span class="lb-rank">#${p.rank}</span>
-        <span>${escHtml(p.name)}</span>
-        <span class="lb-score">${p.score}</span>
-      </li>`
-    ).join('') || '<li style="color:#555">—</li>';
-  }
   if (minimapCtx) renderer.drawMinimap(minimapCtx, displayState, myId);
 
   // FPS

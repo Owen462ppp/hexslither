@@ -148,11 +148,16 @@ class GameRoom {
     }
 
     // Body collision — only kill when hitting another player's body, never self
+    const BODY_BROAD_R2 = 600 * 600; // skip pairs whose heads are far apart
     for (const snake of allSnakes) {
       if (!snake.alive) continue;
       for (const other of allSnakes) {
         if (!other.alive) continue;
         if (other.id === snake.id) continue; // no self-collision
+        // Broad-phase: skip if heads are far apart (body can't possibly be near)
+        const bhx = snake.head.x - other.head.x;
+        const bhy = snake.head.y - other.head.y;
+        if (bhx * bhx + bhy * bhy > BODY_BROAD_R2) continue;
         for (let i = 0; i < other.segments.length; i += 2) {
           const seg = other.segments[i];
           const d = Math.hypot(snake.head.x - seg.x, snake.head.y - seg.y);

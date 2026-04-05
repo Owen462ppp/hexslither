@@ -11,7 +11,7 @@ class HexGrid {
     this._cacheWorldX  = null;
     this._cacheWorldY  = null;
     this._cacheScale   = null;
-    this._MOVE_THRESH  = 120;
+    this._MOVE_THRESH  = 200;
   }
 
   _hexPath(ctx, cx, cy, r) {
@@ -104,7 +104,7 @@ class HexGrid {
       this._cacheWorldX === null ||
       Math.abs(worldCX - this._cacheWorldX) > this._MOVE_THRESH ||
       Math.abs(worldCY - this._cacheWorldY) > this._MOVE_THRESH ||
-      Math.abs(scale   - this._cacheScale)  > 0.05;
+      Math.abs(scale   - this._cacheScale)  > 0.1;
 
     if (needsRebuild) this._rebuildCache(worldCX, worldCY, scale, W, H);
 
