@@ -369,14 +369,26 @@ document.getElementById('player-name').addEventListener('input', function() {
 });
 
 // ─── Lobby type selection ──────────────────────────────────────────────────────
-let selectedLobbyType = 'free';
 const LOBBY_LABELS = { free: 'FREE PLAY', dime: '▶ 10¢ LOBBY', dollar: '▶ $1 LOBBY' };
+let selectedLobbyType = localStorage.getItem('hexslither_lobbytype') || 'free';
+
+// Restore saved selection on page load
+(function restoreLobbySelection() {
+  const btn = document.querySelector(`.btn-lobby-type[data-type="${selectedLobbyType}"]`);
+  if (btn) {
+    document.querySelectorAll('.btn-lobby-type').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const playBtn = document.getElementById('btn-play');
+    if (playBtn) playBtn.textContent = (selectedLobbyType === 'free' ? '▶ ' : '') + LOBBY_LABELS[selectedLobbyType];
+  }
+})();
 
 document.querySelectorAll('.btn-lobby-type').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.btn-lobby-type').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     selectedLobbyType = btn.dataset.type;
+    localStorage.setItem('hexslither_lobbytype', selectedLobbyType);
     const playBtn = document.getElementById('btn-play');
     playBtn.textContent = (selectedLobbyType === 'free' ? '▶ ' : '') + LOBBY_LABELS[selectedLobbyType];
   });
