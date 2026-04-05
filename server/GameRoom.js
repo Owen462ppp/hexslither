@@ -44,8 +44,8 @@ class GameRoom {
       food: this.foodManager.getAll(),
     });
 
-    // Each player joining shrinks the border
-    this.borderDrift = Math.max(this.borderDrift - 200, -1000);
+    // Each player joining expands the border
+    this.borderDrift = Math.min(this.borderDrift + 200, 1200);
 
     return snake;
   }
@@ -55,8 +55,8 @@ class GameRoom {
     if (player) player.socket.leave(this.socketRoomName);
     const snake = this.snakes.get(socketId);
     if (snake && snake.alive) {
-      // Player leaving counts as a death — expand the border
-      this.borderDrift = Math.min(this.borderDrift + 120, 1200);
+      // Player leaving counts as a death — shrink the border
+      this.borderDrift = Math.max(this.borderDrift - 120, -1000);
       const drops = snake.die();
       const safeR = this.worldRadius * 0.95;
       drops.forEach(d => {
@@ -109,8 +109,8 @@ class GameRoom {
     const { x, y } = this.safeSpawnPoint();
     const bot = new Bot(id, x, y);
     this.snakes.set(id, bot);
-    // Bot joining shrinks the border
-    this.borderDrift = Math.max(this.borderDrift - 120, -1000);
+    // Bot joining expands the border
+    this.borderDrift = Math.min(this.borderDrift + 120, 1200);
     return bot;
   }
 
@@ -187,8 +187,8 @@ class GameRoom {
 
   killSnake(snake, killerId) {
     if (!snake.alive) return;
-    // Each death expands the border
-    this.borderDrift = Math.min(this.borderDrift + 120, 1200);
+    // Each death shrinks the border
+    this.borderDrift = Math.max(this.borderDrift - 120, -1000);
     const drops = snake.die();
     const safeR = this.worldRadius * 0.95;
     drops.forEach(d => {
