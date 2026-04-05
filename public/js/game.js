@@ -22,10 +22,9 @@ let mousePos = { x: 0, y: 0 };
 let boostActive = false;
 
 // --- Interpolation buffers ---
-// We keep the last two snapshots and lerp between them each frame
-let snapBuffer = [];          // [{t, state}, {t, state}]
-let renderTime = 0;           // the world-time we're currently rendering
-const INTERP_DELAY_MS = 20;   // just over one 60Hz server tick (16.7ms) - tight and smooth
+let snapBuffer   = [];    // [{t, state}]  — t is server Date.now() ms
+let clockOffset  = null;  // server Date.now() minus client performance.now(), set on first snap
+const INTERP_DELAY_MS = 100; // stay 100ms behind server so we always have 2 snaps to bracket
 
 // Displayed (interpolated) state used for rendering
 let displayState = { snakes: [], food: [], worldRadius: CONSTANTS.BASE_WORLD_RADIUS, leaderboard: [] };
@@ -43,15 +42,17 @@ socket.on(CONSTANTS.EVENTS.GAME_JOINED, ({ playerId, worldRadius, snakeColor, fo
   myId = playerId;
   isDead = false;
   snapBuffer = [];
-  displayState.worldRadius = worldRadius;
-  displayState.food = food || [];
+  clockOffset = null;
+  displayState = { snakes: [], food: food || [], worldRadius, leaderboard: [] };
   document.getElementById('death-screen').classList.remove('active');
 });
 
 socket.on(CONSTANTS.EVENTS.SNAPSHOT, (snap) => {
+  // Establish clock offset on first snapshot so we can compare server Date.now()
+  // against client performance.now() (they are different timescales)
+  if (clockOffset === null) clockOffset = snap.t - performance.now();
   snapBuffer.push({ t: snap.t, state: snap });
-  // Keep only the last 6 snapshots (enough for ~100ms of buffer at 60Hz)
-  if (snapBuffer.length > 6) snapBuffer.shift();
+  if (snapBuffer.length > 8) snapBuffer.shift();
   updateHUD(snap);
 });
 
@@ -64,10 +65,11 @@ socket.on(CONSTANTS.EVENTS.PLAYER_DIED, ({ score, length }) => {
 
 // --- Interpolation ---
 function interpolateState(now) {
-  if (snapBuffer.length === 0) return;
+  if (snapBuffer.length === 0 || clockOffset === null) return;
 
-  // Target render time = latest snapshot time minus delay
-  renderTime = now - INTERP_DELAY_MS;
+  // Convert client performance.now() to server time so we can compare against snap.t
+  const serverNow = now + clockOffset;
+  const renderTime = serverNow - INTERP_DELAY_MS;
 
   // Find the two snapshots that bracket renderTime
   let before = null, after = null;
@@ -79,14 +81,14 @@ function interpolateState(now) {
     }
   }
 
-  // If we can't bracket, just use the latest snapshot directly
+  // If we can't bracket (buffer too small or renderTime is ahead), use latest snapshot
   if (!before || !after) {
     const latest = snapBuffer[snapBuffer.length - 1];
-    displayState = latest.state;
+    displayState = { ...latest.state };
     return;
   }
 
-  const alpha = (renderTime - before.t) / (after.t - before.t);
+  const alpha = Math.max(0, Math.min(1, (renderTime - before.t) / (after.t - before.t)));
 
   // Interpolate world radius
   displayState.worldRadius = lerp(before.state.worldRadius, after.state.worldRadius, alpha);
@@ -227,13 +229,14 @@ setInterval(sendInput, 1000 / 120);
 function updateHUD(snap) {
   const mySnake = snap.snakes.find(s => s.id === myId);
   if (mySnake) {
-    document.getElementById('hud-length').textContent = mySnake.length;
-    document.getElementById('hud-score').textContent = mySnake.score;
-    const pct = Math.round((mySnake.boostRatio || 0) * 100);
+    const lengthEl = document.getElementById('hud-length');
+    const scoreEl  = document.getElementById('hud-score');
+    if (lengthEl) lengthEl.textContent = mySnake.length;
+    if (scoreEl)  scoreEl.textContent  = mySnake.score;
+    const pct  = Math.round((mySnake.boostRatio || 0) * 100);
     const fill = document.getElementById('boost-bar-fill');
     if (fill) fill.style.width = pct + '%';
   }
-  // Leaderboard updated separately in game loop
 }
 
 function escHtml(s) {

@@ -47,7 +47,7 @@ class Renderer {
 
     ctx.restore();
 
-    this._drawBorder(ctx, state.worldRadius);
+    this._drawBorder(ctx, state.worldRadius, camera);
 
     camera.reset(ctx);
   }
@@ -223,19 +223,28 @@ class Renderer {
     ctx.restore();
   }
 
-  _drawBorder(ctx, worldRadius) {
+  _drawBorder(ctx, worldRadius, camera) {
+    const W = ctx.canvas.width, H = ctx.canvas.height;
+    // World origin (0,0) projects to (camera.x, camera.y) on screen
+    const cx = camera.x;
+    const cy = camera.y;
+    const screenR = worldRadius * camera.scale;
+
     ctx.save();
-    // Dark vignette outside border
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // work in screen space — no outer arc edge possible
+
+    // Fill entire screen, punch out the world circle (nonzero winding: CW rect + CCW arc)
     ctx.beginPath();
-    ctx.arc(0, 0, worldRadius + 600, 0, Math.PI * 2);
-    ctx.arc(0, 0, worldRadius, 0, Math.PI * 2, true);
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.rect(0, 0, W, H);
+    ctx.arc(cx, cy, screenR, 0, Math.PI * 2, true); // CCW cuts it out
+    ctx.fillStyle = 'rgba(0,0,0,0.92)';
     ctx.fill();
-    // Single clean red border ring
+
+    // Single red border ring
     ctx.beginPath();
-    ctx.arc(0, 0, worldRadius, 0, Math.PI * 2);
+    ctx.arc(cx, cy, screenR, 0, Math.PI * 2);
     ctx.strokeStyle = '#ff3333';
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 3;
     ctx.stroke();
     ctx.restore();
   }

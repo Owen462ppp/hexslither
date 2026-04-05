@@ -8,6 +8,7 @@ class GameRoom {
   constructor(io) {
     this.io = io;
     this.roomId = uuidv4();
+    this.socketRoomName = 'game_' + this.roomId;
     this.snakes = new Map();      // socketId -> Snake
     this.players = new Map();     // socketId -> { socket, name, walletAddress }
     this.foodManager = new FoodManager();
@@ -28,8 +29,8 @@ class GameRoom {
   }
 
   addPlayer(socket, name, walletAddress, color) {
+    socket.join(this.socketRoomName);
     this.players.set(socket.id, { socket, name, walletAddress });
-    this.adjustBorder(true);
 
     const { x, y } = this.safeSpawnPoint();
     const snake = new Snake(socket.id, name, x, y, color);
@@ -46,14 +47,20 @@ class GameRoom {
   }
 
   removePlayer(socketId) {
+    const player = this.players.get(socketId);
+    if (player) player.socket.leave(this.socketRoomName);
     const snake = this.snakes.get(socketId);
     if (snake && snake.alive) {
       const drops = snake.die();
-      drops.forEach(d => this.foodManager.spawnOne(this.worldRadius, d.x, d.y));
+      const safeR = this.worldRadius * 0.95;
+      drops.forEach(d => {
+        const dist = Math.hypot(d.x, d.y);
+        if (dist > safeR) { const sc = safeR / dist; d.x *= sc; d.y *= sc; }
+        this.foodManager.spawnOne(this.worldRadius, d.x, d.y);
+      });
     }
     this.snakes.delete(socketId);
     this.players.delete(socketId);
-    this.adjustBorder(false);
   }
 
   handleInput(socketId, targetAngle, boosting) {
@@ -100,6 +107,12 @@ class GameRoom {
   }
 
   tick() {
+    // Smoothly adjust world radius based on current player count — no instant jumps
+    const targetRadius = Math.max(C.MIN_WORLD_RADIUS,
+      Math.min(C.MAX_WORLD_RADIUS,
+        C.BASE_WORLD_RADIUS + this.players.size * C.BORDER_GROW_PER_JOIN));
+    this.worldRadius += (targetRadius - this.worldRadius) * 0.02;
+
     const foodList = this.foodManager.getAll();
     // Update snakes
     for (const snake of this.snakes.values()) {
@@ -162,8 +175,16 @@ class GameRoom {
   killSnake(snake, killerId) {
     if (!snake.alive) return;
     const drops = snake.die();
-    drops.forEach(d => this.foodManager.spawnOne(this.worldRadius, d.x, d.y));
-    this.adjustBorder(false);
+    const safeR = this.worldRadius * 0.95;
+    drops.forEach(d => {
+      const dist = Math.hypot(d.x, d.y);
+      if (dist > safeR) {
+        const scale = safeR / dist;
+        d.x *= scale;
+        d.y *= scale;
+      }
+      this.foodManager.spawnOne(this.worldRadius, d.x, d.y);
+    });
 
     const player = this.players.get(snake.id);
     if (player) {
@@ -191,7 +212,6 @@ class GameRoom {
     const { x, y } = this.safeSpawnPoint();
     const snake = new Snake(socketId, player.name, x, y);
     this.snakes.set(socketId, snake);
-    this.adjustBorder(true);
 
     player.socket.emit(C.EVENTS.GAME_JOINED, {
       playerId: socketId,
@@ -210,6 +230,8 @@ class GameRoom {
   }
 
   broadcastSnapshot() {
+    if (this.players.size === 0) return;
+
     const snakeData = [];
     for (const snake of this.snakes.values()) {
       if (snake.alive) snakeData.push(snake.serialize());
@@ -223,7 +245,10 @@ class GameRoom {
       leaderboard: this.buildLeaderboard(),
     };
 
-    this.io.emit(C.EVENTS.SNAPSHOT, snapshot);
+    // Emit directly to each player socket — guaranteed to stay within this room
+    for (const player of this.players.values()) {
+      player.socket.emit(C.EVENTS.SNAPSHOT, snapshot);
+    }
   }
 }
 

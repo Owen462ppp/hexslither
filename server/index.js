@@ -138,30 +138,26 @@ app.use((req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next()
 app.use(express.static(path.join(__dirname, '../public')));
 app.use('/shared', express.static(path.join(__dirname, '../shared')));
 
-// ─── Game rooms (one per lobby type) ─────────────────────────────────────────
-const gameRooms = {
-  free:   new GameRoom(io),
-  dime:   new GameRoom(io),
-  dollar: new GameRoom(io),
-};
-Object.values(gameRooms).forEach(r => r.start());
+// ─── Single game room (all lobby types share one room) ────────────────────────
+const mainRoom = new GameRoom(io);
+mainRoom.start();
 
 function getRoomForType(t) {
-  return gameRooms[t] || gameRooms.free;
+  return mainRoom;
 }
 
 const lobbySocketsByGoogleId = new Map();
 const lobbyConnections = new Set();
 
 function totalInGame() {
-  return Object.values(gameRooms).reduce((s, r) => s + r.playerCount, 0);
+  return mainRoom.playerCount;
 }
 
 function broadcastLobbyState() {
   const state = {
     playerCount: totalInGame(),
     lobbyCount:  lobbyConnections.size,
-    leaderboard: gameRooms.free.buildLeaderboard(),
+    leaderboard: mainRoom.buildLeaderboard(),
   };
   for (const sock of lobbyConnections) sock.emit(C.EVENTS.LOBBY_STATE, state);
 }
@@ -172,7 +168,7 @@ io.on('connection', (socket) => {
   socket.emit(C.EVENTS.LOBBY_STATE, {
     playerCount: totalInGame(),
     lobbyCount:  lobbyConnections.size,
-    leaderboard: gameRooms.free.buildLeaderboard(),
+    leaderboard: mainRoom.buildLeaderboard(),
   });
 
   socket.on('lobby:join', ({ googleId } = {}) => {
@@ -211,9 +207,9 @@ io.on('connection', (socket) => {
     const ownerGoogleId = process.env.OWNER_GOOGLE_ID;
     if (!ownerGoogleId || socket._googleId !== ownerGoogleId) return;
     const n = Math.min(Math.max(1, parseInt(count) || 1), 10);
-    const room = socket._room || gameRooms.free;
+    const room = socket._room || mainRoom;
     for (let i = 0; i < n; i++) room.addBot();
-    socket.emit('admin:ack', { message: `Spawned ${n} bot(s) in ${room === gameRooms.free ? 'free' : room === gameRooms.dime ? 'dime' : 'dollar'} lobby` });
+    socket.emit('admin:ack', { message: `Spawned ${n} bot(s)` });
   });
 
   socket.on('disconnect', async () => {
