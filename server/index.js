@@ -22,7 +22,7 @@ db.init().catch(e => console.error('[DB] Init failed:', e.message));
 
 // ─── Session & Passport ───────────────────────────────────────────────────────
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'hexslither-dev-secret',
+  secret: process.env.SESSION_SECRET || 'duelseries-dev-secret',
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 },

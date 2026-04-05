@@ -1,7 +1,7 @@
 {
-  "name": "slither-clone",
+  "name": "duelseries",
   "version": "1.0.0",
-  "description": "Slither.io clone with Phantom wallet integration",
+  "description": "DuelSeries — multiplayer snake dueling game",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",

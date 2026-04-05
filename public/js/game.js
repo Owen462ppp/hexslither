@@ -32,7 +32,7 @@ let displayState = { snakes: [], food: [], worldRadius: CONSTANTS.BASE_WORLD_RAD
 // Socket
 const socket = io();
 
-const snakeColor = sessionStorage.getItem('snakeColor') || localStorage.getItem('hexslither_skin_color') || '#E8756A';
+const snakeColor = sessionStorage.getItem('snakeColor') || localStorage.getItem('duelseries_skin_color') || '#E8756A';
 
 socket.on('connect', () => {
   socket.emit(CONSTANTS.EVENTS.PLAY, { name: playerName, walletAddress, googleId, color: snakeColor, lobbyType });

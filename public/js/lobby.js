@@ -139,7 +139,7 @@ function showLobby() {
   document.getElementById('account-email').textContent  = account.email || '';
   document.getElementById('stat-highscore').textContent = account.highScore  || 0;
   document.getElementById('stat-games').textContent     = account.gamesPlayed || 0;
-  const savedName = localStorage.getItem('hexslither_playername');
+  const savedName = localStorage.getItem('duelseries_playername');
   const displayName = savedName || account.name || 'Player';
   document.getElementById('player-name').value          = displayName;
   document.getElementById('play-username').textContent  = displayName;
@@ -392,13 +392,13 @@ document.getElementById('confirm-withdraw').addEventListener('click', async () =
 // Save custom name to localStorage as user types
 document.getElementById('player-name').addEventListener('input', function() {
   const v = this.value.trim();
-  if (v) localStorage.setItem('hexslither_playername', v);
+  if (v) localStorage.setItem('duelseries_playername', v);
   document.getElementById('play-username').textContent = v || account?.name || 'Player';
 });
 
 // ─── Lobby type selection ──────────────────────────────────────────────────────
 const LOBBY_LABELS = { free: 'FREE PLAY', dime: '▶ 10¢ LOBBY', dollar: '▶ $1 LOBBY' };
-let selectedLobbyType = localStorage.getItem('hexslither_lobbytype') || 'free';
+let selectedLobbyType = localStorage.getItem('duelseries_lobbytype') || 'free';
 
 // Restore saved selection on page load
 (function restoreLobbySelection() {
@@ -416,7 +416,7 @@ document.querySelectorAll('.btn-lobby-type').forEach(btn => {
     document.querySelectorAll('.btn-lobby-type').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     selectedLobbyType = btn.dataset.type;
-    localStorage.setItem('hexslither_lobbytype', selectedLobbyType);
+    localStorage.setItem('duelseries_lobbytype', selectedLobbyType);
     const playBtn = document.getElementById('btn-play');
     playBtn.textContent = (selectedLobbyType === 'free' ? '▶ ' : '') + LOBBY_LABELS[selectedLobbyType];
   });
@@ -425,11 +425,11 @@ document.querySelectorAll('.btn-lobby-type').forEach(btn => {
 // ─── Play ─────────────────────────────────────────────────────────────────────
 document.getElementById('btn-play').addEventListener('click', () => {
   const name = document.getElementById('player-name').value.trim() || account?.name || 'Player';
-  localStorage.setItem('hexslither_playername', name);
+  localStorage.setItem('duelseries_playername', name);
   sessionStorage.setItem('playerName',    name);
   sessionStorage.setItem('walletAddress', account?.walletAddress || '');
   sessionStorage.setItem('googleId',      account?.googleId || '');
-  sessionStorage.setItem('snakeColor',    localStorage.getItem('hexslither_skin_color') || '#E8756A');
+  sessionStorage.setItem('snakeColor',    localStorage.getItem('duelseries_skin_color') || '#E8756A');
   sessionStorage.setItem('lobbyType',     selectedLobbyType);
   window.location.href = '/game.html';
 });
@@ -457,7 +457,7 @@ document.getElementById('btn-play').addEventListener('click', () => {
     { id: 'shadow',  name: 'Shadow Snake',      color: '#374151', locked: true  },
   ];
 
-  let equippedId  = localStorage.getItem('hexslither_skin_id')    || 'coral';
+  let equippedId  = localStorage.getItem('duelseries_skin_id')    || 'coral';
   let selectedId  = equippedId;
   let currentCat  = 'skins';
   let previewAnim = null;
@@ -645,8 +645,8 @@ document.getElementById('btn-play').addEventListener('click', () => {
     const skin = SKINS.find(s => s.id === selectedId);
     if (!skin || skin.locked) return;
     equippedId = skin.id;
-    localStorage.setItem('hexslither_skin_id',    skin.id);
-    localStorage.setItem('hexslither_skin_color', skin.color);
+    localStorage.setItem('duelseries_skin_id',    skin.id);
+    localStorage.setItem('duelseries_skin_color', skin.color);
     updateDetails();
     refreshMiniCanvas();
   });
@@ -656,7 +656,7 @@ document.getElementById('btn-play').addEventListener('click', () => {
     const body = document.querySelector('.cust-body');
     body.innerHTML = `
       <div class="cust-shop-panel">
-        <div class="cust-shop-badge">⭐ HexSlither Premium</div>
+        <div class="cust-shop-badge">⭐ DuelSeries Premium</div>
         <div class="cust-shop-price">$6.49 <span>USD / Month</span></div>
         <ul class="cust-shop-perks">
           <li><span class="perk-icon">⚪</span> Circle Scripts</li>
@@ -689,8 +689,8 @@ document.getElementById('btn-play').addEventListener('click', () => {
       const skin = SKINS.find(s => s.id === selectedId);
       if (!skin || skin.locked) return;
       equippedId = skin.id;
-      localStorage.setItem('hexslither_skin_id',    skin.id);
-      localStorage.setItem('hexslither_skin_color', skin.color);
+      localStorage.setItem('duelseries_skin_id',    skin.id);
+      localStorage.setItem('duelseries_skin_color', skin.color);
       updateDetails();
       refreshMiniCanvas();
     });
