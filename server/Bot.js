@@ -52,16 +52,21 @@ class Bot extends Snake {
     }
 
     // ── 2. Body collision avoidance ──────────────────────────────────────────
-    const DANGER_R = 130;
+    const DANGER_R  = 130;
+    const SCAN_R    = DANGER_R * 2.5; // broad phase — skip snakes further than this
     let avoidX = 0, avoidY = 0, inDanger = false;
 
     for (const other of allSnakes) {
       if (other.id === this.id || !other.alive) continue;
 
-      // Avoid other snake heads
       const hdx = this.head.x - other.head.x;
       const hdy = this.head.y - other.head.y;
       const hd  = Math.hypot(hdx, hdy);
+
+      // Broad-phase: skip entirely if snake is far away
+      if (hd > SCAN_R) continue;
+
+      // Avoid head
       if (hd > 0 && hd < DANGER_R) {
         const w = (1 - hd / DANGER_R) * 2.0;
         avoidX += (hdx / hd) * w;
@@ -69,8 +74,8 @@ class Bot extends Snake {
         inDanger = true;
       }
 
-      // Avoid body segments (sample every 4th segment for performance)
-      for (let i = 0; i < other.segments.length; i += 4) {
+      // Avoid body segments — only sample nearby snakes, every 6th segment
+      for (let i = 0; i < other.segments.length; i += 6) {
         const seg = other.segments[i];
         const sdx = this.head.x - seg.x;
         const sdy = this.head.y - seg.y;

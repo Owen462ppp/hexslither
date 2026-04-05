@@ -148,10 +148,9 @@ class GameRoom {
     }
 
     // Body collision — only kill when hitting another player's body, never self
-    const snakeList = Array.from(this.snakes.values()).filter(s => s.alive);
-    for (const snake of snakeList) {
+    for (const snake of allSnakes) {
       if (!snake.alive) continue;
-      for (const other of snakeList) {
+      for (const other of allSnakes) {
         if (!other.alive) continue;
         if (other.id === snake.id) continue; // no self-collision
         for (let i = 0; i < other.segments.length; i += 2) {
