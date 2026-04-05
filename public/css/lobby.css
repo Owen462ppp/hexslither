@@ -618,3 +618,43 @@ body {
 }
 .btn-subscribe:hover { opacity: 0.88; }
 .cust-shop-note { font-size: 0.75rem; color: #555; }
+
+/* Leaderboard open button inside the card */
+.btn-leaderboard-open {
+  display: block;
+  width: 100%;
+  padding: 10px 0;
+  background: linear-gradient(135deg, rgba(255,200,0,0.15), rgba(255,200,0,0.05));
+  border: 1px solid rgba(255,200,0,0.3);
+  border-radius: 10px;
+  color: #ffe066;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  margin-bottom: 12px;
+  transition: background 0.15s, transform 0.1s;
+}
+.btn-leaderboard-open:hover {
+  background: linear-gradient(135deg, rgba(255,200,0,0.28), rgba(255,200,0,0.1));
+  transform: translateY(-1px);
+}
+
+/* All-time leaderboard rows in modal */
+#lobby-alltime-list li {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  color: #ddd;
+  font-size: 0.9rem;
+}
+#lobby-alltime-list li:first-child { background: rgba(255,200,0,0.12); color: #ffe066; }
+#lobby-alltime-list li:nth-child(2) { background: rgba(200,200,200,0.07); color: #ccc; }
+#lobby-alltime-list li:nth-child(3) { background: rgba(180,100,30,0.1); color: #e8a060; }
+#lobby-alltime-list .al-rank  { min-width: 28px; font-weight: 700; color: #666; }
+#lobby-alltime-list li:first-child .al-rank { color: #ffe066; }
+#lobby-alltime-list .al-name  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#lobby-alltime-list .al-score { font-weight: 600; color: #7dd3fc; }

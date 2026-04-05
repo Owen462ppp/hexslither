@@ -9,17 +9,21 @@ const DATA_FILE = path.join(DATA_DIR, 'leaderboard.json');
 
 class PersistentLeaderboard {
   constructor() {
-    this.entries = []; // [{ name, score, playedAt }]
+    // entries: [{ id, name, score, playedAt }]
+    // id = googleId for real players, name for bots
+    this.entries = [];
     this._dirty = false;
     this._load();
-    // Flush to disk every 30s if dirty — avoids hammering fs on every death
+    // Flush to disk every 30s — avoids hammering fs on every death
     setInterval(() => this._flush(), 30_000);
   }
 
   _load() {
     try {
       const raw = fs.readFileSync(DATA_FILE, 'utf8');
-      this.entries = JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      // Migrate old format (no id field) — use name as id
+      this.entries = parsed.map(e => ({ id: e.id || e.name, name: e.name, score: e.score, playedAt: e.playedAt }));
     } catch {
       this.entries = [];
     }
@@ -36,22 +40,31 @@ class PersistentLeaderboard {
     }
   }
 
-  // Record a score — keeps each name's all-time best only
-  record(name, score) {
-    if (!name || typeof score !== 'number' || score <= 0) return;
-    const key = name.trim();
-    const idx = this.entries.findIndex(e => e.name === key);
+  // Record a score — keyed by id (googleId for players, name for bots).
+  // Updates the display name automatically so name changes are reflected.
+  record(id, name, score) {
+    if (!id || !name || typeof score !== 'number' || score <= 0) return;
+    const idx = this.entries.findIndex(e => e.id === id);
     if (idx >= 0) {
-      if (score <= this.entries[idx].score) return; // not a new best
+      this.entries[idx].name = name; // always sync latest display name
+      if (score <= this.entries[idx].score) return; // not a new best — name update was enough
       this.entries[idx].score    = score;
       this.entries[idx].playedAt = Date.now();
     } else {
-      this.entries.push({ name: key, score, playedAt: Date.now() });
+      this.entries.push({ id, name, score, playedAt: Date.now() });
     }
-    // Keep sorted, cap at 1000 entries
     this.entries.sort((a, b) => b.score - a.score);
     if (this.entries.length > 1000) this.entries.length = 1000;
     this._dirty = true;
+  }
+
+  // Called when a player renames — updates their display name without touching their score
+  rename(googleId, newName) {
+    const entry = this.entries.find(e => e.id === googleId);
+    if (entry && entry.name !== newName) {
+      entry.name = newName;
+      this._dirty = true;
+    }
   }
 
   getTop(n) {

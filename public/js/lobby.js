@@ -203,6 +203,34 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// ─── All-Time Leaderboard Modal (lobby) ───────────────────────────────────────
+(function() {
+  const openBtn  = document.getElementById('btn-lobby-leaderboard');
+  const modal    = document.getElementById('modal-lobby-leaderboard');
+  const closeBtn = document.getElementById('close-lobby-leaderboard');
+  const listEl   = document.getElementById('lobby-alltime-list');
+  if (!openBtn || !modal) return;
+
+  openBtn.addEventListener('click', () => {
+    modal.style.display = 'flex';
+    listEl.innerHTML = '<li style="color:#555">Loading…</li>';
+    fetch('/api/leaderboard')
+      .then(r => r.json())
+      .then(data => {
+        if (!data.length) { listEl.innerHTML = '<li style="color:#555">No scores recorded yet</li>'; return; }
+        listEl.innerHTML = data.map(p =>
+          `<li><span class="al-rank">#${p.rank}</span>` +
+          `<span class="al-name">${escHtml(p.name)}</span>` +
+          `<span class="al-score">${p.score}</span></li>`
+        ).join('');
+      })
+      .catch(() => { listEl.innerHTML = '<li style="color:#c33">Failed to load</li>'; });
+  });
+
+  closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
+  modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+})();
+
 // ─── Wallet ───────────────────────────────────────────────────────────────────
 let walletInfo = null;
 let solPriceUsd = null;

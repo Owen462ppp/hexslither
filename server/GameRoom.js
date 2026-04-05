@@ -61,7 +61,8 @@ class GameRoom {
     if (player) player.socket.leave(this.socketRoomName);
     const snake = this.snakes.get(socketId);
     if (snake && snake.alive) {
-      allTimeLb.record(snake.name, snake.score);
+      const gid = player?.socket?._googleId;
+      allTimeLb.record(gid || snake.name, snake.name, snake.score);
       // Player leaving counts as a death — shrink the border
       this.borderDrift = Math.max(this.borderDrift - 120, -1000);
       const drops = snake.die();
@@ -194,7 +195,9 @@ class GameRoom {
 
   killSnake(snake, killerId) {
     if (!snake.alive) return;
-    allTimeLb.record(snake.name, snake.score);
+    const kPlayer = this.players.get(snake.id);
+    const kGid = kPlayer?.socket?._googleId;
+    allTimeLb.record(kGid || snake.name, snake.name, snake.score);
     // Each death shrinks the border
     this.borderDrift = Math.max(this.borderDrift - 120, -1000);
     const drops = snake.die();

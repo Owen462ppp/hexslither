@@ -59,12 +59,7 @@
       <!-- Left column -->
       <div class="lobby-col">
         <div class="card">
-          <div class="card-header">
-            <div class="card-header-left">
-              <span class="card-icon">🏆</span>
-              <span class="card-title">All-Time Top 3</span>
-            </div>
-          </div>
+          <button id="btn-lobby-leaderboard" class="btn-leaderboard-open">🏆 Leaderboard</button>
           <ul class="leaderboard-list" id="lobby-leaderboard">
             <li><span class="lb-name" style="color:#444">No scores yet</span></li>
           </ul>
@@ -170,6 +165,17 @@
   <div style="display:none" id="balance-sidebar"><span id="sidebar-balance">0.0000</span></div>
 
   <!-- ── Modals ──────────────────────────────────────────────────────────── -->
+
+  <!-- All-Time Leaderboard Modal -->
+  <div class="modal-overlay" id="modal-lobby-leaderboard" style="display:none">
+    <div class="modal">
+      <h3>🏆 All-Time Top 10</h3>
+      <ul id="lobby-alltime-list" style="list-style:none;margin-top:12px;display:flex;flex-direction:column;gap:8px"></ul>
+      <div class="modal-btns" style="margin-top:16px">
+        <button class="btn-small btn-cancel" id="close-lobby-leaderboard">Close</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Edit name -->
   <div class="modal-overlay" id="modal-editname">

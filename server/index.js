@@ -78,6 +78,7 @@ app.post('/auth/update-name', async (req, res) => {
   if (!name) return res.status(400).json({ error: 'Invalid name' });
   const acc = await db.saveAccount(req.user.googleId, { name });
   req.user.name = acc.name;
+  allTimeLb.rename(req.user.googleId, acc.name); // keep leaderboard name in sync
   res.json({ account: acc });
 });
 
