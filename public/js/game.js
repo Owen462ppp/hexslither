@@ -211,6 +211,40 @@ document.getElementById('btn-lobby').addEventListener('click', () => {
   window.location.href = '/';
 });
 
+// ─── All-Time Leaderboard Modal ───────────────────────────────────────────────
+(function() {
+  const modal   = document.getElementById('modal-alltime');
+  const listEl  = document.getElementById('alltime-list');
+  const openBtn = document.getElementById('btn-alltime-lb');
+  const closeBtn = document.getElementById('modal-alltime-close');
+
+  function escHtmlLocal(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  openBtn.addEventListener('click', () => {
+    modal.classList.remove('hidden');
+    listEl.innerHTML = '<li style="color:#555">Loading…</li>';
+    fetch('/api/leaderboard')
+      .then(r => r.json())
+      .then(data => {
+        if (!data.length) {
+          listEl.innerHTML = '<li style="color:#555">No scores recorded yet</li>';
+          return;
+        }
+        listEl.innerHTML = data.map(p =>
+          `<li><span class="al-rank">#${p.rank}</span>` +
+          `<span class="al-name">${escHtmlLocal(p.name)}</span>` +
+          `<span class="al-score">${p.score}</span></li>`
+        ).join('');
+      })
+      .catch(() => { listEl.innerHTML = '<li style="color:#c33">Failed to load</li>'; });
+  });
+
+  closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+  modal.addEventListener('click', e => { if (e.target === modal) modal.classList.add('hidden'); });
+})();
+
 // Resize
 function resize() { renderer.resize(); }
 resize();

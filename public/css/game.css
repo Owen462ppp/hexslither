@@ -222,3 +222,85 @@ body {
 #spectate-bar button:hover { background: rgba(255,255,255,0.22); }
 #spectate-prev, #spectate-next { font-size: 1.1rem; padding: 4px 12px; }
 #spectate-label { min-width: 160px; text-align: center; color: #7dd3fc; }
+
+/* All-time leaderboard button */
+#btn-alltime-lb {
+  position: absolute;
+  top: 16px;
+  right: 216px;
+  background: rgba(0,0,0,0.6);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  color: #fff;
+  font-size: 1.3rem;
+  width: 44px;
+  height: 44px;
+  cursor: pointer;
+  pointer-events: all;
+  transition: background 0.15s, transform 0.1s;
+  backdrop-filter: blur(6px);
+}
+#btn-alltime-lb:hover { background: rgba(255,200,0,0.25); transform: scale(1.08); }
+
+/* All-time leaderboard modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  pointer-events: all;
+}
+.modal-overlay.hidden { display: none; }
+.modal-box {
+  background: #111;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  padding: 24px 28px;
+  min-width: 280px;
+  max-width: 360px;
+  width: 90%;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.8);
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffe066;
+  margin-bottom: 16px;
+}
+.modal-header button {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+.modal-header button:hover { color: #fff; }
+#alltime-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+#alltime-list li {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 0.9rem;
+  color: #ddd;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+}
+#alltime-list li:first-child { background: rgba(255,200,0,0.1); color: #ffe066; }
+#alltime-list li:nth-child(2) { background: rgba(180,180,180,0.08); color: #ccc; }
+#alltime-list li:nth-child(3) { background: rgba(180,100,30,0.1); color: #e8a060; }
+#alltime-list .al-rank { min-width: 28px; font-weight: 700; color: #666; }
+#alltime-list li:first-child .al-rank { color: #ffe066; }
+#alltime-list .al-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#alltime-list .al-score { font-weight: 600; color: #7dd3fc; }

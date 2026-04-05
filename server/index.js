@@ -9,6 +9,7 @@ const C      = require('../shared/constants');
 const GameRoom = require('./GameRoom');
 const db     = require('./db');
 const Wallet = require('./Wallet');
+const allTimeLb = require('./leaderboard');
 
 Wallet.setDb(db);
 
@@ -134,6 +135,11 @@ app.post('/wallet/withdraw', async (req, res) => {
 });
 
 // ─── Static files ─────────────────────────────────────────────────────────────
+// All-time leaderboard API
+app.get('/api/leaderboard', (req, res) => {
+  res.json(allTimeLb.getTop(10));
+});
+
 app.use((req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 app.use(express.static(path.join(__dirname, '../public')));
 app.use('/shared', express.static(path.join(__dirname, '../shared')));
@@ -161,7 +167,7 @@ function broadcastLobbyState() {
   const state = {
     playerCount: totalInGame(),
     lobbyCount:  lobbyConnections.size,
-    leaderboard: gameRooms.free.buildLeaderboard(),
+    leaderboard: allTimeLb.getTop(3),
   };
   for (const sock of lobbyConnections) sock.emit(C.EVENTS.LOBBY_STATE, state);
 }
@@ -172,7 +178,7 @@ io.on('connection', (socket) => {
   socket.emit(C.EVENTS.LOBBY_STATE, {
     playerCount: totalInGame(),
     lobbyCount:  lobbyConnections.size,
-    leaderboard: gameRooms.free.buildLeaderboard(),
+    leaderboard: allTimeLb.getTop(3),
   });
 
   socket.on('lobby:join', ({ googleId } = {}) => {

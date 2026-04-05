@@ -3,6 +3,7 @@ const Snake = require('./Snake');
 const Bot   = require('./Bot');
 const FoodManager = require('./Food');
 const { v4: uuidv4 } = require('uuid');
+const allTimeLb = require('./leaderboard');
 
 class GameRoom {
   constructor(io) {
@@ -60,6 +61,7 @@ class GameRoom {
     if (player) player.socket.leave(this.socketRoomName);
     const snake = this.snakes.get(socketId);
     if (snake && snake.alive) {
+      allTimeLb.record(snake.name, snake.score);
       // Player leaving counts as a death — shrink the border
       this.borderDrift = Math.max(this.borderDrift - 120, -1000);
       const drops = snake.die();
@@ -192,6 +194,7 @@ class GameRoom {
 
   killSnake(snake, killerId) {
     if (!snake.alive) return;
+    allTimeLb.record(snake.name, snake.score);
     // Each death shrinks the border
     this.borderDrift = Math.max(this.borderDrift - 120, -1000);
     const drops = snake.die();
