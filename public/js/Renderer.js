@@ -237,7 +237,7 @@ class Renderer {
     ctx.beginPath();
     ctx.rect(0, 0, W, H);
     ctx.arc(cx, cy, screenR, 0, Math.PI * 2, true); // CCW cuts it out
-    ctx.fillStyle = 'rgba(180,0,0,0.52)';
+    ctx.fillStyle = 'rgba(180,0,0,0.22)';
     ctx.fill();
 
     // Single red border ring
