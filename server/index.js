@@ -4,12 +4,14 @@ const { Server } = require('socket.io');
 const path       = require('path');
 const session    = require('express-session');
 const passport   = require('passport');
+const cookieParser = require('cookie-parser');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const C      = require('../shared/constants');
 const GameRoom = require('./GameRoom');
 const db     = require('./db');
 const Wallet = require('./Wallet');
 const allTimeLb = require('./leaderboard');
+const { sendVerificationCode } = require('./Email');
 
 Wallet.setDb(db);
 
@@ -21,6 +23,7 @@ const io     = new Server(server, { cors: { origin: '*' } });
 db.init().catch(e => console.error('[DB] Init failed:', e.message));
 
 // ─── Session & Passport ───────────────────────────────────────────────────────
+app.use(cookieParser());
 app.use(session({
   secret: process.env.SESSION_SECRET || 'duelseries-dev-secret',
   resave: false,
@@ -60,14 +63,76 @@ app.get('/auth/google',
 );
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/?error=auth' }),
-  (req, res) => res.redirect('/')
+  async (req, res) => {
+    try {
+      const deviceToken = req.cookies.ds_device;
+      const trusted = await db.isDeviceTrusted(req.user.googleId, deviceToken);
+      if (trusted) return res.redirect('/');
+
+      // New device — send 2FA code
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      await db.saveVerificationCode(req.user.googleId, code);
+      await sendVerificationCode(req.user.email, code);
+      req.session.pendingVerification = req.user.googleId;
+      req.logout(() => {}); // log out until verified
+      res.redirect('/verify.html');
+    } catch (e) {
+      console.error('[2FA] Error in callback:', e.message);
+      res.redirect('/?error=auth');
+    }
+  }
 );
 app.get('/auth/logout', (req, res) => {
   req.logout(() => res.redirect('/'));
 });
 app.get('/auth/me', (req, res) => {
-  if (req.isAuthenticated()) res.json({ loggedIn: true, account: req.user });
-  else res.json({ loggedIn: false });
+  if (req.isAuthenticated()) return res.json({ loggedIn: true, account: req.user });
+  if (req.session.pendingVerification) return res.json({ loggedIn: false, needsVerification: true });
+  res.json({ loggedIn: false });
+});
+
+// ─── 2FA verify routes ────────────────────────────────────────────────────────
+
+app.post('/auth/verify', express.json(), async (req, res) => {
+  const googleId = req.session.pendingVerification;
+  if (!googleId) return res.status(400).json({ error: 'No pending verification' });
+
+  const code = (req.body.code || '').trim();
+  const valid = await db.verifyCode(googleId, code);
+  if (!valid) return res.status(400).json({ error: 'Invalid or expired code' });
+
+  // Code correct — log user in, issue trusted device cookie
+  const account = await db.getAccountByGoogleId(googleId);
+  if (!account) return res.status(500).json({ error: 'Account not found' });
+
+  req.session.pendingVerification = null;
+  const token = await db.addTrustedDevice(googleId);
+
+  res.cookie('ds_device', token, {
+    httpOnly: true,
+    maxAge:   30 * 24 * 60 * 60 * 1000, // 30 days
+    sameSite: 'lax',
+    secure:   process.env.NODE_ENV === 'production',
+  });
+
+  await new Promise((resolve, reject) =>
+    req.login(account, err => err ? reject(err) : resolve())
+  );
+
+  res.json({ ok: true });
+});
+
+app.post('/auth/resend-code', express.json(), async (req, res) => {
+  const googleId = req.session.pendingVerification;
+  if (!googleId) return res.status(400).json({ error: 'No pending verification' });
+
+  const account = await db.getAccountByGoogleId(googleId);
+  if (!account) return res.status(500).json({ error: 'Account not found' });
+
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  await db.saveVerificationCode(googleId, code);
+  await sendVerificationCode(account.email, code);
+  res.json({ ok: true });
 });
 
 app.use(express.json());

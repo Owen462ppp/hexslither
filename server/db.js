@@ -36,6 +36,21 @@ async function init() {
       to_address  TEXT,
       created_at  TIMESTAMPTZ DEFAULT NOW()
     );
+
+    CREATE TABLE IF NOT EXISTS verification_codes (
+      google_id   TEXT NOT NULL,
+      code        TEXT NOT NULL,
+      expires_at  TIMESTAMPTZ NOT NULL,
+      used        BOOLEAN DEFAULT FALSE,
+      created_at  TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS trusted_devices (
+      google_id    TEXT NOT NULL,
+      device_token TEXT NOT NULL,
+      created_at   TIMESTAMPTZ DEFAULT NOW(),
+      PRIMARY KEY (google_id, device_token)
+    );
   `);
   console.log('[DB] Tables ready');
 }
@@ -126,6 +141,58 @@ async function recordWithdrawal(googleId, txSig, amount, toAddress) {
   return parseFloat(res.rows[0].balance);
 }
 
+// ─── 2FA / Device Trust ───────────────────────────────────────────────────────
+
+const { randomUUID } = require('crypto');
+
+async function saveVerificationCode(googleId, code) {
+  // invalidate any old unused codes first
+  await pool.query(
+    `UPDATE verification_codes SET used = TRUE WHERE google_id = $1 AND used = FALSE`,
+    [googleId]
+  );
+  await pool.query(
+    `INSERT INTO verification_codes (google_id, code, expires_at)
+     VALUES ($1, $2, NOW() + INTERVAL '10 minutes')`,
+    [googleId, code]
+  );
+}
+
+async function verifyCode(googleId, code) {
+  const res = await pool.query(
+    `SELECT id FROM verification_codes
+     WHERE google_id = $1 AND code = $2 AND used = FALSE AND expires_at > NOW()
+     LIMIT 1`,
+    [googleId, code]
+  );
+  if (!res.rows.length) return false;
+  await pool.query(
+    `UPDATE verification_codes SET used = TRUE
+     WHERE google_id = $1 AND code = $2`,
+    [googleId, code]
+  );
+  return true;
+}
+
+async function addTrustedDevice(googleId) {
+  const token = randomUUID();
+  await pool.query(
+    `INSERT INTO trusted_devices (google_id, device_token) VALUES ($1, $2)
+     ON CONFLICT DO NOTHING`,
+    [googleId, token]
+  );
+  return token;
+}
+
+async function isDeviceTrusted(googleId, deviceToken) {
+  if (!googleId || !deviceToken) return false;
+  const res = await pool.query(
+    `SELECT 1 FROM trusted_devices WHERE google_id = $1 AND device_token = $2`,
+    [googleId, deviceToken]
+  );
+  return res.rows.length > 0;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function dbToAccount(row) {
@@ -146,4 +213,5 @@ module.exports = {
   getOrCreateAccount, getAccountByGoogleId, getAccountByWallet,
   saveAccount, recordGameResult,
   isTxUsed, recordDeposit, recordWithdrawal,
+  saveVerificationCode, verifyCode, addTrustedDevice, isDeviceTrusted,
 };
