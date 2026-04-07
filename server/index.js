@@ -72,10 +72,14 @@ app.get('/auth/google/callback',
       // New device — send 2FA code
       const code = String(Math.floor(100000 + Math.random() * 900000));
       await db.saveVerificationCode(req.user.googleId, code);
-      await sendVerificationCode(req.user.email, code);
       req.session.pendingVerification = req.user.googleId;
-      req.logout(() => {}); // log out until verified
+      const emailAddr = req.user.email;
+      req.logout(() => {});
       res.redirect('/verify.html');
+      // Send email after redirect so it doesn't block page load
+      sendVerificationCode(emailAddr, code).catch(e =>
+        console.error('[2FA] Email send failed:', e.message)
+      );
     } catch (e) {
       console.error('[2FA] Error in callback:', e.message);
       res.redirect('/?error=auth');
