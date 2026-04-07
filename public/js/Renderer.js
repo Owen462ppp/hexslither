@@ -97,128 +97,114 @@ class Renderer {
     const { segs, color, boosting, name } = snake;
 
     const growthScale = 1 + Math.min(1.5, (snake.length || 20) / 200);
-    const headRadius  = CONSTANTS.SNAKE_HEAD_RADIUS * growthScale;
-    const bodyWidth   = headRadius * 2.2;
-    const bodyColor   = color;
+    const R  = CONSTANTS.SNAKE_HEAD_RADIUS * growthScale; // body half-width
+    const BW = R * 2;   // full body stroke width
+    const HR = R * 1.1; // head radius — just barely bigger than body
 
     ctx.save();
     ctx.lineCap  = 'round';
     ctx.lineJoin = 'round';
 
-    // 1. Base body
-    ctx.beginPath();
-    ctx.moveTo(segs[0], segs[1]);
-    for (let i = 2; i < segs.length; i += 2) ctx.lineTo(segs[i], segs[i + 1]);
-    ctx.strokeStyle = bodyColor;
-    ctx.lineWidth   = bodyWidth;
-    ctx.stroke();
-
-    // 1b. White boost glow through body
-    if (boosting) {
+    function strokeBody(lw, style, alpha) {
+      if (alpha !== undefined) ctx.globalAlpha = alpha;
       ctx.beginPath();
       ctx.moveTo(segs[0], segs[1]);
       for (let i = 2; i < segs.length; i += 2) ctx.lineTo(segs[i], segs[i + 1]);
-      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-      ctx.lineWidth   = bodyWidth * 1.1;
-      ctx.globalAlpha = 1;
+      ctx.strokeStyle = style;
+      ctx.lineWidth   = lw;
       ctx.stroke();
+      if (alpha !== undefined) ctx.globalAlpha = 1;
     }
 
-    // 2. Bottom shadow → 3D tube
-    ctx.beginPath();
-    ctx.moveTo(segs[0], segs[1]);
-    for (let i = 2; i < segs.length; i += 2) ctx.lineTo(segs[i], segs[i + 1]);
-    ctx.strokeStyle = 'rgba(0,0,0,0.28)';
-    ctx.lineWidth   = bodyWidth * 0.6;
-    ctx.stroke();
+    // 1. Base body color
+    strokeBody(BW, color);
 
-    // 3. Top highlight stripe
-    ctx.beginPath();
-    ctx.moveTo(segs[0], segs[1]);
-    for (let i = 2; i < segs.length; i += 2) ctx.lineTo(segs[i], segs[i + 1]);
-    ctx.strokeStyle = 'rgba(255,255,255,0.30)';
-    ctx.lineWidth   = bodyWidth * 0.35;
-    ctx.stroke();
+    // 2. Boost outer glow
+    if (boosting) strokeBody(BW * 1.14, 'rgba(255,255,255,0.15)');
 
-    // 4. Segment rings — perpendicular lines like slither.io
-    const segSpacing = bodyWidth * 1.1;
+    // 3. Bottom shadow — gives the lower-half its dark depth
+    strokeBody(BW * 0.68, 'rgba(0,0,0,0.48)');
+
+    // 4. Mid-shadow — softens the transition for a rounder look
+    strokeBody(BW * 0.38, 'rgba(0,0,0,0.22)');
+
+    // 5. Top highlight — bright center stripe, the main 3D effect
+    strokeBody(BW * 0.28, 'rgba(255,255,255,0.60)');
+
+    // 6. Segment rings — dark perpendicular lines, clearly spaced
+    const segSpacing = BW * 1.1;
     let dist = 0;
     for (let i = 2; i < segs.length - 2; i += 2) {
-      const dx = segs[i] - segs[i-2], dy = segs[i+1] - segs[i-1];
-      dist += Math.sqrt(dx*dx + dy*dy);
+      const dx = segs[i] - segs[i - 2], dy = segs[i + 1] - segs[i - 1];
+      dist += Math.sqrt(dx * dx + dy * dy);
       if (dist >= segSpacing) {
         dist -= segSpacing;
-        const ax = segs[i+2] - segs[i-2], ay = segs[i+3] - segs[i-1];
-        const al = Math.sqrt(ax*ax + ay*ay) || 1;
-        const px = -ay/al, py = ax/al;
-        const hw = bodyWidth * 0.48;
+        const ax = segs[i + 2] - segs[i - 2], ay = segs[i + 3] - segs[i - 1];
+        const al = Math.sqrt(ax * ax + ay * ay) || 1;
+        const px = -ay / al, py = ax / al;
+        const hw = BW * 0.50;
         ctx.beginPath();
-        ctx.moveTo(segs[i] + px*hw, segs[i+1] + py*hw);
-        ctx.lineTo(segs[i] - px*hw, segs[i+1] - py*hw);
-        ctx.strokeStyle = 'rgba(0,0,0,0.22)';
-        ctx.lineWidth   = bodyWidth * 0.12;
+        ctx.moveTo(segs[i] + px * hw, segs[i + 1] + py * hw);
+        ctx.lineTo(segs[i] - px * hw, segs[i + 1] - py * hw);
+        ctx.strokeStyle = 'rgba(0,0,0,0.38)';
+        ctx.lineWidth   = BW * 0.13;
         ctx.stroke();
       }
     }
 
-    // 5. Head — bigger dome
+    // 7. Head — round cap, same shading layers as body
     const hx = segs[0], hy = segs[1];
-    const HR = headRadius * 1.2;
-    ctx.beginPath();
-    ctx.arc(hx, hy, HR, 0, Math.PI * 2);
-    ctx.fillStyle = bodyColor;
-    ctx.fill();
 
-    // Head bottom shadow
-    ctx.beginPath();
-    ctx.arc(hx, hy, HR, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    ctx.fill();
+    // Base
+    ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI * 2);
+    ctx.fillStyle = color; ctx.fill();
 
-    // Head top highlight
-    ctx.beginPath();
-    ctx.arc(hx - HR * 0.18, hy - HR * 0.22, HR * 0.55, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255,255,255,0.14)';
-    ctx.fill();
+    // Shadow overlay (lower area darker)
+    ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.38)'; ctx.fill();
 
-    // Boosting ring
+    // Highlight blob (upper-center, same as body stripe)
+    ctx.beginPath(); ctx.arc(hx, hy - HR * 0.15, HR * 0.62, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.52)'; ctx.fill();
+
+    // Boost head ring
     if (boosting) {
-      ctx.beginPath();
-      ctx.arc(hx, hy, HR + 5, 0, Math.PI * 2);
-      ctx.strokeStyle = color;
-      ctx.lineWidth   = 3;
-      ctx.globalAlpha = 0.55;
-      ctx.stroke();
-      ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.arc(hx, hy, HR + 4, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      ctx.lineWidth = 2.5; ctx.stroke();
     }
 
-    // 6. Eyes — large, close, slither.io style
+    // 8. Eyes — large, forward-facing, centered pupils, bright glint
     const angle = snake.angle || 0;
-    const perpX = -Math.sin(angle), perpY = Math.cos(angle);
-    const fwdX  =  Math.cos(angle), fwdY  = Math.sin(angle);
-    const eyeSep = HR * 0.36;
-    const eyeFwd = HR * 0.52;
-    const eyeR   = HR * 0.42;
+    const perpX = -Math.sin(angle), perpY =  Math.cos(angle);
+    const fwdX  =  Math.cos(angle), fwdY  =  Math.sin(angle);
+    const eyeSep = HR * 0.42; // left/right distance from centerline
+    const eyeFwd = HR * 0.60; // how far forward on the head
+    const eyeR   = HR * 0.44; // eye radius
 
     for (const side of [-1, 1]) {
       const ex = hx + perpX * eyeSep * side + fwdX * eyeFwd;
       const ey = hy + perpY * eyeSep * side + fwdY * eyeFwd;
+
+      // White sclera
       ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI * 2);
-      ctx.fillStyle = '#f2f2f2'; ctx.fill();
-      ctx.beginPath();
-      ctx.arc(ex + fwdX * eyeR * 0.18, ey + fwdY * eyeR * 0.18, eyeR * 0.64, 0, Math.PI * 2);
-      ctx.fillStyle = '#111'; ctx.fill();
-      ctx.beginPath();
-      ctx.arc(ex - eyeR * 0.18, ey - eyeR * 0.28, eyeR * 0.26, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.fill();
+
+      // Black pupil — centered, large
+      ctx.beginPath(); ctx.arc(ex, ey, eyeR * 0.62, 0, Math.PI * 2);
+      ctx.fillStyle = '#111111'; ctx.fill();
+
+      // White glint — upper portion of pupil
+      ctx.beginPath(); ctx.arc(ex - eyeR * 0.12, ey - eyeR * 0.20, eyeR * 0.24, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.fill();
     }
 
-    // Name
+    // 9. Name label
     if (name) {
-      ctx.font      = `bold ${Math.round(headRadius * 1.1)}px Segoe UI`;
+      ctx.font      = `bold ${Math.round(R * 1.1)}px Segoe UI`;
       ctx.textAlign = 'center';
       ctx.fillStyle = isMe ? '#ffe066' : '#fff';
-      ctx.fillText(name, hx, hy - HR * 2.5);
+      ctx.fillText(name, hx, hy - HR * 2.6);
     }
 
     ctx.restore();

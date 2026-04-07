@@ -135,7 +135,7 @@ class Snake {
       segs,
       angle: this.angle,
       boosting: this.boosting,
-      score: this.score,
+      score: Math.floor(this.score),
       length: this.length,
       boostRatio: this.boostRatio,
     };
