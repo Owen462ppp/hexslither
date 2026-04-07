@@ -80,62 +80,78 @@
   const canvas = document.getElementById('bg-canvas-2');
   const ctx    = canvas.getContext('2d');
 
-  const CELL_COLORS = [
+  const PLAYER_DATA = [
+    { r: 118, color: '#33CC33', name: '~haii~'    },
+    { r:  98, color: '#00CCFF', name: 'JiriK'     },
+    { r:  84, color: '#FF2244', name: 'chomper'   },
+    { r:  70, color: '#FF6600', name: 'nomnom'    },
+    { r:  58, color: '#CC33FF', name: ''          },
+    { r:  48, color: '#FFCC00', name: 'destroyer' },
+    { r:  40, color: '#FF33CC', name: ''          },
+    { r:  34, color: '#00EE88', name: 'hungry'    },
+    { r:  28, color: '#0055FF', name: ''          },
+    { r:  22, color: '#FF4488', name: ''          },
+    { r:  18, color: '#AA44FF', name: ''          },
+    { r:  15, color: '#33CC33', name: ''          },
+  ];
+  const FOOD_COLORS = [
     '#FF2244','#FF6600','#FFCC00','#33CC33','#00CCFF',
     '#0055FF','#CC33FF','#FF33CC','#00EE88','#FF4488',
-    '#FF3300','#66EE00','#00AAFF','#FFAA00','#AA44FF',
-  ];
-  const NAMES = [
-    'BigBug','~haii~','nomnom','destroyer','splitking',
-    'chomper','hungry','agarbot','JiriK','BigCell',
-    'eater','bulge','nucleus','slurp','macro',
+    '#FF3300','#66EE00','#00AAFF','#FFAA00',
   ];
 
-  // Helper — slightly darken a hex color for the cell border
   function darken(hex) {
     const n = parseInt(hex.slice(1), 16);
-    const r = Math.max(0, (n >> 16) - 55);
-    const g = Math.max(0, ((n >> 8) & 0xff) - 55);
-    const b = Math.max(0, (n & 0xff) - 55);
-    return `rgb(${r},${g},${b})`;
+    return `rgb(${Math.max(0,(n>>16)-60)},${Math.max(0,((n>>8)&0xff)-60)},${Math.max(0,(n&0xff)-60)})`;
   }
 
-  // Build cells — mix of large (named) and small (food dots)
   const cells = [];
+
+  function placeCell(r, W, H) {
+    for (let attempt = 0; attempt < 150; attempt++) {
+      const x = r + 20 + Math.random() * (W - r * 2 - 40);
+      const y = r + 20 + Math.random() * (H - r * 2 - 40);
+      let ok = true;
+      for (const c of cells) {
+        const dx = c.x - x, dy = c.y - y;
+        if (Math.sqrt(dx*dx + dy*dy) < c.r + r + 12) { ok = false; break; }
+      }
+      if (ok) return { x, y };
+    }
+    return null;
+  }
 
   function makeCells() {
     cells.length = 0;
     const W = canvas.width, H = canvas.height;
 
-    // Large / medium player cells
-    const playerCount = 12;
-    for (let i = 0; i < playerCount; i++) {
-      const r = 28 + Math.random() * 110;
+    // Player cells — defined sizes and colors
+    for (const pd of PLAYER_DATA) {
+      const pos = placeCell(pd.r, W, H);
+      if (!pos) continue;
+      const spd = 0.55 / Math.pow(pd.r / 25, 0.55); // bigger = slower
       cells.push({
-        x:     r + Math.random() * (W - r * 2),
-        y:     r + Math.random() * (H - r * 2),
-        vx:    (Math.random() - 0.5) * 0.45,
-        vy:    (Math.random() - 0.5) * 0.45,
-        r,
-        color: CELL_COLORS[i % CELL_COLORS.length],
-        name:  r > 50 ? NAMES[i % NAMES.length] : '',
-        phase: Math.random() * Math.PI * 2,
-        wobbleSpeed: 0.4 + Math.random() * 0.6,
+        x: pos.x, y: pos.y,
+        vx: (Math.random() - 0.5) * spd * 2,
+        vy: (Math.random() - 0.5) * spd * 2,
+        r: pd.r, color: pd.color, name: pd.name,
+        baseSpeed: spd, isFood: false,
+        fleeTimer: 0, chaseTarget: null,
       });
     }
 
-    // Small food pellets
-    for (let i = 0; i < 60; i++) {
+    // Food pellets
+    for (let i = 0; i < 55; i++) {
+      const r = 5 + Math.random() * 7;
+      const pos = placeCell(r, W, H);
+      if (!pos) continue;
       cells.push({
-        x:     Math.random() * W,
-        y:     Math.random() * H,
-        vx:    (Math.random() - 0.5) * 0.12,
-        vy:    (Math.random() - 0.5) * 0.12,
-        r:     4 + Math.random() * 7,
-        color: CELL_COLORS[Math.floor(Math.random() * CELL_COLORS.length)],
-        name:  '',
-        phase: Math.random() * Math.PI * 2,
-        wobbleSpeed: 1,
+        x: pos.x, y: pos.y,
+        vx: (Math.random() - 0.5) * 0.08,
+        vy: (Math.random() - 0.5) * 0.08,
+        r, color: FOOD_COLORS[i % FOOD_COLORS.length],
+        name: '', baseSpeed: 0.08, isFood: true,
+        fleeTimer: 0, chaseTarget: null,
       });
     }
   }
@@ -148,68 +164,121 @@
 
   function drawGrid() {
     const W = canvas.width, H = canvas.height;
-    const STEP = 52;
-    ctx.strokeStyle = 'rgba(100,140,200,0.18)';
+    const STEP = 50;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(100,140,210,0.16)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     for (let x = 0; x <= W; x += STEP) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
     for (let y = 0; y <= H; y += STEP) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
     ctx.stroke();
+    ctx.restore();
   }
 
-  function drawCell(cell, t) {
-    const { x, y, r, color, name, phase, wobbleSpeed } = cell;
-    const pts = Math.max(12, Math.floor(r * 0.9));
-    const wobbleAmp = r < 12 ? 0 : r * 0.035;
+  function drawCell(cell) {
+    const { x, y, r, color, name } = cell;
 
+    // Drop shadow
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.20)';
+    ctx.shadowBlur  = r * 0.5;
+    ctx.shadowOffsetY = r * 0.08;
     ctx.beginPath();
-    for (let i = 0; i <= pts; i++) {
-      const angle  = (i / pts) * Math.PI * 2;
-      const wobble = wobbleAmp * Math.sin(angle * 4 + t * 0.0008 * wobbleSpeed + phase);
-      const cr = r + wobble;
-      const px = x + Math.cos(angle) * cr;
-      const py = y + Math.sin(angle) * cr;
-      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-
-    // Shadow
-    ctx.shadowColor = 'rgba(0,0,0,0.18)';
-    ctx.shadowBlur  = r * 0.35;
-    ctx.fillStyle   = color;
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = color;
     ctx.fill();
-    ctx.shadowBlur  = 0;
+    ctx.restore();
 
-    // Darker border (like agar.io cells)
+    // Darker border ring
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.strokeStyle = darken(color);
-    ctx.lineWidth   = Math.max(1.5, r * 0.055);
+    ctx.lineWidth   = Math.max(2, r * 0.07);
     ctx.stroke();
 
-    // Highlight glint — upper-left bright spot
-    if (r > 10) {
-      const gx = x - r * 0.28, gy = y - r * 0.28;
-      const gr = Math.min(r * 0.55, r - 2);
-      const grad = ctx.createRadialGradient(gx, gy, 0, gx, gy, gr);
-      grad.addColorStop(0,   'rgba(255,255,255,0.40)');
-      grad.addColorStop(0.6, 'rgba(255,255,255,0.08)');
-      grad.addColorStop(1,   'rgba(255,255,255,0)');
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fillStyle = grad;
-      ctx.fill();
-    }
+    // Radial highlight (upper-left glint → transparent)
+    const glintX = x - r * 0.30, glintY = y - r * 0.30;
+    const glint  = ctx.createRadialGradient(glintX, glintY, 0, glintX, glintY, r * 0.75);
+    glint.addColorStop(0,   'rgba(255,255,255,0.45)');
+    glint.addColorStop(0.5, 'rgba(255,255,255,0.10)');
+    glint.addColorStop(1,   'rgba(255,255,255,0)');
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = glint;
+    ctx.fill();
 
-    // Name label for big enough cells
-    if (name && r > 38) {
-      const fontSize = Math.round(Math.min(r * 0.38, 28));
-      ctx.font         = `bold ${fontSize}px Segoe UI, sans-serif`;
+    // Name
+    if (name && r >= 40) {
+      const fs = Math.round(Math.min(r * 0.36, 26));
+      ctx.font         = `bold ${fs}px Segoe UI, sans-serif`;
       ctx.textAlign    = 'center';
       ctx.textBaseline = 'middle';
-      // Shadow text
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillStyle    = 'rgba(0,0,0,0.30)';
       ctx.fillText(name, x + 1, y + 1);
-      ctx.fillStyle = '#fff';
+      ctx.fillStyle    = '#ffffff';
       ctx.fillText(name, x, y);
+    }
+  }
+
+  // ── AI: separation, flee, and chase ──────────────────────────────────────
+  function applyAI() {
+    const players = cells.filter(c => !c.isFood);
+
+    // 1. Separation — push overlapping cells apart
+    for (let i = 0; i < cells.length; i++) {
+      for (let j = i + 1; j < cells.length; j++) {
+        const a = cells[i], b = cells[j];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 0.01;
+        const minD = a.r + b.r + 6;
+        if (dist < minD) {
+          const push = (minD - dist) / 2;
+          const nx = dx / dist, ny = dy / dist;
+          a.x -= nx * push; a.y -= ny * push;
+          b.x += nx * push; b.y += ny * push;
+          // Deflect velocities slightly
+          a.vx -= nx * 0.04; a.vy -= ny * 0.04;
+          b.vx += nx * 0.04; b.vy += ny * 0.04;
+        }
+      }
+    }
+
+    // 2. Chase/flee — large cells pursue a small neighbour; small cells flee
+    for (const big of players) {
+      if (big.r < 55) continue;
+      // Pick a chase target occasionally
+      if (!big.chaseTarget || big.chaseTimer <= 0) {
+        // Find a small player cell within 350px
+        let best = null, bestD = 350;
+        for (const small of players) {
+          if (small === big || small.r > big.r * 0.6) continue;
+          const d = Math.hypot(big.x - small.x, big.y - small.y);
+          if (d < bestD) { bestD = d; best = small; }
+        }
+        big.chaseTarget = best;
+        big.chaseTimer  = 180 + Math.floor(Math.random() * 240); // 3-7 sec at 60fps
+      }
+      if (big.chaseTimer > 0) big.chaseTimer--;
+
+      const prey = big.chaseTarget;
+      if (prey) {
+        // Big cell steers toward prey (gently)
+        const dx = prey.x - big.x, dy = prey.y - big.y;
+        const d  = Math.hypot(dx, dy) || 1;
+        big.vx += (dx / d) * 0.012;
+        big.vy += (dy / d) * 0.012;
+        const spd = Math.hypot(big.vx, big.vy);
+        if (spd > big.baseSpeed) { big.vx *= big.baseSpeed / spd; big.vy *= big.baseSpeed / spd; }
+
+        // Prey flees if predator is within 280px
+        if (d < 280) {
+          prey.vx -= (dx / d) * 0.025;
+          prey.vy -= (dy / d) * 0.025;
+          const ps = Math.hypot(prey.vx, prey.vy);
+          const preyMax = prey.baseSpeed * 1.6;
+          if (ps > preyMax) { prey.vx *= preyMax / ps; prey.vy *= preyMax / ps; }
+        }
+      }
     }
   }
 
@@ -218,12 +287,13 @@
   function tick(t) {
     const W = canvas.width, H = canvas.height;
 
-    // Light agar.io background
-    ctx.fillStyle = '#f0f4f8';
+    ctx.fillStyle = '#eef2f7';
     ctx.fillRect(0, 0, W, H);
     drawGrid();
 
-    // Sort small-to-large so big cells render on top
+    applyAI();
+
+    // Sort so large cells render on top of small ones
     cells.sort((a, b) => a.r - b.r);
 
     for (const cell of cells) {
@@ -231,31 +301,28 @@
       cell.x += cell.vx;
       cell.y += cell.vy;
 
-      // Bounce off edges
-      if (cell.x - cell.r < 0)  { cell.x = cell.r;     cell.vx *= -1; }
-      if (cell.x + cell.r > W)  { cell.x = W - cell.r; cell.vx *= -1; }
-      if (cell.y - cell.r < 0)  { cell.y = cell.r;     cell.vy *= -1; }
-      if (cell.y + cell.r > H)  { cell.y = H - cell.r; cell.vy *= -1; }
+      // Dampen (slow drift if no force applied)
+      cell.vx *= 0.992;
+      cell.vy *= 0.992;
 
-      drawCell(cell, t);
+      // Bounce off edges
+      if (cell.x - cell.r < 0)  { cell.x = cell.r;     cell.vx = Math.abs(cell.vx); }
+      if (cell.x + cell.r > W)  { cell.x = W - cell.r; cell.vx = -Math.abs(cell.vx); }
+      if (cell.y - cell.r < 0)  { cell.y = cell.r;     cell.vy = Math.abs(cell.vy); }
+      if (cell.y + cell.r > H)  { cell.y = H - cell.r; cell.vy = -Math.abs(cell.vy); }
+
+      drawCell(cell);
     }
 
     rafId = requestAnimationFrame(tick);
   }
 
   window.addEventListener('resize', resize);
-  resize(); // init cells
+  resize();
 
-  // Exposed controls so switchLobby() can start/stop this canvas
   window._agarBg = {
-    start() {
-      canvas.style.display = 'block';
-      if (!rafId) rafId = requestAnimationFrame(tick);
-    },
-    stop() {
-      canvas.style.display = 'none';
-      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-    },
+    start() { if (!rafId) rafId = requestAnimationFrame(tick); },
+    stop()  { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } },
   };
 })();
 
@@ -319,6 +386,10 @@ function hideArrows() {
   arrowRight.classList.remove('visible');
 }
 
+const bgCanvas1   = document.getElementById('bg-canvas');
+const bgCanvas2   = document.getElementById('bg-canvas-2');
+const snakeCanvas = document.getElementById('snake-canvas');
+
 function switchLobby(direction) {
   const total     = lobbies.length;
   const nextIndex = ((currentLobby - 1 + direction + total) % total);
@@ -327,25 +398,41 @@ function switchLobby(direction) {
 
   const outClass = direction === 1 ? 'slide-out-left'  : 'slide-out-right';
   const inClass  = direction === 1 ? 'slide-in-right'  : 'slide-in-left';
+  const goingToArena = nextIndex === 1;
 
   hideArrows();
-  current.classList.add(outClass);
 
+  // Start agar animation before fade so it's ready
+  if (goingToArena) window._agarBg.start();
+
+  // Crossfade backgrounds simultaneously with the content slide
+  if (goingToArena) {
+    bgCanvas2.style.opacity = '1';
+    bgCanvas1.style.opacity = '0';
+    snakeCanvas.style.opacity = '0';
+  } else {
+    bgCanvas1.style.opacity = '1';
+    snakeCanvas.style.opacity = '1';
+    bgCanvas2.style.opacity = '0';
+  }
+
+  // Slide content
+  current.classList.add(outClass);
   setTimeout(() => {
     current.classList.add('hidden');
     current.classList.remove(outClass);
     next.classList.remove('hidden');
     next.classList.add(inClass);
 
-    // Swap backgrounds
-    const goingToArena = nextIndex === 1;
-    document.getElementById('bg-canvas').style.display   = goingToArena ? 'none'  : 'block';
-    document.getElementById('snake-canvas').style.display = goingToArena ? 'none'  : 'block';
-    if (goingToArena) { window._agarBg.start(); }
-    else              { window._agarBg.stop();  }
+    // Stop agar after fade-out completes when leaving arena
+    if (!goingToArena) setTimeout(() => window._agarBg.stop(), 650);
 
     setTimeout(() => {
       next.classList.remove(inClass);
+      // Tint arrows for light vs dark background
+      document.querySelectorAll('.lobby-nav-arrow').forEach(a => {
+        a.dataset.theme = goingToArena ? 'light' : 'dark';
+      });
       showArrows();
     }, 340);
   }, 320);
