@@ -17,7 +17,7 @@ class FoodManager {
     }
   }
 
-  spawnOne(worldRadius, x, y) {
+  spawnOne(worldRadius, x, y, value) {
     const id = uuidv4();
     let fx, fy;
     if (x !== undefined && y !== undefined) {
@@ -35,7 +35,7 @@ class FoodManager {
       y: fy,
       color: FOOD_COLORS[Math.floor(Math.random() * FOOD_COLORS.length)],
       size: 0.6 + Math.random() * 1.0,
-      value: 1,
+      value: value !== undefined ? value : 1,
     };
     this.items.set(id, food);
     return food;

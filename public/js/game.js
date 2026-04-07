@@ -159,8 +159,9 @@ let qHoldTimer   = null;
 let cashedOut    = false;
 let lockedAngle  = null;
 
-const qTimerEl  = document.getElementById('q-timer');
-const qRingEl   = document.getElementById('q-timer-ring');
+const qTimerEl   = document.getElementById('q-timer');
+const qRingEl    = document.getElementById('q-timer-ring');
+const qTimerText = document.getElementById('q-timer-text');
 
 function startQTimer() {
   if (isDead || cashedOut || !myId) return;
@@ -191,11 +192,26 @@ function cancelQTimer() {
 
 function triggerCashOut() {
   cashedOut = true;
-  qTimerEl.classList.remove('active');
   // Capture the snake's current angle to lock it
   const mySnake = displayState.snakes.find(s => s.id === myId);
   if (mySnake) lockedAngle = mySnake.angle;
-  document.getElementById('cashout-screen').classList.add('active');
+
+  // 3-second countdown before the cashout screen appears
+  let remaining = 3;
+  qRingEl.style.strokeDashoffset = 0; // keep ring full
+  qTimerText.textContent = remaining;
+
+  const countdownInterval = setInterval(() => {
+    remaining--;
+    if (remaining > 0) {
+      qTimerText.textContent = remaining;
+    } else {
+      clearInterval(countdownInterval);
+      qTimerEl.classList.remove('active');
+      qTimerText.textContent = 'Q';
+      document.getElementById('cashout-screen').classList.add('active');
+    }
+  }, 1000);
 }
 
 window.addEventListener('keydown', (e) => {
@@ -390,7 +406,10 @@ function gameLoop(now) {
     const targets = getSpectateTargets();
     if (targets.length > 0) spectateSnake = targets[spectateIndex % targets.length];
   }
-  renderer.render(displayState, myId, mousePos, spectateSnake);
+  const renderState = cashedOut
+    ? { ...displayState, snakes: displayState.snakes.filter(s => s.id !== myId) }
+    : displayState;
+  renderer.render(renderState, cashedOut ? null : myId, mousePos, spectateSnake);
 
   if (minimapCtx) renderer.drawMinimap(minimapCtx, displayState, myId);
 

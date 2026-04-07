@@ -76,10 +76,10 @@ class Snake {
         // Burn only every 4 ticks instead of every tick — much less shrink
         if (this._boostTick === undefined) this._boostTick = 0;
         this._boostTick++;
-        if (this._boostTick >= 4) {
+        if (this._boostTick >= 12) {
           this._boostTick = 0;
           const dropped = this.segments.pop();
-          if (dropped) this.boostDrops.push({ x: dropped.x, y: dropped.y });
+          if (dropped) this.boostDrops.push({ x: dropped.x, y: dropped.y, value: 0.15 });
         }
       } else {
         this.boosting = false;

@@ -142,7 +142,7 @@ class GameRoom {
         const safeR = this.worldRadius * 0.95;
         for (const drop of snake.boostDrops) {
           const dist = Math.hypot(drop.x, drop.y);
-          if (dist <= safeR) this.foodManager.spawnOne(this.worldRadius, drop.x, drop.y);
+          if (dist <= safeR) this.foodManager.spawnOne(this.worldRadius, drop.x, drop.y, drop.value);
         }
         snake.boostDrops = [];
       }
