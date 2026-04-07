@@ -239,10 +239,10 @@ fetch('/wallet/info').then(r => r.json()).then(info => {
   if (info && info.escrowAddress) walletInfo = info;
 }).catch(() => {});
 
-// Fetch SOL/USD price once, cache it
-fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd')
+// Fetch SOL/CAD price once, cache it
+fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=cad')
   .then(r => r.json())
-  .then(d => { solPriceUsd = d?.solana?.usd || null; })
+  .then(d => { solPriceUsd = d?.solana?.cad || null; })
   .catch(() => {});
 
 function setBalance(bal) {
@@ -251,9 +251,9 @@ function setBalance(bal) {
   const usdEl = document.getElementById('game-balance-usd');
   if (usdEl) {
     if (solPriceUsd !== null) {
-      usdEl.textContent = '$' + (sol * solPriceUsd).toFixed(2);
+      usdEl.textContent = 'CA$' + (sol * solPriceUsd).toFixed(2);
     } else {
-      usdEl.textContent = '$—';
+      usdEl.textContent = 'CA$—';
     }
   }
   const sb = document.getElementById('sidebar-balance');
@@ -271,11 +271,34 @@ fetch('/auth/me').then(r => r.json()).then(({ account: acc }) => {
 
 document.getElementById('btn-refresh-balance').addEventListener('click', async () => {
   const btn = document.getElementById('btn-refresh-balance');
-  btn.style.opacity = '0.4';
-  const res = await fetch('/auth/me');
-  const { account: acc } = await res.json();
-  if (acc) setBalance(acc.balance || 0);
-  btn.style.opacity = '1';
+  btn.textContent = '↻ Checking...';
+  btn.disabled = true;
+  try {
+    const res = await fetch('/wallet/deposit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    if (res.status === 202) {
+      // No new deposit — just refresh balance from account
+      const meRes = await fetch('/auth/me');
+      const { account: acc } = await meRes.json();
+      if (acc) setBalance(acc.balance || 0);
+      walletStatus('Balance up to date');
+    } else {
+      const data = await res.json();
+      if (data.error) {
+        walletStatus(data.error, true);
+      } else {
+        setBalance(data.balance);
+        walletStatus(`Deposit received: ${data.amount.toFixed(4)} SOL ✓`);
+      }
+    }
+  } catch (e) {
+    walletStatus('Refresh failed', true);
+  }
+  btn.textContent = '↻ Refresh';
+  btn.disabled = false;
 });
 
 // ─── Add Funds ────────────────────────────────────────────────────────────────

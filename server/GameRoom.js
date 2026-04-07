@@ -137,6 +137,16 @@ class GameRoom {
       if (snake.isBot) snake.updateAI(foodList, this.worldRadius, allSnakes);
       snake.update();
 
+      // Spawn food from boost drops
+      if (snake.boostDrops.length > 0) {
+        const safeR = this.worldRadius * 0.95;
+        for (const drop of snake.boostDrops) {
+          const dist = Math.hypot(drop.x, drop.y);
+          if (dist <= safeR) this.foodManager.spawnOne(this.worldRadius, drop.x, drop.y);
+        }
+        snake.boostDrops = [];
+      }
+
       // Border collision
       const headDist = Math.hypot(snake.head.x, snake.head.y);
       if (headDist >= this.worldRadius) {

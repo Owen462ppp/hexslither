@@ -41,10 +41,14 @@ socket.on('connect', () => {
 socket.on(CONSTANTS.EVENTS.GAME_JOINED, ({ playerId, worldRadius, snakeColor, food }) => {
   myId = playerId;
   isDead = false;
+  cashedOut = false;
+  lockedAngle = null;
+  cancelQTimer();
   snapBuffer = [];
   clockOffset = null;
   displayState = { snakes: [], food: food || [], worldRadius, leaderboard: [] };
   document.getElementById('death-screen').classList.remove('active');
+  document.getElementById('cashout-screen').classList.remove('active');
 });
 
 socket.on(CONSTANTS.EVENTS.SNAPSHOT, (snap) => {
@@ -146,6 +150,73 @@ canvas.addEventListener('touchmove', (e) => {
 }, { passive: false });
 canvas.addEventListener('touchstart', (e) => { if (e.touches.length > 1) boostActive = true; });
 canvas.addEventListener('touchend',   (e) => { if (e.touches.length === 0) boostActive = false; });
+
+// ─── Q Cash-out ───────────────────────────────────────────────────────────────
+const Q_HOLD_MS = 3000;
+const RING_CIRC = 213.6;
+let qHoldStart   = null;
+let qHoldTimer   = null;
+let cashedOut    = false;
+let lockedAngle  = null;
+
+const qTimerEl  = document.getElementById('q-timer');
+const qRingEl   = document.getElementById('q-timer-ring');
+
+function startQTimer() {
+  if (isDead || cashedOut || !myId) return;
+  qHoldStart = performance.now();
+  qTimerEl.classList.add('active');
+  qRingEl.style.strokeDashoffset = RING_CIRC;
+
+  qHoldTimer = setInterval(() => {
+    const elapsed = performance.now() - qHoldStart;
+    const t = Math.min(elapsed / Q_HOLD_MS, 1);
+    qRingEl.style.strokeDashoffset = RING_CIRC * (1 - t);
+
+    if (elapsed >= Q_HOLD_MS) {
+      clearInterval(qHoldTimer);
+      qHoldTimer = null;
+      triggerCashOut();
+    }
+  }, 30);
+}
+
+function cancelQTimer() {
+  if (qHoldTimer) { clearInterval(qHoldTimer); qHoldTimer = null; }
+  qHoldStart = null;
+  qTimerEl.classList.remove('active');
+  qRingEl.style.strokeDashoffset = RING_CIRC;
+  lockedAngle = null;
+}
+
+function triggerCashOut() {
+  cashedOut = true;
+  qTimerEl.classList.remove('active');
+  // Capture the snake's current angle to lock it
+  const mySnake = displayState.snakes.find(s => s.id === myId);
+  if (mySnake) lockedAngle = mySnake.angle;
+  document.getElementById('cashout-screen').classList.add('active');
+}
+
+window.addEventListener('keydown', (e) => {
+  if ((e.key === 'q' || e.key === 'Q') && !e.repeat && !isDead && !cashedOut) {
+    e.preventDefault();
+    startQTimer();
+  }
+});
+window.addEventListener('keyup', (e) => {
+  if (e.key === 'q' || e.key === 'Q') {
+    if (!cashedOut) cancelQTimer();
+  }
+});
+
+document.getElementById('btn-cashout-spectate').addEventListener('click', () => {
+  document.getElementById('cashout-screen').classList.remove('active');
+  enterSpectate();
+});
+document.getElementById('btn-cashout-lobby').addEventListener('click', () => {
+  window.location.href = '/';
+});
 
 // ─── Spectate ─────────────────────────────────────────────────────────────────
 let spectating   = false;
@@ -255,8 +326,18 @@ function sendInput() {
   if (!myId || isDead) return;
   const mySnake = displayState.snakes.find(s => s.id === myId);
   if (!mySnake) return;
-  const worldPos = renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height);
-  const angle = Math.atan2(worldPos.y - mySnake.segs[1], worldPos.x - mySnake.segs[0]);
+
+  // If Q timer is active, lock to the angle at the moment Q was pressed
+  if (qHoldStart !== null && lockedAngle === null) {
+    lockedAngle = mySnake.angle;
+  }
+
+  const angle = (lockedAngle !== null)
+    ? lockedAngle
+    : Math.atan2(
+        renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).y - mySnake.segs[1],
+        renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).x - mySnake.segs[0]
+      );
   socket.emit(CONSTANTS.EVENTS.INPUT, { angle, boost: boostActive });
 }
 setInterval(sendInput, 1000 / 60);

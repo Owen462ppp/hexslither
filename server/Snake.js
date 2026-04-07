@@ -27,6 +27,7 @@ class Snake {
       });
     }
     this.pendingGrowth = 0;
+    this.boostDrops = []; // food positions to spawn when boosting
   }
 
   get head() { return this.segments[0]; }
@@ -77,7 +78,8 @@ class Snake {
         this._boostTick++;
         if (this._boostTick >= 4) {
           this._boostTick = 0;
-          this.segments.pop();
+          const dropped = this.segments.pop();
+          if (dropped) this.boostDrops.push({ x: dropped.x, y: dropped.y });
         }
       } else {
         this.boosting = false;

@@ -53,6 +53,28 @@
     </div>
   </div>
 
+  <!-- Q Cash-out timer ring -->
+  <div id="q-timer">
+    <svg width="80" height="80" viewBox="0 0 80 80">
+      <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="6"/>
+      <circle id="q-timer-ring" cx="40" cy="40" r="34" fill="none" stroke="#14F195" stroke-width="6"
+        stroke-dasharray="213.6" stroke-dashoffset="213.6" stroke-linecap="round"
+        transform="rotate(-90 40 40)"/>
+      <text x="40" y="46" text-anchor="middle" font-size="22" font-weight="bold" fill="#14F195" font-family="Segoe UI, sans-serif">Q</text>
+    </svg>
+    <div id="q-timer-label">Hold to cash out</div>
+  </div>
+
+  <!-- Cash-out overlay -->
+  <div id="cashout-screen">
+    <h2>CASHED OUT</h2>
+    <p>Your snake has been secured</p>
+    <div class="cashout-btns">
+      <button class="btn btn-spectate" id="btn-cashout-spectate">👁 Spectate</button>
+      <button class="btn btn-lobby" id="btn-cashout-lobby">← Lobby</button>
+    </div>
+  </div>
+
   <!-- Spectate HUD -->
   <div id="spectate-bar">
     <button id="spectate-prev">&#8592;</button>
