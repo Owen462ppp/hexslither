@@ -26,6 +26,13 @@ body {
   z-index: 0;
 }
 
+#bg-canvas-2 {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: none;
+}
+
 #snake-canvas {
   position: fixed;
   inset: 0;
@@ -722,18 +729,23 @@ body {
 .slide-out-right { animation: slideOutRight 0.32s cubic-bezier(0.4,0,0.6,1) forwards; }
 .slide-in-left   { animation: slideInLeft   0.32s cubic-bezier(0.4,0,0.6,1) forwards; }
 
-/* ── Lobby 2 (Arena) — purple/blue accent ──────────────────────────────── */
+/* ── Lobby 2 (Arena) — light agar.io world, purple/blue accent ─────────── */
 #lobby-screen-2 {
-  --accent: #818cf8;
-  --accent-glow: rgba(129,140,248,0.45);
+  --accent: #6366f1;
+  --accent-glow: rgba(99,102,241,0.45);
 }
-#lobby-screen-2 .game-title        { color: #fff; }
+/* Cards get a stronger bg + border so they're legible on the white world */
+#lobby-screen-2 .card              { background: rgba(10,10,20,0.82); border-color: rgba(99,102,241,0.28); backdrop-filter: blur(8px); }
+#lobby-screen-2 .game-title        { color: #111; text-shadow: 0 2px 12px rgba(0,0,0,0.15); }
 #lobby-screen-2 .game-title span   { color: var(--accent); }
+#lobby-screen-2 .game-subtitle     { color: #444; }
 #lobby-screen-2 .btn-play          { background: linear-gradient(135deg, #6366f1, #818cf8); box-shadow: 0 4px 24px rgba(99,102,241,0.45); }
 #lobby-screen-2 .btn-play:hover    { box-shadow: 0 6px 30px rgba(99,102,241,0.6); }
 #lobby-screen-2 .btn-lobby-type.active { background: rgba(99,102,241,0.25); border-color: #6366f1; color: #a5b4fc; }
-#lobby-screen-2 .card              { border-color: rgba(99,102,241,0.18); }
 #lobby-screen-2 .btn-add-funds     { background: linear-gradient(135deg,#6366f1,#818cf8); }
 #lobby-screen-2 .btn-cash-out      { border-color: rgba(99,102,241,0.35); color: #a5b4fc; }
 #lobby-screen-2 .stat-val          { color: #818cf8; }
 #lobby-screen-2 .lobby-title-block { text-align: center; }
+/* Nav arrows switch to dark on light background */
+#lobby-screen-2 ~ .lobby-nav-arrow svg polyline { stroke: #6366f1; }
+#lobby-screen-2 ~ .lobby-nav-arrow span          { color: #6366f1; text-shadow: none; }

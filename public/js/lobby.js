@@ -75,6 +75,190 @@
   window.addEventListener('resize', draw);
 })();
 
+// ─── Agar.io lobby background ─────────────────────────────────────────────────
+(function() {
+  const canvas = document.getElementById('bg-canvas-2');
+  const ctx    = canvas.getContext('2d');
+
+  const CELL_COLORS = [
+    '#FF2244','#FF6600','#FFCC00','#33CC33','#00CCFF',
+    '#0055FF','#CC33FF','#FF33CC','#00EE88','#FF4488',
+    '#FF3300','#66EE00','#00AAFF','#FFAA00','#AA44FF',
+  ];
+  const NAMES = [
+    'BigBug','~haii~','nomnom','destroyer','splitking',
+    'chomper','hungry','agarbot','JiriK','BigCell',
+    'eater','bulge','nucleus','slurp','macro',
+  ];
+
+  // Helper — slightly darken a hex color for the cell border
+  function darken(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    const r = Math.max(0, (n >> 16) - 55);
+    const g = Math.max(0, ((n >> 8) & 0xff) - 55);
+    const b = Math.max(0, (n & 0xff) - 55);
+    return `rgb(${r},${g},${b})`;
+  }
+
+  // Build cells — mix of large (named) and small (food dots)
+  const cells = [];
+
+  function makeCells() {
+    cells.length = 0;
+    const W = canvas.width, H = canvas.height;
+
+    // Large / medium player cells
+    const playerCount = 12;
+    for (let i = 0; i < playerCount; i++) {
+      const r = 28 + Math.random() * 110;
+      cells.push({
+        x:     r + Math.random() * (W - r * 2),
+        y:     r + Math.random() * (H - r * 2),
+        vx:    (Math.random() - 0.5) * 0.45,
+        vy:    (Math.random() - 0.5) * 0.45,
+        r,
+        color: CELL_COLORS[i % CELL_COLORS.length],
+        name:  r > 50 ? NAMES[i % NAMES.length] : '',
+        phase: Math.random() * Math.PI * 2,
+        wobbleSpeed: 0.4 + Math.random() * 0.6,
+      });
+    }
+
+    // Small food pellets
+    for (let i = 0; i < 60; i++) {
+      cells.push({
+        x:     Math.random() * W,
+        y:     Math.random() * H,
+        vx:    (Math.random() - 0.5) * 0.12,
+        vy:    (Math.random() - 0.5) * 0.12,
+        r:     4 + Math.random() * 7,
+        color: CELL_COLORS[Math.floor(Math.random() * CELL_COLORS.length)],
+        name:  '',
+        phase: Math.random() * Math.PI * 2,
+        wobbleSpeed: 1,
+      });
+    }
+  }
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    makeCells();
+  }
+
+  function drawGrid() {
+    const W = canvas.width, H = canvas.height;
+    const STEP = 52;
+    ctx.strokeStyle = 'rgba(100,140,200,0.18)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = 0; x <= W; x += STEP) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+    for (let y = 0; y <= H; y += STEP) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+    ctx.stroke();
+  }
+
+  function drawCell(cell, t) {
+    const { x, y, r, color, name, phase, wobbleSpeed } = cell;
+    const pts = Math.max(12, Math.floor(r * 0.9));
+    const wobbleAmp = r < 12 ? 0 : r * 0.035;
+
+    ctx.beginPath();
+    for (let i = 0; i <= pts; i++) {
+      const angle  = (i / pts) * Math.PI * 2;
+      const wobble = wobbleAmp * Math.sin(angle * 4 + t * 0.0008 * wobbleSpeed + phase);
+      const cr = r + wobble;
+      const px = x + Math.cos(angle) * cr;
+      const py = y + Math.sin(angle) * cr;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+
+    // Shadow
+    ctx.shadowColor = 'rgba(0,0,0,0.18)';
+    ctx.shadowBlur  = r * 0.35;
+    ctx.fillStyle   = color;
+    ctx.fill();
+    ctx.shadowBlur  = 0;
+
+    // Darker border (like agar.io cells)
+    ctx.strokeStyle = darken(color);
+    ctx.lineWidth   = Math.max(1.5, r * 0.055);
+    ctx.stroke();
+
+    // Highlight glint — upper-left bright spot
+    if (r > 10) {
+      const gx = x - r * 0.28, gy = y - r * 0.28;
+      const gr = Math.min(r * 0.55, r - 2);
+      const grad = ctx.createRadialGradient(gx, gy, 0, gx, gy, gr);
+      grad.addColorStop(0,   'rgba(255,255,255,0.40)');
+      grad.addColorStop(0.6, 'rgba(255,255,255,0.08)');
+      grad.addColorStop(1,   'rgba(255,255,255,0)');
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+
+    // Name label for big enough cells
+    if (name && r > 38) {
+      const fontSize = Math.round(Math.min(r * 0.38, 28));
+      ctx.font         = `bold ${fontSize}px Segoe UI, sans-serif`;
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'middle';
+      // Shadow text
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillText(name, x + 1, y + 1);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(name, x, y);
+    }
+  }
+
+  let rafId = null;
+
+  function tick(t) {
+    const W = canvas.width, H = canvas.height;
+
+    // Light agar.io background
+    ctx.fillStyle = '#f0f4f8';
+    ctx.fillRect(0, 0, W, H);
+    drawGrid();
+
+    // Sort small-to-large so big cells render on top
+    cells.sort((a, b) => a.r - b.r);
+
+    for (const cell of cells) {
+      // Move
+      cell.x += cell.vx;
+      cell.y += cell.vy;
+
+      // Bounce off edges
+      if (cell.x - cell.r < 0)  { cell.x = cell.r;     cell.vx *= -1; }
+      if (cell.x + cell.r > W)  { cell.x = W - cell.r; cell.vx *= -1; }
+      if (cell.y - cell.r < 0)  { cell.y = cell.r;     cell.vy *= -1; }
+      if (cell.y + cell.r > H)  { cell.y = H - cell.r; cell.vy *= -1; }
+
+      drawCell(cell, t);
+    }
+
+    rafId = requestAnimationFrame(tick);
+  }
+
+  window.addEventListener('resize', resize);
+  resize(); // init cells
+
+  // Exposed controls so switchLobby() can start/stop this canvas
+  window._agarBg = {
+    start() {
+      canvas.style.display = 'block';
+      if (!rafId) rafId = requestAnimationFrame(tick);
+    },
+    stop() {
+      canvas.style.display = 'none';
+      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    },
+  };
+})();
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 const socket = io();
 let account = null;
@@ -136,11 +320,10 @@ function hideArrows() {
 }
 
 function switchLobby(direction) {
-  // direction: 1 = go right (next), -1 = go left (prev)
-  const total = lobbies.length;
+  const total     = lobbies.length;
   const nextIndex = ((currentLobby - 1 + direction + total) % total);
-  const current = lobbies[currentLobby - 1];
-  const next    = lobbies[nextIndex];
+  const current   = lobbies[currentLobby - 1];
+  const next      = lobbies[nextIndex];
 
   const outClass = direction === 1 ? 'slide-out-left'  : 'slide-out-right';
   const inClass  = direction === 1 ? 'slide-in-right'  : 'slide-in-left';
@@ -153,6 +336,14 @@ function switchLobby(direction) {
     current.classList.remove(outClass);
     next.classList.remove('hidden');
     next.classList.add(inClass);
+
+    // Swap backgrounds
+    const goingToArena = nextIndex === 1;
+    document.getElementById('bg-canvas').style.display   = goingToArena ? 'none'  : 'block';
+    document.getElementById('snake-canvas').style.display = goingToArena ? 'none'  : 'block';
+    if (goingToArena) { window._agarBg.start(); }
+    else              { window._agarBg.stop();  }
+
     setTimeout(() => {
       next.classList.remove(inClass);
       showArrows();
