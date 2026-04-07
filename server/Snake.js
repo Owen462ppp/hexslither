@@ -105,7 +105,7 @@ class Snake {
 
   grow(amount) {
     this.pendingGrowth += amount * C.SEGMENTS_PER_FOOD;
-    this.score += amount;
+    this.score = Math.round(this.score + amount);
   }
 
   die() {

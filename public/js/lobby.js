@@ -117,10 +117,59 @@ socket.on(CONSTANTS.EVENTS.WALLET_BALANCE, ({ balance }) => {
 
 socket.on(CONSTANTS.EVENTS.ERROR, ({ message }) => alert('Error: ' + message));
 
+// ─── Lobby navigation ─────────────────────────────────────────────────────────
+let currentLobby = 1;
+const lobbies = [
+  document.getElementById('lobby-screen'),
+  document.getElementById('lobby-screen-2'),
+];
+const arrowLeft  = document.getElementById('lobby-arrow-left');
+const arrowRight = document.getElementById('lobby-arrow-right');
+
+function showArrows() {
+  arrowLeft.classList.add('visible');
+  arrowRight.classList.add('visible');
+}
+function hideArrows() {
+  arrowLeft.classList.remove('visible');
+  arrowRight.classList.remove('visible');
+}
+
+function switchLobby(direction) {
+  // direction: 1 = go right (next), -1 = go left (prev)
+  const total = lobbies.length;
+  const nextIndex = ((currentLobby - 1 + direction + total) % total);
+  const current = lobbies[currentLobby - 1];
+  const next    = lobbies[nextIndex];
+
+  const outClass = direction === 1 ? 'slide-out-left'  : 'slide-out-right';
+  const inClass  = direction === 1 ? 'slide-in-right'  : 'slide-in-left';
+
+  hideArrows();
+  current.classList.add(outClass);
+
+  setTimeout(() => {
+    current.classList.add('hidden');
+    current.classList.remove(outClass);
+    next.classList.remove('hidden');
+    next.classList.add(inClass);
+    setTimeout(() => {
+      next.classList.remove(inClass);
+      showArrows();
+    }, 340);
+  }, 320);
+
+  currentLobby = nextIndex + 1;
+}
+
+arrowRight.addEventListener('click', () => switchLobby(1));
+arrowLeft.addEventListener('click',  () => switchLobby(-1));
+
 // ─── Lobby UI ─────────────────────────────────────────────────────────────────
 function showLobby() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('lobby-screen').classList.remove('hidden');
+  showArrows();
 
   // Avatar
   const img = document.getElementById('account-avatar-img');

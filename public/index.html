@@ -164,6 +164,114 @@
   <!-- Hidden balance sidebar (kept for JS compatibility) -->
   <div style="display:none" id="balance-sidebar"><span id="sidebar-balance">0.0000</span></div>
 
+  <!-- ── Lobby nav arrows ───────────────────────────────────────────────── -->
+  <button class="lobby-nav-arrow lobby-nav-arrow-left" id="lobby-arrow-left" aria-label="Previous lobby">
+    <svg viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <polyline points="24,8 12,19 24,30" stroke="#14F195" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span>PREV</span>
+  </button>
+  <button class="lobby-nav-arrow lobby-nav-arrow-right" id="lobby-arrow-right" aria-label="Next lobby">
+    <svg viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <polyline points="14,8 26,19 14,30" stroke="#14F195" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span>NEXT</span>
+  </button>
+
+  <!-- ── Lobby 2 (Arena) ────────────────────────────────────────────────── -->
+  <div id="lobby-screen-2" class="hidden lobby-page">
+    <div class="lobby-title-block">
+      <h1 class="game-title">DUEL<span>ARENA</span></h1>
+      <p class="game-subtitle">RANKED COMPETITION</p>
+    </div>
+
+    <div class="lobby-grid">
+
+      <!-- Left column -->
+      <div class="lobby-col">
+        <div class="card">
+          <button class="btn-leaderboard-open" style="pointer-events:none;opacity:0.5">🏆 Rankings</button>
+          <ul class="leaderboard-list">
+            <li><span class="lb-name" style="color:#444">Coming soon</span></li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="account-row">
+            <div class="account-avatar">?</div>
+            <div class="account-info">
+              <div class="account-name">Player</div>
+              <div class="account-email">Arena Mode</div>
+            </div>
+          </div>
+          <div class="account-stats">
+            <div class="stat-box"><div class="stat-val">—</div><div class="stat-lbl">Rank</div></div>
+            <div class="stat-box"><div class="stat-val">—</div><div class="stat-lbl">Wins</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center column -->
+      <div class="lobby-col lobby-col-center">
+        <div class="card play-card">
+          <div class="play-profile">
+            <div class="play-avatar-wrap">
+              <span class="play-avatar-fallback">?</span>
+            </div>
+            <span class="play-username">Player</span>
+          </div>
+
+          <input type="text" class="name-input" placeholder="Display name..." maxlength="20" disabled style="opacity:0.5">
+
+          <div class="lobby-type-row">
+            <button class="btn-lobby-type active" disabled>Solo</button>
+            <button class="btn-lobby-type" disabled>Duo</button>
+            <button class="btn-lobby-type" disabled>Squad</button>
+          </div>
+
+          <button class="btn-play" style="pointer-events:none;opacity:0.6">&#9654; COMING SOON</button>
+
+          <div class="server-stats-row">
+            <div class="server-stat"><div class="server-stat-val">—</div><div class="server-stat-lbl">In Queue</div></div>
+            <div class="server-stat-divider"></div>
+            <div class="server-stat"><div class="server-stat-val">—</div><div class="server-stat-lbl">Active</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right column -->
+      <div class="lobby-col">
+        <div class="card wallet-card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <span class="card-icon">🏅</span>
+              <span class="card-title">Season Pass</span>
+            </div>
+          </div>
+          <div class="wallet-balance-block">
+            <div class="wallet-balance-usd" style="opacity:0.5">Inactive</div>
+            <div class="wallet-balance-sol" style="opacity:0.5">— pts</div>
+          </div>
+          <div class="wallet-action-row">
+            <button class="btn-add-funds" disabled style="opacity:0.5">Upgrade</button>
+            <button class="btn-cash-out" disabled style="opacity:0.5">History</button>
+          </div>
+        </div>
+
+        <div class="card customize-card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <span class="card-icon">🎖️</span>
+              <span class="card-title">Achievements</span>
+            </div>
+          </div>
+          <div style="text-align:center;padding:18px 0;color:#444;font-size:0.85rem">Coming soon</div>
+          <button class="btn-change-appearance" disabled style="opacity:0.5">View All</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <!-- ── Modals ──────────────────────────────────────────────────────────── -->
 
   <!-- All-Time Leaderboard Modal -->
