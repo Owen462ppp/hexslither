@@ -771,8 +771,8 @@ body {
 #lobby-screen-2 .name-input::placeholder { color: #9ca3af; }
 
 /* Lobby type buttons */
-#lobby-screen-2 .btn-lobby-type  { background: #f3f4f6; color: #374151; border-color: #d1d5db; }
-#lobby-screen-2 .btn-lobby-type.active { background: rgba(99,102,241,0.15); border-color: #6366f1; color: #6366f1; }
+#lobby-screen-2 .btn-lobby-type-2  { background: #f3f4f6; color: #374151; border-color: #d1d5db; border: 1px solid; border-radius: 8px; padding: 8px 14px; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+#lobby-screen-2 .btn-lobby-type-2.active { background: rgba(99,102,241,0.15); border-color: #6366f1; color: #6366f1; }
 
 /* Play button */
 #lobby-screen-2 .btn-play { background: linear-gradient(135deg,#6366f1,#818cf8); color: #fff; box-shadow: 0 4px 20px rgba(99,102,241,0.35); }

@@ -179,11 +179,11 @@
     <span>NEXT</span>
   </button>
 
-  <!-- ── Lobby 2 (Arena) ────────────────────────────────────────────────── -->
+  <!-- ── Lobby 2 (DuelCell — agar.io game) ────────────────────────────── -->
   <div id="lobby-screen-2" class="hidden lobby-page">
     <div class="lobby-title-block">
-      <h1 class="game-title">DUEL<span>ARENA</span></h1>
-      <p class="game-subtitle">RANKED COMPETITION</p>
+      <h1 class="game-title">DUEL<span>CELL</span></h1>
+      <p class="game-subtitle">MULTIPLAYER CELL ARENA</p>
     </div>
 
     <div class="lobby-grid">
@@ -191,23 +191,31 @@
       <!-- Left column -->
       <div class="lobby-col">
         <div class="card">
-          <button class="btn-leaderboard-open" style="pointer-events:none;opacity:0.5">🏆 Rankings</button>
-          <ul class="leaderboard-list">
-            <li><span class="lb-name" style="color:#444">Coming soon</span></li>
+          <button class="btn-leaderboard-open" id="btn-lobby2-leaderboard">🏆 Leaderboard</button>
+          <ul class="leaderboard-list" id="lobby2-leaderboard">
+            <li><span class="lb-name" style="color:#9ca3af">No scores yet</span></li>
           </ul>
         </div>
         <div class="card">
           <div class="account-row">
-            <div class="account-avatar">?</div>
+            <div class="account-avatar" id="account-avatar-fallback-2">?</div>
+            <img class="account-avatar-img hidden" id="account-avatar-img-2" src="" alt="">
             <div class="account-info">
-              <div class="account-name">Player</div>
-              <div class="account-email">Arena Mode</div>
+              <div class="account-name" id="account-name-2">Player</div>
+              <div class="account-email" id="account-email-2"></div>
             </div>
           </div>
           <div class="account-stats">
-            <div class="stat-box"><div class="stat-val">—</div><div class="stat-lbl">Rank</div></div>
-            <div class="stat-box"><div class="stat-val">—</div><div class="stat-lbl">Wins</div></div>
+            <div class="stat-box">
+              <div class="stat-val" id="stat-highscore-2">0</div>
+              <div class="stat-lbl">Best Score</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val" id="stat-games-2">0</div>
+              <div class="stat-lbl">Games</div>
+            </div>
           </div>
+          <a href="/auth/logout" class="btn-signout">Sign Out</a>
         </div>
       </div>
 
@@ -216,25 +224,32 @@
         <div class="card play-card">
           <div class="play-profile">
             <div class="play-avatar-wrap">
-              <span class="play-avatar-fallback">?</span>
+              <img id="play-avatar-img-2" class="play-avatar-img hidden" src="" alt="">
+              <span id="play-avatar-fallback-2" class="play-avatar-fallback">?</span>
             </div>
-            <span class="play-username">Player</span>
+            <span class="play-username" id="play-username-2">Player</span>
           </div>
 
-          <input type="text" class="name-input" placeholder="Display name..." maxlength="20" disabled style="opacity:0.5">
+          <input type="text" class="name-input" id="player-name-2" placeholder="Display name..." maxlength="20">
 
-          <div class="lobby-type-row">
-            <button class="btn-lobby-type active" disabled>Solo</button>
-            <button class="btn-lobby-type" disabled>Duo</button>
-            <button class="btn-lobby-type" disabled>Squad</button>
+          <div class="lobby-type-row" id="lobby2-type-row">
+            <button class="btn-lobby-type-2 active" data-type="free">Free Play</button>
+            <button class="btn-lobby-type-2" data-type="dime">10¢</button>
+            <button class="btn-lobby-type-2" data-type="dollar">$1</button>
           </div>
 
-          <button class="btn-play" style="pointer-events:none;opacity:0.6">&#9654; COMING SOON</button>
+          <button class="btn-play" id="btn-play-2">&#9654; FREE PLAY</button>
 
           <div class="server-stats-row">
-            <div class="server-stat"><div class="server-stat-val">—</div><div class="server-stat-lbl">In Queue</div></div>
+            <div class="server-stat">
+              <div class="server-stat-val" id="stat-players-ingame-2">0</div>
+              <div class="server-stat-lbl">In Game</div>
+            </div>
             <div class="server-stat-divider"></div>
-            <div class="server-stat"><div class="server-stat-val">—</div><div class="server-stat-lbl">Active</div></div>
+            <div class="server-stat">
+              <div class="server-stat-val" id="stat-players-inlobby-2">0</div>
+              <div class="server-stat-lbl">In Lobby</div>
+            </div>
           </div>
         </div>
       </div>
@@ -244,29 +259,31 @@
         <div class="card wallet-card">
           <div class="card-header">
             <div class="card-header-left">
-              <span class="card-icon">🏅</span>
-              <span class="card-title">Season Pass</span>
+              <span class="card-icon">💳</span>
+              <span class="card-title">Wallet</span>
             </div>
+            <button class="btn-text-sm" id="btn-refresh-balance-2">↻ Refresh</button>
           </div>
           <div class="wallet-balance-block">
-            <div class="wallet-balance-usd" style="opacity:0.5">Inactive</div>
-            <div class="wallet-balance-sol" style="opacity:0.5">— pts</div>
+            <div class="wallet-balance-usd" id="game-balance-usd-2">CA$0.00</div>
+            <div class="wallet-balance-sol" id="game-balance-2">0.0000 SOL</div>
           </div>
           <div class="wallet-action-row">
-            <button class="btn-add-funds" disabled style="opacity:0.5">Upgrade</button>
-            <button class="btn-cash-out" disabled style="opacity:0.5">History</button>
+            <button class="btn-add-funds" id="btn-add-funds-2">Add Funds</button>
+            <button class="btn-cash-out" id="btn-withdraw-2">Cash Out</button>
           </div>
+          <div class="wallet-status-msg" id="wallet-status-2"></div>
         </div>
 
         <div class="card customize-card">
           <div class="card-header">
             <div class="card-header-left">
-              <span class="card-icon">🎖️</span>
-              <span class="card-title">Achievements</span>
+              <span class="card-icon">🎨</span>
+              <span class="card-title">Customize</span>
             </div>
           </div>
-          <div style="text-align:center;padding:18px 0;color:#444;font-size:0.85rem">Coming soon</div>
-          <button class="btn-change-appearance" disabled style="opacity:0.5">View All</button>
+          <canvas id="customize-preview-2" class="cust-mini-canvas"></canvas>
+          <button class="btn-change-appearance" id="btn-change-appearance-2">Change Appearance</button>
         </div>
       </div>
 

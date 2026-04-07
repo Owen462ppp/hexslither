@@ -485,6 +485,24 @@ function showLobby() {
   if (account.avatar) { pai.src = account.avatar; pai.classList.remove('hidden'); paf.classList.add('hidden'); }
   else { paf.textContent = (account.name || '?')[0].toUpperCase(); }
 
+  // Populate lobby 2 account fields with same data
+  document.getElementById('account-name-2').textContent  = account.name || 'Player';
+  document.getElementById('account-email-2').textContent = account.email || '';
+  const img2 = document.getElementById('account-avatar-img-2');
+  const fb2  = document.getElementById('account-avatar-fallback-2');
+  if (account.avatar) {
+    img2.src = account.avatar; img2.classList.remove('hidden'); fb2.classList.add('hidden');
+  } else {
+    fb2.textContent = (account.name || '?')[0].toUpperCase();
+  }
+  const pai2 = document.getElementById('play-avatar-img-2');
+  const paf2 = document.getElementById('play-avatar-fallback-2');
+  if (account.avatar) { pai2.src = account.avatar; pai2.classList.remove('hidden'); paf2.classList.add('hidden'); }
+  else { paf2.textContent = (account.name || '?')[0].toUpperCase(); }
+  const savedName2 = localStorage.getItem('duelseries_playername');
+  document.getElementById('player-name-2').value         = savedName2 || account.name || 'Player';
+  document.getElementById('play-username-2').textContent = savedName2 || account.name || 'Player';
+
   socket.emit('lobby:join', { googleId: account.googleId });
 }
 
@@ -574,22 +592,26 @@ fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=ca
 
 function setBalance(bal) {
   const sol = parseFloat(bal) || 0;
-  document.getElementById('game-balance').textContent = sol.toFixed(4) + ' SOL';
-  const usdEl = document.getElementById('game-balance-usd');
-  if (usdEl) {
-    if (solPriceUsd !== null) {
-      usdEl.textContent = 'CA$' + (sol * solPriceUsd).toFixed(2);
-    } else {
-      usdEl.textContent = 'CA$—';
-    }
-  }
+  const cadStr = solPriceUsd !== null ? 'CA$' + (sol * solPriceUsd).toFixed(2) : 'CA$—';
+  const solStr = sol.toFixed(4) + ' SOL';
+  // Update both lobbies
+  ['game-balance', 'game-balance-2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = solStr;
+  });
+  ['game-balance-usd', 'game-balance-usd-2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = cadStr;
+  });
   const sb = document.getElementById('sidebar-balance');
   if (sb) sb.textContent = sol.toFixed(4);
 }
 
 function walletStatus(msg, isError) {
-  const el = document.getElementById('wallet-status');
-  if (el) { el.textContent = msg; el.style.color = isError ? '#ff6666' : '#14F195'; }
+  ['wallet-status', 'wallet-status-2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = msg; el.style.color = isError ? '#ff6666' : '#14F195'; }
+  });
 }
 
 fetch('/auth/me').then(r => r.json()).then(({ account: acc }) => {
@@ -739,7 +761,78 @@ document.getElementById('confirm-withdraw').addEventListener('click', async () =
   document.getElementById('withdraw-wallet').value = '';
 });
 
-// Save custom name to localStorage as user types
+// ─── Lobby 2 wallet buttons (share same modals/functions as lobby 1) ──────────
+document.getElementById('btn-refresh-balance-2').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-refresh-balance-2');
+  btn.textContent = '↻ Checking...';
+  btn.disabled = true;
+  try {
+    const res = await fetch('/wallet/deposit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+    if (res.status === 202) {
+      const meRes = await fetch('/auth/me');
+      const { account: acc } = await meRes.json();
+      if (acc) setBalance(acc.balance || 0);
+      walletStatus('Balance up to date');
+    } else {
+      const data = await res.json();
+      if (data.error) walletStatus(data.error, true);
+      else { setBalance(data.balance); walletStatus(`Deposit received: ${data.amount.toFixed(4)} SOL ✓`); }
+    }
+  } catch (e) { walletStatus('Refresh failed', true); }
+  btn.textContent = '↻ Refresh';
+  btn.disabled = false;
+});
+
+document.getElementById('btn-add-funds-2').addEventListener('click', () =>
+  document.getElementById('btn-add-funds').click()
+);
+document.getElementById('btn-withdraw-2').addEventListener('click', () =>
+  document.getElementById('modal-withdraw').classList.add('active')
+);
+
+// ─── Lobby 2 lobby type selection ─────────────────────────────────────────────
+const LOBBY_LABELS_2 = { free: 'FREE PLAY', dime: '▶ 10¢ LOBBY', dollar: '▶ $1 LOBBY' };
+let selectedLobbyType2 = localStorage.getItem('duelseries_lobbytype2') || 'free';
+
+(function restoreLobby2Selection() {
+  const btn = document.querySelector(`.btn-lobby-type-2[data-type="${selectedLobbyType2}"]`);
+  if (btn) {
+    document.querySelectorAll('.btn-lobby-type-2').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const pb = document.getElementById('btn-play-2');
+    if (pb) pb.textContent = (selectedLobbyType2 === 'free' ? '▶ ' : '') + LOBBY_LABELS_2[selectedLobbyType2];
+  }
+})();
+
+document.querySelectorAll('.btn-lobby-type-2').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.btn-lobby-type-2').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedLobbyType2 = btn.dataset.type;
+    localStorage.setItem('duelseries_lobbytype2', selectedLobbyType2);
+    const pb = document.getElementById('btn-play-2');
+    pb.textContent = (selectedLobbyType2 === 'free' ? '▶ ' : '') + LOBBY_LABELS_2[selectedLobbyType2];
+  });
+});
+
+document.getElementById('btn-play-2').addEventListener('click', () => {
+  const name = document.getElementById('player-name-2').value.trim() || account?.name || 'Player';
+  localStorage.setItem('duelseries_playername', name);
+  sessionStorage.setItem('playerName',    name);
+  sessionStorage.setItem('walletAddress', account?.walletAddress || '');
+  sessionStorage.setItem('googleId',      account?.googleId || '');
+  sessionStorage.setItem('lobbyType',     selectedLobbyType2);
+  sessionStorage.setItem('gameMode',      'cell');
+  window.location.href = '/agar.html'; // future agar.io game page
+});
+
+document.getElementById('player-name-2').addEventListener('input', function() {
+  const v = this.value.trim();
+  if (v) localStorage.setItem('duelseries_playername', v);
+  document.getElementById('play-username-2').textContent = v || account?.name || 'Player';
+});
+
+// ─── Save custom name to localStorage as user types ───────────────────────────
 document.getElementById('player-name').addEventListener('input', function() {
   const v = this.value.trim();
   if (v) localStorage.setItem('duelseries_playername', v);
@@ -921,20 +1014,62 @@ document.getElementById('btn-play').addEventListener('click', () => {
     }
   }
 
+  // Which lobby opened the customize modal (1=snake preview, 2=circle preview)
+  let custLobby = 1;
+
+  function darkenHex(hex) {
+    const n = parseInt(hex.replace('#',''), 16);
+    return `rgb(${Math.max(0,(n>>16)-60)},${Math.max(0,((n>>8)&0xff)-60)},${Math.max(0,(n&0xff)-60)})`;
+  }
+
+  function drawMiniCell(canvas, color) {
+    const W = canvas.width  = canvas.offsetWidth  || 400;
+    const H = canvas.height = canvas.offsetHeight || 130;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, W, H);
+    const r = Math.min(W, H) * 0.38;
+    const cx = W / 2, cy = H / 2;
+    // Shadow
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.22)';
+    ctx.shadowBlur  = r * 0.45;
+    ctx.shadowOffsetY = r * 0.08;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = color; ctx.fill();
+    ctx.restore();
+    // Dark border
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = darkenHex(color);
+    ctx.lineWidth = r * 0.08; ctx.stroke();
+    // Radial glint
+    const gx = cx - r * 0.28, gy = cy - r * 0.28;
+    const gl = ctx.createRadialGradient(gx, gy, 0, gx, gy, r * 0.72);
+    gl.addColorStop(0,   'rgba(255,255,255,0.52)');
+    gl.addColorStop(0.5, 'rgba(255,255,255,0.12)');
+    gl.addColorStop(1,   'rgba(255,255,255,0)');
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = gl; ctx.fill();
+  }
+
   function refreshMiniCanvas() {
     const skin = SKINS.find(s => s.id === equippedId) || SKINS[0];
-    const c = document.getElementById('customize-preview');
-    if (c) drawMiniSnake(c, skin.color);
+    const c1 = document.getElementById('customize-preview');
+    if (c1) drawMiniSnake(c1, skin.color);
+    const c2 = document.getElementById('customize-preview-2');
+    if (c2) drawMiniCell(c2, skin.color);
   }
 
   // ── Modal preview ───────────────────────────────────────────────────────────
-  function drawModalSnake(color) {
+  function drawModalPreview(color) {
     const canvas = document.getElementById('cust-snake-canvas');
     if (!canvas) return;
     canvas.width  = canvas.offsetWidth  || 820;
     canvas.height = canvas.offsetHeight || 130;
-    drawMiniSnake(canvas, color);
+    if (custLobby === 2) drawMiniCell(canvas, color);
+    else drawMiniSnake(canvas, color);
   }
+
+  function drawModalSnake(color) { drawModalPreview(color); }
 
   // ── Grid rendering ──────────────────────────────────────────────────────────
   function renderGrid() {
@@ -969,7 +1104,7 @@ document.getElementById('btn-play').addEventListener('click', () => {
     document.querySelectorAll('.cust-swatch').forEach(el => el.classList.toggle('cs-sel', el.dataset.id === id));
     updateDetails();
     const skin = SKINS.find(s => s.id === id);
-    if (skin) drawModalSnake(skin.color);
+    if (skin) drawModalPreview(skin.color);
   }
 
   function updateDetails() {
@@ -1070,7 +1205,8 @@ document.getElementById('btn-play').addEventListener('click', () => {
   });
 
   // ── Open / close ─────────────────────────────────────────────────────────────
-  document.getElementById('btn-change-appearance').addEventListener('click', () => {
+  function openCustomize(lobbyNum) {
+    custLobby = lobbyNum;
     selectedId = equippedId;
     currentCat = 'skins';
     document.querySelectorAll('.cust-cat').forEach(b => b.classList.toggle('cc-active', b.dataset.cat === 'skins'));
@@ -1079,9 +1215,12 @@ document.getElementById('btn-play').addEventListener('click', () => {
     renderGrid();
     requestAnimationFrame(() => {
       const skin = SKINS.find(s => s.id === equippedId) || SKINS[0];
-      drawModalSnake(skin.color);
+      drawModalPreview(skin.color);
     });
-  });
+  }
+
+  document.getElementById('btn-change-appearance').addEventListener('click', () => openCustomize(1));
+  document.getElementById('btn-change-appearance-2').addEventListener('click', () => openCustomize(2));
 
   document.getElementById('close-customize').addEventListener('click', () => {
     document.getElementById('modal-customize').classList.remove('active');
