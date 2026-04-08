@@ -68,9 +68,15 @@ socket.on(CONSTANTS.EVENTS.SNAPSHOT, (snap) => {
 
 socket.on(CONSTANTS.EVENTS.PLAYER_DIED, ({ score, length }) => {
   isDead = true;
+  // Clear any cashout earned message
+  const earnedEl = document.getElementById('cashout-earned-inline');
+  if (earnedEl) earnedEl.textContent = '';
   document.getElementById('death-screen').classList.add('active');
   document.getElementById('death-length').textContent = length;
   document.getElementById('death-score').textContent = score;
+  // Paid lobbies: hide Play Again — must return to lobby to repay entry fee
+  const respawnBtn = document.getElementById('btn-respawn');
+  if (respawnBtn) respawnBtn.style.display = lobbyType === 'free' ? '' : 'none';
 });
 
 // --- Interpolation ---
@@ -197,36 +203,35 @@ function cancelQTimer() {
 
 function triggerCashOut() {
   cashedOut = true;
-  // Capture the snake's current angle to lock it
+  isDead = true;
   const mySnake = displayState.snakes.find(s => s.id === myId);
   if (mySnake) lockedAngle = mySnake.angle;
 
-  // Emit cashout to server immediately
+  qTimerEl.classList.remove('active');
+  qTimerText.textContent = 'Q';
+
+  // Emit cashout to server — snake is killed server-side
   socket.emit('cashout');
 
-  // 3-second countdown before the cashout screen appears
-  let remaining = 3;
-  qRingEl.style.strokeDashoffset = 0; // keep ring full
-  qTimerText.textContent = remaining;
-
-  const countdownInterval = setInterval(() => {
-    remaining--;
-    if (remaining > 0) {
-      qTimerText.textContent = remaining;
-    } else {
-      clearInterval(countdownInterval);
-      qTimerEl.classList.remove('active');
-      qTimerText.textContent = 'Q';
-      document.getElementById('cashout-screen').classList.add('active');
-    }
-  }, 1000);
+  // Show death screen immediately (same as dying)
+  document.getElementById('death-score').textContent = mySnake ? Math.floor(mySnake.score) : 0;
+  document.getElementById('death-length').textContent = mySnake ? mySnake.length : 0;
+  const respawnBtn = document.getElementById('btn-respawn');
+  if (respawnBtn) respawnBtn.style.display = lobbyType === 'free' ? '' : 'none';
+  document.getElementById('death-screen').classList.add('active');
 }
 
 socket.on('cashout:result', ({ newBalance, earnedSol }) => {
   const earnedCad = (earnedSol * solCadRate).toFixed(2);
-  const el = document.getElementById('cashout-earned');
-  if (el) el.textContent = `+C$${earnedCad} deposited to your wallet`;
-  // Update session balance if returned
+  // Show earned amount in the death screen
+  let earnedEl = document.getElementById('cashout-earned-inline');
+  if (!earnedEl) {
+    earnedEl = document.createElement('p');
+    earnedEl.id = 'cashout-earned-inline';
+    earnedEl.style.cssText = 'color:#14F195;font-size:1.05rem;font-weight:700;margin:6px 0 0;';
+    document.querySelector('#death-screen .death-stats').after(earnedEl);
+  }
+  earnedEl.textContent = earnedSol > 0 ? `+C$${earnedCad} deposited to wallet` : '';
   if (newBalance !== null) sessionStorage.setItem('lastBalance', newBalance);
 });
 

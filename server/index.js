@@ -313,7 +313,9 @@ io.on('connection', (socket) => {
     const snake = room.snakes && room.snakes.get(socket.id);
     if (!snake || !snake.alive) return;
     const worth = snake.worth;
-    snake.worth = 0;
+    snake.worth = 0; // clear before kill so death drops no golden food
+    // Kill snake server-side (drops normal food only, no cash)
+    room.killSnake(snake, null);
     // Deposit worth back to wallet
     if (worth > 0 && socket._googleId) {
       try {
