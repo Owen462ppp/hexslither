@@ -243,6 +243,15 @@ app.get('/api/leaderboard', (req, res) => {
   res.json(allTimeLb.getTop(10));
 });
 
+app.get('/api/earningsboard', async (req, res) => {
+  try {
+    const top = await db.getTopEarners(10);
+    res.json(top);
+  } catch (e) {
+    res.json([]);
+  }
+});
+
 app.use((req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 app.use(express.static(path.join(__dirname, '../public')));
 app.use('/shared', express.static(path.join(__dirname, '../shared')));
@@ -328,6 +337,7 @@ io.on('connection', (socket) => {
       try {
         // Credit player their 90%
         newBalance = await db.recordDeposit(socket._googleId, 'cashout_' + Date.now() + '_' + socket.id, playerShare, 'cashout');
+        await db.addEarnings(socket._googleId, playerShare);
         console.log(`[CASHOUT] ${snake.name} cashed out ${playerShare.toFixed(6)} SOL (owner cut: ${ownerShare.toFixed(6)} SOL)`);
       } catch (e) {
         console.error('[CASHOUT] Error crediting player:', e.message);

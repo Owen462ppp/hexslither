@@ -265,11 +265,12 @@ class GameRoom {
   }
 
   buildLeaderboard() {
+    const isPaid = this.lobbyType !== 'free';
     return Array.from(this.snakes.values())
       .filter(s => s.alive)
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => isPaid ? b.worth - a.worth : b.score - a.score)
       .slice(0, 10)
-      .map((s, i) => ({ rank: i + 1, id: s.id, name: s.name, score: s.score, length: s.length }));
+      .map((s, i) => ({ rank: i + 1, id: s.id, name: s.name, score: s.score, worth: s.worth, length: s.length }));
   }
 
   broadcastSnapshot() {

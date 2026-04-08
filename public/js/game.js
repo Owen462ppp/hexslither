@@ -407,12 +407,16 @@ let _lastLbHtml = '';
 function updateLeaderboard(snap) {
   const aliveIds = new Set(snap.snakes.map(s => s.id));
   const lb = (snap.leaderboard || []).filter(p => aliveIds.has(p.id));
-  const html = lb.map(p =>
-    `<li class="${p.id === myId ? 'me' : ''}">` +
-    `<span class="lb-rank">#${p.rank}</span>` +
-    `<span>${escHtml(p.name)}</span>` +
-    `<span class="lb-score">${p.score}</span></li>`
-  ).join('') || '<li style="color:#555">—</li>';
+  const isPaid = lobbyType !== 'free';
+  const html = lb.map(p => {
+    const val = isPaid
+      ? `C$${(p.worth * solCadRate).toFixed(2)}`
+      : p.score;
+    return `<li class="${p.id === myId ? 'me' : ''}">` +
+      `<span class="lb-rank">#${p.rank}</span>` +
+      `<span>${escHtml(p.name)}</span>` +
+      `<span class="lb-score">${val}</span></li>`;
+  }).join('') || '<li style="color:#555">—</li>';
   if (html !== _lastLbHtml) {
     const lbEl = document.getElementById('leaderboard-list');
     if (lbEl) lbEl.innerHTML = html;

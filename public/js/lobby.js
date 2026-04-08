@@ -531,16 +531,41 @@ document.getElementById('confirm-editname').addEventListener('click', async () =
   document.getElementById('modal-editname').classList.remove('active');
 });
 
-function updateLobbyLeaderboard(lb) {
+let _lobbyEarnings = []; // cached top earners for lobby leaderboard
+
+function refreshEarningsBoard() {
+  fetch('/api/earningsboard')
+    .then(r => r.json())
+    .then(data => {
+      _lobbyEarnings = data;
+      renderLobbyLeaderboard();
+    }).catch(() => {});
+}
+
+function renderLobbyLeaderboard() {
   const el = document.getElementById('lobby-leaderboard');
   if (!el) return;
-  if (!lb || lb.length === 0) {
-    el.innerHTML = '<li><span class="lb-name" style="color:#555">No players yet</span></li>';
+  if (!_lobbyEarnings.length) {
+    el.innerHTML = '<li><span class="lb-name" style="color:#555">No earnings yet</span></li>';
     return;
   }
-  el.innerHTML = lb.map(p =>
-    `<li><span class="rank">#${p.rank}</span><span class="lb-name">${escHtml(p.name)}</span><span class="lb-score">${p.score}</span></li>`
-  ).join('');
+  el.innerHTML = _lobbyEarnings.slice(0, 3).map(p => {
+    const cad = p.earnings * (_solCadRate || 200);
+    return `<li><span class="rank">#${p.rank}</span><span class="lb-name">${escHtml(p.name)}</span><span class="lb-score" style="color:#14F195">C$${cad.toFixed(2)}</span></li>`;
+  }).join('');
+}
+
+// refresh earnings leaderboard every 30 seconds
+refreshEarningsBoard();
+setInterval(refreshEarningsBoard, 30000);
+
+// store rate for CAD conversion
+let _solCadRate = 200;
+fetch('/api/prices').then(r => r.json()).then(d => { if (d.solCadRate) _solCadRate = d.solCadRate; }).catch(() => {});
+
+function updateLobbyLeaderboard(lb) {
+  // live lobby state now just triggers a re-render of earnings board
+  renderLobbyLeaderboard();
 }
 
 function escHtml(s) {
@@ -558,15 +583,16 @@ function escHtml(s) {
   openBtn.addEventListener('click', () => {
     modal.style.display = 'flex';
     listEl.innerHTML = '<li style="color:#555">Loading…</li>';
-    fetch('/api/leaderboard')
+    fetch('/api/earningsboard')
       .then(r => r.json())
       .then(data => {
-        if (!data.length) { listEl.innerHTML = '<li style="color:#555">No scores recorded yet</li>'; return; }
-        listEl.innerHTML = data.map(p =>
-          `<li><span class="al-rank">#${p.rank}</span>` +
-          `<span class="al-name">${escHtml(p.name)}</span>` +
-          `<span class="al-score">${p.score}</span></li>`
-        ).join('');
+        if (!data.length) { listEl.innerHTML = '<li style="color:#555">No earnings recorded yet</li>'; return; }
+        listEl.innerHTML = data.map(p => {
+          const cad = (p.earnings * (_solCadRate || 200)).toFixed(2);
+          return `<li><span class="al-rank">#${p.rank}</span>` +
+            `<span class="al-name">${escHtml(p.name)}</span>` +
+            `<span class="al-score" style="color:#14F195">C$${cad}</span></li>`;
+        }).join('');
       })
       .catch(() => { listEl.innerHTML = '<li style="color:#c33">Failed to load</li>'; });
   });

@@ -28,6 +28,8 @@ async function init() {
       created_at  TIMESTAMPTZ DEFAULT NOW()
     );
 
+    ALTER TABLE accounts ADD COLUMN IF NOT EXISTS total_earnings NUMERIC(18,9) DEFAULT 0;
+
     CREATE TABLE IF NOT EXISTS withdrawals (
       id          SERIAL PRIMARY KEY,
       google_id   TEXT NOT NULL,
@@ -141,6 +143,26 @@ async function recordWithdrawal(googleId, txSig, amount, toAddress) {
   return parseFloat(res.rows[0].balance);
 }
 
+async function addEarnings(googleId, sol) {
+  await pool.query(
+    `UPDATE accounts SET total_earnings = total_earnings + $2 WHERE google_id = $1`,
+    [googleId, sol]
+  );
+}
+
+async function getTopEarners(n) {
+  const res = await pool.query(
+    `SELECT google_id AS id, name, total_earnings AS earnings
+     FROM accounts WHERE total_earnings > 0 ORDER BY total_earnings DESC LIMIT $1`,
+    [n]
+  );
+  return res.rows.map((r, i) => ({
+    rank: i + 1,
+    name: r.name,
+    earnings: parseFloat(r.earnings),
+  }));
+}
+
 async function isNameTaken(name, excludeGoogleId) {
   const res = await pool.query(
     `SELECT 1 FROM accounts WHERE LOWER(name) = LOWER($1) AND google_id != $2`,
@@ -221,6 +243,7 @@ module.exports = {
   getOrCreateAccount, getAccountByGoogleId, getAccountByWallet,
   saveAccount, recordGameResult,
   isTxUsed, recordDeposit, recordWithdrawal,
+  addEarnings, getTopEarners,
   isNameTaken,
   saveVerificationCode, verifyCode, addTrustedDevice, isDeviceTrusted,
 };
