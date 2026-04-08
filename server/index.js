@@ -22,6 +22,8 @@ const app    = express();
 const server = http.createServer(app);
 const io     = new Server(server, { cors: { origin: '*' } });
 
+app.set('trust proxy', 1); // Render runs behind a proxy
+
 // ─── Init DB then start server ────────────────────────────────────────────────
 db.init().catch(e => console.error('[DB] Init failed:', e.message));
 
@@ -35,7 +37,11 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'duelseries-dev-secret',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 30 * 24 * 60 * 60 * 1000 }, // 30 days
+  cookie: {
+    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    secure: true,   // HTTPS only (Render uses HTTPS)
+    sameSite: 'lax',
+  },
 }));
 app.use(passport.initialize());
 app.use(passport.session());
