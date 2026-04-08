@@ -61,9 +61,9 @@ async function getOrCreateAccount({ googleId, email, name, avatar }) {
   const res = await pool.query(
     `INSERT INTO accounts (google_id, email, name, avatar)
      VALUES ($1, $2, $3, $4)
-     ON CONFLICT (google_id) DO UPDATE SET name = $3, avatar = $4
+     ON CONFLICT (google_id) DO UPDATE SET avatar = $4
      RETURNING *`,
-    [googleId, email, name, avatar]
+    [googleId, email, '', avatar]
   );
   return dbToAccount(res.rows[0]);
 }
