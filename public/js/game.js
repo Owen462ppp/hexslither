@@ -68,9 +68,9 @@ socket.on(CONSTANTS.EVENTS.SNAPSHOT, (snap) => {
 
 socket.on(CONSTANTS.EVENTS.PLAYER_DIED, ({ score, length }) => {
   isDead = true;
-  // Clear any cashout earned message
   const earnedEl = document.getElementById('cashout-earned-inline');
   if (earnedEl) earnedEl.textContent = '';
+  document.querySelector('#death-screen h2').textContent = 'YOU DIED';
   document.getElementById('death-screen').classList.add('active');
   document.getElementById('death-length').textContent = length;
   document.getElementById('death-score').textContent = score;
@@ -173,6 +173,7 @@ const qTimerText = document.getElementById('q-timer-text');
 
 function startQTimer() {
   if (isDead || cashedOut || !myId) return;
+  boostActive = false; // disable boost while cashing out
   qHoldStart = performance.now();
   qTimerEl.classList.add('active');
   qRingEl.style.strokeDashoffset = RING_CIRC;
@@ -219,7 +220,8 @@ socket.on('cashout:result', ({ newBalance, earnedSol, score, length }) => {
     earnedEl.style.cssText = 'color:#14F195;font-size:1.05rem;font-weight:700;margin:8px 0 0;';
     document.querySelector('#death-screen .death-stats').insertAdjacentElement('afterend', earnedEl);
   }
-  earnedEl.textContent = earnedSol > 0 ? `Successfully cashed out  +C$${earnedCad}` : 'Successfully cashed out';
+  earnedEl.textContent = earnedSol > 0 ? `+C$${earnedCad} deposited to your wallet` : '';
+  document.querySelector('#death-screen h2').textContent = 'SUCCESSFULLY CASHED OUT';
   document.getElementById('death-screen').classList.add('active');
   if (newBalance !== null) sessionStorage.setItem('lastBalance', newBalance);
 });
@@ -374,7 +376,7 @@ function sendInput() {
         renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).y - mySnake.segs[1],
         renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).x - mySnake.segs[0]
       );
-  socket.emit(CONSTANTS.EVENTS.INPUT, { angle, boost: boostActive });
+  socket.emit(CONSTANTS.EVENTS.INPUT, { angle, boost: boostActive && !qHoldStart });
 }
 setInterval(sendInput, 1000 / 60);
 

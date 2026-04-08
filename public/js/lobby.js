@@ -887,7 +887,11 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   if (selectedLobbyType !== 'free') {
     const feeRes = await fetch('/wallet/entry-fee', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lobbyType: selectedLobbyType }) });
     const feeData = await feeRes.json();
-    if (feeData.error) { alert(feeData.error); return; }
+    if (feeData.error) {
+      const errEl = document.getElementById('play-error');
+      if (errEl) { errEl.textContent = feeData.error; setTimeout(() => { errEl.textContent = ''; }, 3000); }
+      return;
+    }
     entrySol = feeData.feeSol;
     if (account) account.balance = feeData.balance;
     setBalance(feeData.balance);
