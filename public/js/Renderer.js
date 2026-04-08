@@ -68,27 +68,61 @@ class Renderer {
 
       const r = BASE_R * (f.size || 1);
 
-      // Core orb — solid base color
-      ctx.beginPath();
-      ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
-      ctx.fillStyle = f.color;
-      ctx.fill();
+      if (f.isGolden) {
+        // Outer glow
+        const glow = ctx.createRadialGradient(f.x, f.y, r * 0.4, f.x, f.y, r * 2.2);
+        glow.addColorStop(0, 'rgba(255,215,0,0.35)');
+        glow.addColorStop(1, 'rgba(255,215,0,0)');
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, r * 2.2, 0, Math.PI * 2);
+        ctx.fillStyle = glow;
+        ctx.fill();
 
-      // Dark radial overlay: transparent center → dark edge
-      const darkOverlay = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, r);
-      darkOverlay.addColorStop(0, 'rgba(0,0,0,0)');
-      darkOverlay.addColorStop(1, 'rgba(0,0,0,0.55)');
-      ctx.beginPath();
-      ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
-      ctx.fillStyle = darkOverlay;
-      ctx.fill();
+        // Core golden orb
+        const grad = ctx.createRadialGradient(f.x - r * 0.3, f.y - r * 0.3, r * 0.1, f.x, f.y, r);
+        grad.addColorStop(0, '#FFFACD');
+        grad.addColorStop(0.4, '#FFD700');
+        grad.addColorStop(1, '#B8860B');
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
 
-      // Thin black outline
-      ctx.beginPath();
-      ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(0,0,0,0.8)';
-      ctx.lineWidth = 0.6;
-      ctx.stroke();
+        // Gold outline
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255,165,0,0.9)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        // Glint
+        ctx.beginPath();
+        ctx.arc(f.x - r * 0.28, f.y - r * 0.28, r * 0.22, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.75)';
+        ctx.fill();
+      } else {
+        // Core orb — solid base color
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = f.color;
+        ctx.fill();
+
+        // Dark radial overlay: transparent center → dark edge
+        const darkOverlay = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, r);
+        darkOverlay.addColorStop(0, 'rgba(0,0,0,0)');
+        darkOverlay.addColorStop(1, 'rgba(0,0,0,0.55)');
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = darkOverlay;
+        ctx.fill();
+
+        // Thin black outline
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+        ctx.lineWidth = 0.6;
+        ctx.stroke();
+      }
     }
   }
 
@@ -205,6 +239,21 @@ class Renderer {
       ctx.textAlign = 'center';
       ctx.fillStyle = isMe ? '#ffe066' : '#fff';
       ctx.fillText(name, hx, hy - HR * 2.6);
+    }
+
+    // 10. Worth label (CAD) — shown above name when snake carries money
+    if (snake.worth > 0) {
+      const rate = typeof solCadRate !== 'undefined' ? solCadRate : 200;
+      const cadVal = (snake.worth * rate).toFixed(2);
+      const worthFontSize = Math.round(R * 1.0);
+      ctx.font = `bold ${worthFontSize}px Segoe UI`;
+      ctx.textAlign = 'center';
+      // Green glow outline
+      ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+      ctx.lineWidth = worthFontSize * 0.18;
+      ctx.strokeText(`C$${cadVal}`, hx, hy - HR * (name ? 3.9 : 2.6));
+      ctx.fillStyle = '#14F195';
+      ctx.fillText(`C$${cadVal}`, hx, hy - HR * (name ? 3.9 : 2.6));
     }
 
     ctx.restore();

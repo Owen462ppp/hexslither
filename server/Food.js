@@ -17,7 +17,7 @@ class FoodManager {
     }
   }
 
-  spawnOne(worldRadius, x, y, value) {
+  spawnOne(worldRadius, x, y, value, cashValue) {
     const id = uuidv4();
     let fx, fy;
     if (x !== undefined && y !== undefined) {
@@ -29,13 +29,16 @@ class FoodManager {
       fx = Math.cos(angle) * r;
       fy = Math.sin(angle) * r;
     }
+    const isGolden = cashValue > 0;
     const food = {
       id,
       x: fx,
       y: fy,
-      color: FOOD_COLORS[Math.floor(Math.random() * FOOD_COLORS.length)],
-      size: 0.6 + Math.random() * 1.0,
+      color: isGolden ? '#FFD700' : FOOD_COLORS[Math.floor(Math.random() * FOOD_COLORS.length)],
+      size: isGolden ? 2.2 + Math.random() * 0.6 : 0.6 + Math.random() * 1.0,
       value: value !== undefined ? value : 1,
+      cashValue: cashValue || 0,
+      isGolden,
     };
     this.items.set(id, food);
     return food;

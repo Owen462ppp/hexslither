@@ -881,12 +881,25 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     if (d.error) { alert(d.error); return; }
     account.name = d.account.name;
   }
+
+  // Deduct entry fee for paid lobbies
+  let entrySol = 0;
+  if (selectedLobbyType !== 'free') {
+    const feeRes = await fetch('/wallet/entry-fee', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lobbyType: selectedLobbyType }) });
+    const feeData = await feeRes.json();
+    if (feeData.error) { alert(feeData.error); return; }
+    entrySol = feeData.feeSol;
+    if (account) account.balance = feeData.balance;
+    setBalance(feeData.balance);
+  }
+
   localStorage.setItem('duelseries_playername', name);
   sessionStorage.setItem('playerName',    name);
   sessionStorage.setItem('walletAddress', account?.walletAddress || '');
   sessionStorage.setItem('googleId',      account?.googleId || '');
   sessionStorage.setItem('snakeColor',    localStorage.getItem('duelseries_skin_color') || '#E8756A');
   sessionStorage.setItem('lobbyType',     selectedLobbyType);
+  sessionStorage.setItem('entrySol',      entrySol);
   window.location.href = '/game.html';
 });
 

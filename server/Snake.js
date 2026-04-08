@@ -28,6 +28,7 @@ class Snake {
     }
     this.pendingGrowth = 0;
     this.boostDrops = []; // food positions to spawn when boosting
+    this.worth = 0; // SOL value this snake is carrying (entry fee + eaten cash food)
   }
 
   get head() { return this.segments[0]; }
@@ -138,6 +139,7 @@ class Snake {
       score: Math.floor(this.score),
       length: this.length,
       boostRatio: this.boostRatio,
+      worth: this.worth,
     };
   }
 }

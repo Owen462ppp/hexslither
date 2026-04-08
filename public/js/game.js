@@ -15,6 +15,11 @@ const playerName    = sessionStorage.getItem('playerName')    || 'Player';
 const walletAddress = sessionStorage.getItem('walletAddress') || null;
 const googleId      = sessionStorage.getItem('googleId')      || null;
 const lobbyType     = sessionStorage.getItem('lobbyType')     || 'free';
+const entrySol      = parseFloat(sessionStorage.getItem('entrySol') || '0');
+
+// SOL/CAD rate — fetched once on load
+let solCadRate = 200;
+fetch('/api/prices').then(r => r.json()).then(d => { if (d.solCadRate) solCadRate = d.solCadRate; }).catch(() => {});
 
 let myId = null;
 let isDead = false;
@@ -35,7 +40,7 @@ const socket = io();
 const snakeColor = sessionStorage.getItem('snakeColor') || localStorage.getItem('duelseries_skin_color') || '#E8756A';
 
 socket.on('connect', () => {
-  socket.emit(CONSTANTS.EVENTS.PLAY, { name: playerName, walletAddress, googleId, color: snakeColor, lobbyType });
+  socket.emit(CONSTANTS.EVENTS.PLAY, { name: playerName, walletAddress, googleId, color: snakeColor, lobbyType, entrySol });
 });
 
 socket.on(CONSTANTS.EVENTS.GAME_JOINED, ({ playerId, worldRadius, snakeColor, food }) => {
@@ -196,6 +201,9 @@ function triggerCashOut() {
   const mySnake = displayState.snakes.find(s => s.id === myId);
   if (mySnake) lockedAngle = mySnake.angle;
 
+  // Emit cashout to server immediately
+  socket.emit('cashout');
+
   // 3-second countdown before the cashout screen appears
   let remaining = 3;
   qRingEl.style.strokeDashoffset = 0; // keep ring full
@@ -213,6 +221,14 @@ function triggerCashOut() {
     }
   }, 1000);
 }
+
+socket.on('cashout:result', ({ newBalance, earnedSol }) => {
+  const earnedCad = (earnedSol * solCadRate).toFixed(2);
+  const el = document.getElementById('cashout-earned');
+  if (el) el.textContent = `+C$${earnedCad} deposited to your wallet`;
+  // Update session balance if returned
+  if (newBalance !== null) sessionStorage.setItem('lastBalance', newBalance);
+});
 
 window.addEventListener('keydown', (e) => {
   if ((e.key === 'q' || e.key === 'Q') && !e.repeat && !isDead && !cashedOut) {

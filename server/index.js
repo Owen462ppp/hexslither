@@ -12,6 +12,7 @@ const db     = require('./db');
 const Wallet = require('./Wallet');
 const allTimeLb = require('./leaderboard');
 const { sendVerificationCode } = require('./Email');
+const prices = require('./prices');
 
 Wallet.setDb(db);
 allTimeLb.setDb(db);
@@ -159,6 +160,30 @@ app.post('/auth/update-name', async (req, res) => {
   res.json({ account: acc });
 });
 
+// ─── Prices API ───────────────────────────────────────────────────────────────
+app.get('/api/prices', (req, res) => {
+  res.json({ solCadRate: prices.getSolCadRate() });
+});
+
+// ─── Entry fee ────────────────────────────────────────────────────────────────
+const LOBBY_FEES_CAD = { free: 0, dime: 0.10, dollar: 1.00 };
+
+app.post('/wallet/entry-fee', express.json(), async (req, res) => {
+  if (!req.isAuthenticated()) return res.status(401).json({ error: 'Not logged in' });
+  const { lobbyType } = req.body;
+  const feeCad = LOBBY_FEES_CAD[lobbyType] || 0;
+  if (feeCad === 0) return res.json({ ok: true, feeSol: 0, balance: req.user.balance });
+
+  const feeSol = prices.cadToSol(feeCad);
+  const acc = await db.getAccountByGoogleId(req.user.googleId);
+  if (!acc || acc.balance < feeSol) {
+    return res.status(400).json({ error: 'Insufficient balance' });
+  }
+  const newBalance = await db.recordWithdrawal(req.user.googleId, null, feeSol, 'entry_fee');
+  req.user.balance = newBalance;
+  res.json({ ok: true, feeSol, balance: newBalance });
+});
+
 // ─── Wallet API ───────────────────────────────────────────────────────────────
 
 app.get('/wallet/debug', async (req, res) => {
@@ -224,9 +249,9 @@ app.use('/shared', express.static(path.join(__dirname, '../shared')));
 
 // ─── Game rooms (one per lobby type) ─────────────────────────────────────────
 const gameRooms = {
-  free:   new GameRoom(io),
-  dime:   new GameRoom(io),
-  dollar: new GameRoom(io),
+  free:   new GameRoom(io, 'free'),
+  dime:   new GameRoom(io, 'dime'),
+  dollar: new GameRoom(io, 'dollar'),
 };
 Object.values(gameRooms).forEach(r => r.start());
 
@@ -268,7 +293,7 @@ io.on('connection', (socket) => {
     broadcastLobbyState();
   });
 
-  socket.on(C.EVENTS.PLAY, ({ name, walletAddress, googleId, color, lobbyType } = {}) => {
+  socket.on(C.EVENTS.PLAY, ({ name, walletAddress, googleId, color, lobbyType, entrySol } = {}) => {
     const playerName = (name || 'Player').slice(0, 20);
     if (googleId) {
       socket._googleId = googleId;
@@ -276,10 +301,32 @@ io.on('connection', (socket) => {
     }
     const room = getRoomForType(lobbyType);
     socket._room = room;
-    console.log(`[>] ${playerName} joins ${lobbyType || 'free'} lobby`);
-    room.addPlayer(socket, playerName, walletAddress || null, color || null);
+    console.log(`[>] ${playerName} joins ${lobbyType || 'free'} lobby (worth: ${entrySol || 0} SOL)`);
+    room.addPlayer(socket, playerName, walletAddress || null, color || null, entrySol || 0);
     lobbyConnections.delete(socket);
     broadcastLobbyState();
+  });
+
+  socket.on('cashout', async () => {
+    const room = socket._room;
+    if (!room) return;
+    const snake = room.snakes && room.snakes.get(socket.id);
+    if (!snake || !snake.alive) return;
+    const worth = snake.worth;
+    snake.worth = 0;
+    // Deposit worth back to wallet
+    if (worth > 0 && socket._googleId) {
+      try {
+        const newBalance = await db.recordDeposit(socket._googleId, 'cashout_' + Date.now() + '_' + socket.id, worth, 'cashout');
+        socket.emit('cashout:result', { newBalance, earnedSol: worth });
+        console.log(`[CASHOUT] ${snake.name} cashed out ${worth} SOL`);
+      } catch (e) {
+        console.error('[CASHOUT] Error:', e.message);
+        socket.emit('cashout:result', { newBalance: null, earnedSol: worth });
+      }
+    } else {
+      socket.emit('cashout:result', { newBalance: null, earnedSol: 0 });
+    }
   });
 
   socket.on(C.EVENTS.INPUT, ({ angle, boost }) => {

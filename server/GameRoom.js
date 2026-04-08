@@ -6,8 +6,9 @@ const { v4: uuidv4 } = require('uuid');
 const allTimeLb = require('./leaderboard');
 
 class GameRoom {
-  constructor(io) {
+  constructor(io, lobbyType) {
     this.io = io;
+    this.lobbyType = lobbyType || 'free';
     this.roomId = uuidv4();
     this.socketRoomName = 'game_' + this.roomId;
     this.snakes = new Map();      // socketId -> Snake
@@ -35,12 +36,13 @@ class GameRoom {
     if (this.tickInterval) clearInterval(this.tickInterval);
   }
 
-  addPlayer(socket, name, walletAddress, color) {
+  addPlayer(socket, name, walletAddress, color, entrySol) {
     socket.join(this.socketRoomName);
     this.players.set(socket.id, { socket, name, walletAddress });
 
     const { x, y } = this.safeSpawnPoint();
     const snake = new Snake(socket.id, name, x, y, color);
+    snake.worth = entrySol || 0;
     this.snakes.set(socket.id, snake);
 
     socket.emit(C.EVENTS.GAME_JOINED, {
@@ -67,10 +69,11 @@ class GameRoom {
       this.borderDrift = Math.max(this.borderDrift - 120, -1000);
       const drops = snake.die();
       const safeR = this.worldRadius * 0.95;
+      const cashPerDrop = drops.length > 0 && snake.worth > 0 ? snake.worth / drops.length : 0;
       drops.forEach(d => {
         const dist = Math.hypot(d.x, d.y);
         if (dist > safeR) { const sc = safeR / dist; d.x *= sc; d.y *= sc; }
-        this.foodManager.spawnOne(this.worldRadius, d.x, d.y);
+        this.foodManager.spawnOne(this.worldRadius, d.x, d.y, d.value, cashPerDrop);
       });
     }
     this.snakes.delete(socketId);
@@ -113,6 +116,7 @@ class GameRoom {
   }
 
   addBot() {
+    if (this.lobbyType !== 'free') return null; // no bots in paid lobbies
     const id = 'bot_' + uuidv4();
     const { x, y } = this.safeSpawnPoint();
     const bot = new Bot(id, x, y);
@@ -163,6 +167,7 @@ class GameRoom {
         const d  = Math.hypot(dx, dy);
         if (d < C.FOOD_EAT_RADIUS) {
           snake.grow(food.value);
+          if (food.cashValue > 0) snake.worth += food.cashValue;
           this.foodManager.remove(food.id);
         } else if (d < PULL_RADIUS) {
           // Pull food toward head proportionally — faster when closer
@@ -212,6 +217,7 @@ class GameRoom {
     this.borderDrift = Math.max(this.borderDrift - 120, -1000);
     const drops = snake.die();
     const safeR = this.worldRadius * 0.95;
+    const cashPerDrop = drops.length > 0 && snake.worth > 0 ? snake.worth / drops.length : 0;
     drops.forEach(d => {
       const dist = Math.hypot(d.x, d.y);
       if (dist > safeR) {
@@ -219,7 +225,7 @@ class GameRoom {
         d.x *= scale;
         d.y *= scale;
       }
-      this.foodManager.spawnOne(this.worldRadius, d.x, d.y);
+      this.foodManager.spawnOne(this.worldRadius, d.x, d.y, d.value, cashPerDrop);
     });
 
     const player = this.players.get(snake.id);
