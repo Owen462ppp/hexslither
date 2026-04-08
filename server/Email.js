@@ -1,30 +1,15 @@
-const nodemailer = require('nodemailer');
-
-function getTransporter() {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) return null;
-  return nodemailer.createTransport({
-    host:   process.env.SMTP_HOST || 'smtp.gmail.com',
-    port:   parseInt(process.env.SMTP_PORT) || 587,
-    secure: false,
-    family: 4,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
-}
+const { Resend } = require('resend');
 
 async function sendVerificationCode(email, code) {
-  const transporter = getTransporter();
-
-  if (!transporter) {
-    // Dev fallback — print to console so you can test without SMTP
+  if (!process.env.RESEND_API_KEY) {
     console.log(`\n[2FA] Verification code for ${email}: ${code}\n`);
     return;
   }
 
-  await transporter.sendMail({
-    from: `"DuelSeries" <${process.env.SMTP_USER}>`,
+  const resend = new Resend(process.env.RESEND_API_KEY);
+
+  await resend.emails.send({
+    from: 'DuelSeries <onboarding@resend.dev>',
     to:   email,
     subject: `${code} — Your DuelSeries verification code`,
     html: `
