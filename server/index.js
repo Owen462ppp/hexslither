@@ -318,17 +318,29 @@ io.on('connection', (socket) => {
     snake.alive = false;
     room.borderDrift = Math.max(room.borderDrift - 120, -1000);
     allTimeLb.record(socket._googleId || snake.name, snake.name, snake.score);
-    // Deposit worth back to wallet
+
+    const HOUSE_CUT = 0.10; // 10%
+    const ownerShare = worth * HOUSE_CUT;
+    const playerShare = worth - ownerShare;
+
     let newBalance = null;
     if (worth > 0 && socket._googleId) {
       try {
-        newBalance = await db.recordDeposit(socket._googleId, 'cashout_' + Date.now() + '_' + socket.id, worth, 'cashout');
-        console.log(`[CASHOUT] ${snake.name} cashed out ${worth} SOL`);
+        // Credit player their 90%
+        newBalance = await db.recordDeposit(socket._googleId, 'cashout_' + Date.now() + '_' + socket.id, playerShare, 'cashout');
+        console.log(`[CASHOUT] ${snake.name} cashed out ${playerShare.toFixed(6)} SOL (owner cut: ${ownerShare.toFixed(6)} SOL)`);
       } catch (e) {
-        console.error('[CASHOUT] Error:', e.message);
+        console.error('[CASHOUT] Error crediting player:', e.message);
+      }
+      // Send 10% to owner's Phantom wallet on-chain (non-blocking)
+      const ownerWallet = process.env.OWNER_WALLET;
+      if (ownerWallet && ownerShare > 0.000001) {
+        Wallet.withdraw(ownerWallet, ownerShare).catch(e =>
+          console.error('[CASHOUT] Owner cut transfer failed:', e.message)
+        );
       }
     }
-    socket.emit('cashout:result', { newBalance, earnedSol: worth, score: Math.floor(snake.score), length: snake.length });
+    socket.emit('cashout:result', { newBalance, earnedSol: playerShare, score: Math.floor(snake.score), length: snake.length });
   });
 
   socket.on(C.EVENTS.INPUT, ({ angle, boost }) => {
