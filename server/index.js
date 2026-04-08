@@ -313,20 +313,22 @@ io.on('connection', (socket) => {
     const snake = room.snakes && room.snakes.get(socket.id);
     if (!snake || !snake.alive) return;
     const worth = snake.worth;
-    snake.worth = 0; // clear worth — snake stays alive, no food dropped
+    snake.worth = 0;
+    // Mark snake as dead without dropping any food
+    snake.alive = false;
+    room.borderDrift = Math.max(room.borderDrift - 120, -1000);
+    allTimeLb.record(socket._googleId || snake.name, snake.name, snake.score);
     // Deposit worth back to wallet
+    let newBalance = null;
     if (worth > 0 && socket._googleId) {
       try {
-        const newBalance = await db.recordDeposit(socket._googleId, 'cashout_' + Date.now() + '_' + socket.id, worth, 'cashout');
-        socket.emit('cashout:result', { newBalance, earnedSol: worth });
+        newBalance = await db.recordDeposit(socket._googleId, 'cashout_' + Date.now() + '_' + socket.id, worth, 'cashout');
         console.log(`[CASHOUT] ${snake.name} cashed out ${worth} SOL`);
       } catch (e) {
         console.error('[CASHOUT] Error:', e.message);
-        socket.emit('cashout:result', { newBalance: null, earnedSol: worth });
       }
-    } else {
-      socket.emit('cashout:result', { newBalance: null, earnedSol: 0 });
     }
+    socket.emit('cashout:result', { newBalance, earnedSol: worth, score: Math.floor(snake.score), length: snake.length });
   });
 
   socket.on(C.EVENTS.INPUT, ({ angle, boost }) => {

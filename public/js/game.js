@@ -200,33 +200,29 @@ function cancelQTimer() {
 
 function triggerCashOut() {
   cashedOut = true;
+  isDead = true;
   qTimerEl.classList.remove('active');
   qTimerText.textContent = 'Q';
-  // Emit cashout — server deposits money, snake stays alive
   socket.emit('cashout');
 }
 
-socket.on('cashout:result', ({ newBalance, earnedSol }) => {
-  cashedOut = false; // allow another cashout later if they earn more
+socket.on('cashout:result', ({ newBalance, earnedSol, score, length }) => {
   const earnedCad = (earnedSol * solCadRate).toFixed(2);
-  // Show a brief toast
-  showCashoutToast(earnedSol > 0 ? `Successfully cashed out  +C$${earnedCad}` : 'Cashed out');
+  // Show death screen with cashout message
+  document.getElementById('death-score').textContent = score || 0;
+  document.getElementById('death-length').textContent = length || 0;
+  // Inject earned line if not already there
+  let earnedEl = document.getElementById('cashout-earned-inline');
+  if (!earnedEl) {
+    earnedEl = document.createElement('p');
+    earnedEl.id = 'cashout-earned-inline';
+    earnedEl.style.cssText = 'color:#14F195;font-size:1.05rem;font-weight:700;margin:8px 0 0;';
+    document.querySelector('#death-screen .death-stats').insertAdjacentElement('afterend', earnedEl);
+  }
+  earnedEl.textContent = earnedSol > 0 ? `Successfully cashed out  +C$${earnedCad}` : 'Successfully cashed out';
+  document.getElementById('death-screen').classList.add('active');
   if (newBalance !== null) sessionStorage.setItem('lastBalance', newBalance);
 });
-
-function showCashoutToast(msg) {
-  let toast = document.getElementById('cashout-toast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.id = 'cashout-toast';
-    toast.style.cssText = 'position:fixed;bottom:120px;left:50%;transform:translateX(-50%);background:rgba(20,241,149,0.15);border:1.5px solid #14F195;color:#14F195;font-size:1rem;font-weight:700;padding:12px 28px;border-radius:10px;z-index:9999;pointer-events:none;opacity:0;transition:opacity 0.3s;white-space:nowrap;';
-    document.body.appendChild(toast);
-  }
-  toast.textContent = msg;
-  toast.style.opacity = '1';
-  clearTimeout(toast._hide);
-  toast._hide = setTimeout(() => { toast.style.opacity = '0'; }, 3000);
-}
 
 window.addEventListener('keydown', (e) => {
   if ((e.key === 'q' || e.key === 'Q') && !e.repeat && !isDead && !cashedOut) {
