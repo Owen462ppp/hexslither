@@ -113,15 +113,18 @@ app.get('/auth/me', async (req, res) => {
 
   // Auto-login via trusted device cookie — no button press needed
   const deviceToken = req.cookies.ds_device;
+  console.log(`[AUTO-LOGIN] cookies: ${JSON.stringify(Object.keys(req.cookies))}, ds_device: ${deviceToken ? deviceToken.slice(0,8)+'...' : 'NONE'}`);
   if (deviceToken) {
     try {
       const googleId = await db.getGoogleIdByDeviceToken(deviceToken);
+      console.log(`[AUTO-LOGIN] googleId found: ${googleId || 'NONE'}`);
       if (googleId) {
         const account = await db.getAccountByGoogleId(googleId);
         if (account) {
           await new Promise((resolve, reject) =>
             req.login(account, err => err ? reject(err) : resolve())
           );
+          console.log(`[AUTO-LOGIN] Success for ${account.name}`);
           return res.json({ loggedIn: true, account });
         }
       }
