@@ -223,6 +223,15 @@ async function isDeviceTrusted(googleId, deviceToken) {
   return res.rows.length > 0;
 }
 
+async function getGoogleIdByDeviceToken(deviceToken) {
+  if (!deviceToken) return null;
+  const res = await pool.query(
+    `SELECT google_id FROM trusted_devices WHERE device_token = $1`,
+    [deviceToken]
+  );
+  return res.rows[0]?.google_id || null;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function dbToAccount(row) {
@@ -244,6 +253,7 @@ module.exports = {
   saveAccount, recordGameResult,
   isTxUsed, recordDeposit, recordWithdrawal,
   addEarnings, getTopEarners,
+  getGoogleIdByDeviceToken,
   isNameTaken,
   saveVerificationCode, verifyCode, addTrustedDevice, isDeviceTrusted,
 };

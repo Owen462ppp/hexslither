@@ -107,9 +107,29 @@ app.get('/auth/google/callback',
 app.get('/auth/logout', (req, res) => {
   req.logout(() => res.redirect('/'));
 });
-app.get('/auth/me', (req, res) => {
+app.get('/auth/me', async (req, res) => {
   if (req.isAuthenticated()) return res.json({ loggedIn: true, account: req.user });
   if (req.session.pendingVerification) return res.json({ loggedIn: false, needsVerification: true });
+
+  // Auto-login via trusted device cookie — no button press needed
+  const deviceToken = req.cookies.ds_device;
+  if (deviceToken) {
+    try {
+      const googleId = await db.getGoogleIdByDeviceToken(deviceToken);
+      if (googleId) {
+        const account = await db.getAccountByGoogleId(googleId);
+        if (account) {
+          await new Promise((resolve, reject) =>
+            req.login(account, err => err ? reject(err) : resolve())
+          );
+          return res.json({ loggedIn: true, account });
+        }
+      }
+    } catch (e) {
+      console.error('[AUTO-LOGIN] Error:', e.message);
+    }
+  }
+
   res.json({ loggedIn: false });
 });
 
