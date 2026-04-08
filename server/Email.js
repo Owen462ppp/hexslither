@@ -9,7 +9,7 @@ async function sendVerificationCode(email, code) {
   const resend = new Resend(process.env.RESEND_API_KEY);
 
   await resend.emails.send({
-    from: 'DuelSeries <onboarding@resend.dev>',
+    from: 'DuelSeries <noreply@duelseries.com>',
     to:   email,
     subject: `${code} — Your DuelSeries verification code`,
     html: `
