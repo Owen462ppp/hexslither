@@ -376,12 +376,11 @@ io.on('connection', (socket) => {
       } catch (e) {
         console.error('[CASHOUT] Error crediting player:', e.message);
       }
-      // Send 10% to owner's Phantom wallet on-chain (non-blocking)
-      const ownerWallet = process.env.OWNER_WALLET;
-      if (ownerWallet && ownerShare > 0.000001) {
-        Wallet.withdraw(ownerWallet, ownerShare).catch(e =>
-          console.error('[CASHOUT] Owner cut transfer failed:', e.message)
-        );
+      // Credit 10% to owner's in-game balance (free, no transaction fee)
+      const ownerGoogleId = process.env.OWNER_GOOGLE_ID;
+      if (ownerGoogleId && ownerShare > 0) {
+        db.recordDeposit(ownerGoogleId, 'owner_cut_' + Date.now() + '_' + socket.id, ownerShare, 'house_cut')
+          .catch(e => console.error('[CASHOUT] Owner cut credit failed:', e.message));
       }
     }
     socket.emit('cashout:result', { newBalance, earnedSol: playerShare, score: Math.floor(snake.score), length: snake.length });
