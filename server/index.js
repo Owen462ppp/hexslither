@@ -66,7 +66,9 @@ app.get('/auth/google/callback',
   async (req, res) => {
     try {
       const deviceToken = req.cookies.ds_device;
+      console.log(`[2FA] Login attempt for ${req.user.googleId}, cookie: ${deviceToken ? deviceToken.slice(0,8)+'...' : 'NONE'}`);
       const trusted = await db.isDeviceTrusted(req.user.googleId, deviceToken);
+      console.log(`[2FA] Device trusted: ${trusted}`);
       if (trusted) return res.redirect('/');
 
       // New device — send 2FA code
