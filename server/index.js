@@ -14,6 +14,7 @@ const allTimeLb = require('./leaderboard');
 const { sendVerificationCode } = require('./Email');
 
 Wallet.setDb(db);
+allTimeLb.setDb(db);
 
 const app    = express();
 const server = http.createServer(app);
