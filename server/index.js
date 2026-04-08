@@ -5,6 +5,7 @@ const path       = require('path');
 const session    = require('express-session');
 const passport   = require('passport');
 const cookieParser = require('cookie-parser');
+const pgSession = require('connect-pg-simple')(session);
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const C      = require('../shared/constants');
 const GameRoom = require('./GameRoom');
@@ -27,10 +28,14 @@ db.init().catch(e => console.error('[DB] Init failed:', e.message));
 // ─── Session & Passport ───────────────────────────────────────────────────────
 app.use(cookieParser());
 app.use(session({
+  store: new pgSession({
+    pool: db.pool,
+    createTableIfMissing: true,
+  }),
   secret: process.env.SESSION_SECRET || 'duelseries-dev-secret',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 },
+  cookie: { maxAge: 30 * 24 * 60 * 60 * 1000 }, // 30 days
 }));
 app.use(passport.initialize());
 app.use(passport.session());
