@@ -313,9 +313,7 @@ io.on('connection', (socket) => {
     const snake = room.snakes && room.snakes.get(socket.id);
     if (!snake || !snake.alive) return;
     const worth = snake.worth;
-    snake.worth = 0; // clear before kill so death drops no golden food
-    // Kill snake server-side (drops normal food only, no cash)
-    room.killSnake(snake, null);
+    snake.worth = 0; // clear worth — snake stays alive, no food dropped
     // Deposit worth back to wallet
     if (worth > 0 && socket._googleId) {
       try {
@@ -336,8 +334,8 @@ io.on('connection', (socket) => {
     if (socket._room) socket._room.handleInput(socket.id, angle, !!boost);
   });
 
-  socket.on(C.EVENTS.RESPAWN, () => {
-    if (socket._room) socket._room.respawnPlayer(socket.id);
+  socket.on(C.EVENTS.RESPAWN, ({ entrySol } = {}) => {
+    if (socket._room) socket._room.respawnPlayer(socket.id, entrySol || 0);
   });
 
   socket.on('admin:spawnbot', ({ count } = {}) => {

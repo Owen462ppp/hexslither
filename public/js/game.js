@@ -74,9 +74,6 @@ socket.on(CONSTANTS.EVENTS.PLAYER_DIED, ({ score, length }) => {
   document.getElementById('death-screen').classList.add('active');
   document.getElementById('death-length').textContent = length;
   document.getElementById('death-score').textContent = score;
-  // Paid lobbies: hide Play Again — must return to lobby to repay entry fee
-  const respawnBtn = document.getElementById('btn-respawn');
-  if (respawnBtn) respawnBtn.style.display = lobbyType === 'free' ? '' : 'none';
 });
 
 // --- Interpolation ---
@@ -203,37 +200,33 @@ function cancelQTimer() {
 
 function triggerCashOut() {
   cashedOut = true;
-  isDead = true;
-  const mySnake = displayState.snakes.find(s => s.id === myId);
-  if (mySnake) lockedAngle = mySnake.angle;
-
   qTimerEl.classList.remove('active');
   qTimerText.textContent = 'Q';
-
-  // Emit cashout to server — snake is killed server-side
+  // Emit cashout — server deposits money, snake stays alive
   socket.emit('cashout');
-
-  // Show death screen immediately (same as dying)
-  document.getElementById('death-score').textContent = mySnake ? Math.floor(mySnake.score) : 0;
-  document.getElementById('death-length').textContent = mySnake ? mySnake.length : 0;
-  const respawnBtn = document.getElementById('btn-respawn');
-  if (respawnBtn) respawnBtn.style.display = lobbyType === 'free' ? '' : 'none';
-  document.getElementById('death-screen').classList.add('active');
 }
 
 socket.on('cashout:result', ({ newBalance, earnedSol }) => {
+  cashedOut = false; // allow another cashout later if they earn more
   const earnedCad = (earnedSol * solCadRate).toFixed(2);
-  // Show earned amount in the death screen
-  let earnedEl = document.getElementById('cashout-earned-inline');
-  if (!earnedEl) {
-    earnedEl = document.createElement('p');
-    earnedEl.id = 'cashout-earned-inline';
-    earnedEl.style.cssText = 'color:#14F195;font-size:1.05rem;font-weight:700;margin:6px 0 0;';
-    document.querySelector('#death-screen .death-stats').after(earnedEl);
-  }
-  earnedEl.textContent = earnedSol > 0 ? `+C$${earnedCad} deposited to wallet` : '';
+  // Show a brief toast
+  showCashoutToast(earnedSol > 0 ? `Successfully cashed out  +C$${earnedCad}` : 'Cashed out');
   if (newBalance !== null) sessionStorage.setItem('lastBalance', newBalance);
 });
+
+function showCashoutToast(msg) {
+  let toast = document.getElementById('cashout-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'cashout-toast';
+    toast.style.cssText = 'position:fixed;bottom:120px;left:50%;transform:translateX(-50%);background:rgba(20,241,149,0.15);border:1.5px solid #14F195;color:#14F195;font-size:1rem;font-weight:700;padding:12px 28px;border-radius:10px;z-index:9999;pointer-events:none;opacity:0;transition:opacity 0.3s;white-space:nowrap;';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  clearTimeout(toast._hide);
+  toast._hide = setTimeout(() => { toast.style.opacity = '0'; }, 3000);
+}
 
 window.addEventListener('keydown', (e) => {
   if ((e.key === 'q' || e.key === 'Q') && !e.repeat && !isDead && !cashedOut) {
@@ -308,12 +301,22 @@ document.getElementById('spectate-stop').addEventListener('click', () => {
 });
 
 // Death screen
-document.getElementById('btn-respawn').addEventListener('click', () => {
+document.getElementById('btn-respawn').addEventListener('click', async () => {
+  // Paid lobbies must re-pay entry fee on respawn
+  let newEntrySol = 0;
+  if (lobbyType !== 'free') {
+    const feeRes = await fetch('/wallet/entry-fee', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lobbyType }) });
+    const feeData = await feeRes.json();
+    if (feeData.error) { alert(feeData.error); return; }
+    newEntrySol = feeData.feeSol;
+  }
   isDead = false;
   spectating = false;
   exitSpectate();
-  socket.emit(CONSTANTS.EVENTS.RESPAWN);
+  socket.emit(CONSTANTS.EVENTS.RESPAWN, { entrySol: newEntrySol });
   document.getElementById('death-screen').classList.remove('active');
+  const earnedEl = document.getElementById('cashout-earned-inline');
+  if (earnedEl) earnedEl.textContent = '';
 });
 document.getElementById('btn-lobby').addEventListener('click', () => {
   window.location.href = '/';

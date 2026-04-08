@@ -248,11 +248,12 @@ class GameRoom {
     }
   }
 
-  respawnPlayer(socketId) {
+  respawnPlayer(socketId, entrySol) {
     const player = this.players.get(socketId);
     if (!player) return;
     const { x, y } = this.safeSpawnPoint();
     const snake = new Snake(socketId, player.name, x, y);
+    snake.worth = entrySol || 0;
     this.snakes.set(socketId, snake);
 
     player.socket.emit(C.EVENTS.GAME_JOINED, {
