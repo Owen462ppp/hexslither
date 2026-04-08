@@ -141,6 +141,14 @@ async function recordWithdrawal(googleId, txSig, amount, toAddress) {
   return parseFloat(res.rows[0].balance);
 }
 
+async function isNameTaken(name, excludeGoogleId) {
+  const res = await pool.query(
+    `SELECT 1 FROM accounts WHERE LOWER(name) = LOWER($1) AND google_id != $2`,
+    [name, excludeGoogleId]
+  );
+  return res.rows.length > 0;
+}
+
 // ─── 2FA / Device Trust ───────────────────────────────────────────────────────
 
 const { randomUUID } = require('crypto');
@@ -213,5 +221,6 @@ module.exports = {
   getOrCreateAccount, getAccountByGoogleId, getAccountByWallet,
   saveAccount, recordGameResult,
   isTxUsed, recordDeposit, recordWithdrawal,
+  isNameTaken,
   saveVerificationCode, verifyCode, addTrustedDevice, isDeviceTrusted,
 };

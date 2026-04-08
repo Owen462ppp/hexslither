@@ -814,13 +814,15 @@ document.querySelectorAll('.btn-lobby-type-2').forEach(btn => {
   });
 });
 
-document.getElementById('btn-play-2').addEventListener('click', () => {
-  const name = document.getElementById('player-name-2').value.trim() || 'Player';
-  localStorage.setItem('duelseries_playername', name);
+document.getElementById('btn-play-2').addEventListener('click', async () => {
+  const name = document.getElementById('player-name-2').value.replace(/\s/g, '') || 'Player';
   if (account && name !== account.name) {
-    fetch('/auth/update-name', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) })
-      .then(r => r.json()).then(d => { if (d.account) account.name = d.account.name; }).catch(() => {});
+    const r = await fetch('/auth/update-name', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+    const d = await r.json();
+    if (d.error) { alert(d.error); return; }
+    account.name = d.account.name;
   }
+  localStorage.setItem('duelseries_playername', name);
   sessionStorage.setItem('playerName',    name);
   sessionStorage.setItem('walletAddress', account?.walletAddress || '');
   sessionStorage.setItem('googleId',      account?.googleId || '');
@@ -830,16 +832,18 @@ document.getElementById('btn-play-2').addEventListener('click', () => {
 });
 
 document.getElementById('player-name-2').addEventListener('input', function() {
-  const v = this.value.trim();
+  this.value = this.value.replace(/\s/g, '');
+  const v = this.value;
   if (v) localStorage.setItem('duelseries_playername', v);
-  document.getElementById('play-username-2').textContent = v || account?.name || 'Player';
+  document.getElementById('play-username-2').textContent = v || '';
 });
 
 // ─── Save custom name to localStorage as user types ───────────────────────────
 document.getElementById('player-name').addEventListener('input', function() {
-  const v = this.value.trim();
+  this.value = this.value.replace(/\s/g, '');
+  const v = this.value;
   if (v) localStorage.setItem('duelseries_playername', v);
-  document.getElementById('play-username').textContent = v || account?.name || 'Player';
+  document.getElementById('play-username').textContent = v || '';
 });
 
 // ─── Lobby type selection ──────────────────────────────────────────────────────
@@ -869,13 +873,15 @@ document.querySelectorAll('.btn-lobby-type').forEach(btn => {
 });
 
 // ─── Play ─────────────────────────────────────────────────────────────────────
-document.getElementById('btn-play').addEventListener('click', () => {
-  const name = document.getElementById('player-name').value.trim() || 'Player';
-  localStorage.setItem('duelseries_playername', name);
+document.getElementById('btn-play').addEventListener('click', async () => {
+  const name = document.getElementById('player-name').value.replace(/\s/g, '') || 'Player';
   if (account && name !== account.name) {
-    fetch('/auth/update-name', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) })
-      .then(r => r.json()).then(d => { if (d.account) account.name = d.account.name; }).catch(() => {});
+    const r = await fetch('/auth/update-name', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+    const d = await r.json();
+    if (d.error) { alert(d.error); return; }
+    account.name = d.account.name;
   }
+  localStorage.setItem('duelseries_playername', name);
   sessionStorage.setItem('playerName',    name);
   sessionStorage.setItem('walletAddress', account?.walletAddress || '');
   sessionStorage.setItem('googleId',      account?.googleId || '');

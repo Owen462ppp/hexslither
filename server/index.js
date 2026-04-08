@@ -146,11 +146,13 @@ app.use(express.json());
 
 app.post('/auth/update-name', async (req, res) => {
   if (!req.isAuthenticated()) return res.status(401).json({ error: 'Not logged in' });
-  const name = (req.body.name || '').slice(0, 20).trim();
+  const name = (req.body.name || '').replace(/\s/g, '').slice(0, 20);
   if (!name) return res.status(400).json({ error: 'Invalid name' });
+  const taken = await db.isNameTaken(name, req.user.googleId);
+  if (taken) return res.status(400).json({ error: 'Name already taken' });
   const acc = await db.saveAccount(req.user.googleId, { name });
   req.user.name = acc.name;
-  allTimeLb.rename(req.user.googleId, acc.name); // keep leaderboard name in sync
+  allTimeLb.rename(req.user.googleId, acc.name);
   res.json({ account: acc });
 });
 
