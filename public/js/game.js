@@ -70,7 +70,9 @@ socket.on(CONSTANTS.EVENTS.PLAYER_DIED, ({ score, length }) => {
   isDead = true;
   const earnedEl = document.getElementById('cashout-earned-inline');
   if (earnedEl) earnedEl.textContent = '';
-  document.querySelector('#death-screen h2').textContent = 'YOU DIED';
+  const deathH2 = document.querySelector('#death-screen h2');
+  deathH2.textContent = 'YOU DIED';
+  deathH2.style.color = '';
   document.getElementById('death-screen').classList.add('active');
   document.getElementById('death-length').textContent = length;
   document.getElementById('death-score').textContent = score;
@@ -221,7 +223,9 @@ socket.on('cashout:result', ({ newBalance, earnedSol, score, length }) => {
     document.querySelector('#death-screen .death-stats').insertAdjacentElement('afterend', earnedEl);
   }
   earnedEl.textContent = earnedSol > 0 ? `+C$${earnedCad} deposited to your wallet` : '';
-  document.querySelector('#death-screen h2').textContent = 'SUCCESSFULLY CASHED OUT';
+  const h2 = document.querySelector('#death-screen h2');
+  h2.textContent = 'SUCCESSFULLY CASHED OUT';
+  h2.style.color = '#14F195';
   document.getElementById('death-screen').classList.add('active');
   if (newBalance !== null) sessionStorage.setItem('lastBalance', newBalance);
 });
