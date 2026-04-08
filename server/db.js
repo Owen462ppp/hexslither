@@ -160,7 +160,7 @@ async function saveVerificationCode(googleId, code) {
 
 async function verifyCode(googleId, code) {
   const res = await pool.query(
-    `SELECT id FROM verification_codes
+    `SELECT 1 FROM verification_codes
      WHERE google_id = $1 AND code = $2 AND used = FALSE AND expires_at > NOW()
      LIMIT 1`,
     [googleId, code]
