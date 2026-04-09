@@ -131,105 +131,108 @@ class Renderer {
     const { segs, color, boosting, name } = snake;
 
     const growthScale = 1 + Math.min(1.5, (snake.length || 20) / 200);
-    const R  = CONSTANTS.SNAKE_HEAD_RADIUS * growthScale;
-    const HR = R * 1.15;
+    const R = CONSTANTS.SNAKE_HEAD_RADIUS * growthScale;
 
-    // Blend hex color toward black or white
-    function blend(hex, target, t) {
-      let r1 = 150, g1 = 150, b1 = 150;
-      if (hex && hex[0] === '#' && hex.length >= 7) {
-        r1 = parseInt(hex.slice(1,3),16);
-        g1 = parseInt(hex.slice(3,5),16);
-        b1 = parseInt(hex.slice(5,7),16);
-      }
-      const r2 = parseInt(target.slice(1,3),16);
-      const g2 = parseInt(target.slice(3,5),16);
-      const b2 = parseInt(target.slice(5,7),16);
-      return `rgb(${Math.round(r1+(r2-r1)*t)},${Math.round(g1+(g2-g1)*t)},${Math.round(b1+(b2-b1)*t)})`;
-    }
-
-    const cBright = blend(color, '#ffffff', 0.70);
-    const cLight  = blend(color, '#ffffff', 0.20);
-    const cDark   = blend(color, '#000000', 0.40);
-    const cShadow = blend(color, '#000000', 0.75);
-
-    // Draw a circle at every seg point tail→head so they densely overlap → flush tube
-    // segs: [headX,headY, s1x,s1y, ..., tailX,tailY]
-    function bodyGrad(x, y, r) {
-      const hx = x - r * 0.55, hy = y - r * 0.60;
-      const g = ctx.createRadialGradient(hx, hy, r * 0.05, x, y, r);
-      g.addColorStop(0.00, cBright);
-      g.addColorStop(0.30, cLight);
-      g.addColorStop(0.60, color);
-      g.addColorStop(0.82, cDark);
-      g.addColorStop(1.00, cShadow);
-      return g;
-    }
-    function glossGrad(x, y, r) {
-      const hx = x - r * 0.30, hy = y - r * 0.36;
-      const g = ctx.createRadialGradient(hx, hy, 0, hx, hy, r * 0.58);
-      g.addColorStop(0.0, 'rgba(255,255,255,0.52)');
-      g.addColorStop(0.4, 'rgba(255,255,255,0.14)');
-      g.addColorStop(1.0, 'rgba(255,255,255,0)');
-      return g;
-    }
+    // Build spine: spine[0]=head, spine[SN-1]=tail
+    const spine = [];
+    for (let i = 0; i < segs.length; i += 2) spine.push({ x: segs[i], y: segs[i+1] });
+    const SN = spine.length;
 
     ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
 
-    // ── Pass 1: base body circles (tail → head) ───────────────────────────────
-    if (boosting) {
-      for (let i = segs.length - 2; i >= 2; i -= 2) {
-        ctx.beginPath(); ctx.arc(segs[i], segs[i+1], R * 1.18, 0, Math.PI*2);
-        ctx.fillStyle = 'rgba(255,255,255,0.10)'; ctx.fill();
+    function buildPath() {
+      ctx.beginPath();
+      ctx.moveTo(spine[0].x, spine[0].y);
+      for (let i = 1; i < SN-1; i++) {
+        const mx = (spine[i].x + spine[i+1].x) / 2;
+        const my = (spine[i].y + spine[i+1].y) / 2;
+        ctx.quadraticCurveTo(spine[i].x, spine[i].y, mx, my);
+      }
+      ctx.lineTo(spine[SN-1].x, spine[SN-1].y);
+    }
+
+    // Tapered arc: draws a back-facing semicircle that fades to 0 at both tips
+    function taperedArc(cx, cy, r, baseAlpha, lw, angle) {
+      const SEGS = 12;
+      for (let s = 0; s < SEGS; s++) {
+        const t0 = s/SEGS, t1 = (s+1)/SEGS;
+        const taper = Math.sin((t0+t1)/2 * Math.PI);
+        ctx.beginPath();
+        ctx.arc(cx, cy, r,
+          angle + Math.PI*0.5 + t0*Math.PI,
+          angle + Math.PI*0.5 + t1*Math.PI, false);
+        ctx.strokeStyle = `rgba(0,0,0,${baseAlpha * taper})`;
+        ctx.lineWidth = lw;
+        ctx.lineCap = 'butt';
+        ctx.stroke();
       }
     }
-    for (let i = segs.length - 2; i >= 2; i -= 2) {
-      ctx.beginPath(); ctx.arc(segs[i], segs[i+1], R, 0, Math.PI*2);
-      ctx.fillStyle = bodyGrad(segs[i], segs[i+1], R); ctx.fill();
-    }
 
-    // ── Pass 2: gloss overlay (tail → head) ──────────────────────────────────
-    for (let i = segs.length - 2; i >= 2; i -= 2) {
-      ctx.beginPath(); ctx.arc(segs[i], segs[i+1], R, 0, Math.PI*2);
-      ctx.fillStyle = glossGrad(segs[i], segs[i+1], R); ctx.fill();
+    // ── Body ─────────────────────────────────────────────────────────────────
+    if (boosting) {
+      buildPath();
+      ctx.lineWidth = R * 2.4;
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.stroke();
+    }
+    buildPath();
+    ctx.lineWidth = R * 2;
+    ctx.strokeStyle = color;
+    ctx.stroke();
+
+    // ── Crease lines (near-head → tail) ──────────────────────────────────────
+    const CREASE_SPACING = R * 0.88;
+    const PASSES = 20;
+    let dist = -R * 0.35;
+    for (let i = 1; i < SN-1; i++) {
+      const dx = spine[i].x - spine[i-1].x, dy = spine[i].y - spine[i-1].y;
+      dist += Math.sqrt(dx*dx + dy*dy);
+      if (dist < CREASE_SPACING) continue;
+      dist -= CREASE_SPACING;
+      // Forward angle toward head (lower index)
+      const ax = spine[Math.max(i-2,0)].x - spine[Math.min(i+2,SN-1)].x;
+      const ay = spine[Math.max(i-2,0)].y - spine[Math.min(i+2,SN-1)].y;
+      const fwdAngle = Math.atan2(ay, ax);
+      for (let p = 0; p < PASSES; p++) {
+        const t = p / (PASSES - 1);
+        taperedArc(spine[i].x, spine[i].y,
+          R * (0.88 + t * 0.12),
+          0.0003 + Math.pow(t, 2.5) * 0.012,
+          R * (0.50 * Math.pow(1-t, 1.5) + 0.035),
+          fwdAngle);
+      }
     }
 
     // ── Head ─────────────────────────────────────────────────────────────────
-    const hx = segs[0], hy = segs[1];
+    const hx = spine[0].x, hy = spine[0].y;
     const angle = snake.angle || 0;
     const fwdX = Math.cos(angle), fwdY = Math.sin(angle);
     const perpX = -Math.sin(angle), perpY = Math.cos(angle);
 
-    ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI*2);
-    ctx.fillStyle = bodyGrad(hx, hy, HR); ctx.fill();
-    ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI*2);
-    ctx.fillStyle = glossGrad(hx, hy, HR); ctx.fill();
+    ctx.beginPath(); ctx.arc(hx, hy, R, 0, Math.PI*2);
+    ctx.fillStyle = color; ctx.fill();
 
-    if (boosting) {
-      ctx.beginPath(); ctx.arc(hx, hy, HR + 4, 0, Math.PI*2);
-      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-      ctx.lineWidth = 2.5; ctx.stroke();
+    for (let p = 0; p < PASSES; p++) {
+      const t = p / (PASSES - 1);
+      taperedArc(hx, hy,
+        R * (0.88 + t * 0.12),
+        0.0003 + Math.pow(t, 2.5) * 0.012,
+        R * (0.50 * Math.pow(1-t, 1.5) + 0.035),
+        angle);
     }
 
     // ── Eyes ─────────────────────────────────────────────────────────────────
-    const eyeSide = HR * 0.38;
-    const eyeFwd  = HR * 0.22;
-    const eyeR    = HR * 0.33;
-    const pupilR  = HR * 0.19;
-    const pupilFwd = eyeR * 0.28;
-
+    const eyeR   = R * 0.40;
+    const pupilR = eyeR * 0.54;
     for (const side of [-1, 1]) {
-      const ex = hx + fwdX * eyeFwd + perpX * eyeSide * side;
-      const ey = hy + fwdY * eyeFwd + perpY * eyeSide * side;
-
+      const ex = hx + fwdX*R*0.38 + perpX*R*0.46*side;
+      const ey = hy + fwdY*R*0.38 + perpY*R*0.46*side;
       ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI*2);
       ctx.fillStyle = '#FFFFFF'; ctx.fill();
-
-      ctx.beginPath(); ctx.arc(ex + fwdX*pupilFwd, ey + fwdY*pupilFwd, pupilR, 0, Math.PI*2);
-      ctx.fillStyle = '#080808'; ctx.fill();
-
-      ctx.beginPath(); ctx.arc(ex - eyeR*0.18, ey - eyeR*0.22, eyeR*0.22, 0, Math.PI*2);
-      ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fill();
+      ctx.beginPath(); ctx.arc(ex + fwdX*(eyeR-pupilR), ey + fwdY*(eyeR-pupilR), pupilR, 0, Math.PI*2);
+      ctx.fillStyle = '#060606'; ctx.fill();
     }
 
     // ── Labels ───────────────────────────────────────────────────────────────
@@ -238,9 +241,9 @@ class Renderer {
       const fs = Math.round(R * 1.1);
       ctx.font = `bold ${fs}px Segoe UI`;
       ctx.strokeStyle = 'rgba(0,0,0,0.65)'; ctx.lineWidth = fs * 0.18;
-      ctx.strokeText(name, hx, hy - HR*2.5);
+      ctx.strokeText(name, hx, hy - R*2.5);
       ctx.fillStyle = isMe ? '#ffe066' : '#fff';
-      ctx.fillText(name, hx, hy - HR*2.5);
+      ctx.fillText(name, hx, hy - R*2.5);
     }
     if (snake.worth > 0) {
       const rate = typeof solCadRate !== 'undefined' ? solCadRate : 200;
@@ -248,9 +251,9 @@ class Renderer {
       const wfs = Math.round(R * 1.0);
       ctx.font = `bold ${wfs}px Segoe UI`;
       ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = wfs * 0.18;
-      ctx.strokeText(`C$${cadVal}`, hx, hy - HR*(name ? 3.8 : 2.5));
+      ctx.strokeText(`C$${cadVal}`, hx, hy - R*(name ? 3.8 : 2.5));
       ctx.fillStyle = '#14F195';
-      ctx.fillText(`C$${cadVal}`, hx, hy - HR*(name ? 3.8 : 2.5));
+      ctx.fillText(`C$${cadVal}`, hx, hy - R*(name ? 3.8 : 2.5));
     }
 
     ctx.restore();
