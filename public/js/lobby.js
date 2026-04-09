@@ -969,100 +969,73 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     ctx.clearRect(0, 0, W, H);
 
     const R  = Math.max(9, H * 0.085);
+    const HR = R * 1.15;
     const cx = W * 0.78, cy = H * 0.5;
     const amp = H * 0.22, freq = 0.055, step = 3.5;
-    const PN = Math.floor((W * 0.85) / step);
+    const N = Math.floor((W * 0.85) / step);
 
-    // pts[0]=head, pts[PN-1]=tail
+    // Build smooth points: gentle horizontal S-curve (head first)
     const pts = [];
-    for (let i = 0; i < PN; i++) {
+    for (let i = 0; i < N; i++) {
       pts.push({ x: cx - i * step, y: cy + Math.sin(i * freq) * amp });
     }
 
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+    function blend(hex, target, t) {
+      let r1=150,g1=150,b1=150;
+      if (hex&&hex[0]==='#'&&hex.length>=7){r1=parseInt(hex.slice(1,3),16);g1=parseInt(hex.slice(3,5),16);b1=parseInt(hex.slice(5,7),16);}
+      const r2=parseInt(target.slice(1,3),16),g2=parseInt(target.slice(3,5),16),b2=parseInt(target.slice(5,7),16);
+      return `rgb(${Math.round(r1+(r2-r1)*t)},${Math.round(g1+(g2-g1)*t)},${Math.round(b1+(b2-b1)*t)})`;
+    }
+    const cBright=blend(color,'#ffffff',0.70),cLight=blend(color,'#ffffff',0.20);
+    const cDark=blend(color,'#000000',0.40),cShadow=blend(color,'#000000',0.75);
 
-    function buildPath() {
-      ctx.beginPath();
-      ctx.moveTo(pts[0].x, pts[0].y);
-      for (let i = 1; i < PN-1; i++) {
-        const mx = (pts[i].x+pts[i+1].x)/2, my = (pts[i].y+pts[i+1].y)/2;
-        ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
-      }
-      ctx.lineTo(pts[PN-1].x, pts[PN-1].y);
+    function bodyGrad(x,y,r){
+      const hx=x-r*0.55,hy=y-r*0.60;
+      const g=ctx.createRadialGradient(hx,hy,r*0.05,x,y,r);
+      g.addColorStop(0.00,cBright);g.addColorStop(0.30,cLight);
+      g.addColorStop(0.60,color);g.addColorStop(0.82,cDark);g.addColorStop(1.00,cShadow);
+      return g;
+    }
+    function glossGrad(x,y,r){
+      const hx=x-r*0.30,hy=y-r*0.36;
+      const g=ctx.createRadialGradient(hx,hy,0,hx,hy,r*0.58);
+      g.addColorStop(0.0,'rgba(255,255,255,0.52)');g.addColorStop(0.4,'rgba(255,255,255,0.14)');g.addColorStop(1.0,'rgba(255,255,255,0)');
+      return g;
     }
 
-    function taperedArc(cx2, cy2, r, baseAlpha, lw, angle) {
-      const SEGS = 12;
-      for (let s = 0; s < SEGS; s++) {
-        const t0 = s/SEGS, t1 = (s+1)/SEGS;
-        const taper = Math.sin((t0+t1)/2 * Math.PI);
-        ctx.beginPath();
-        ctx.arc(cx2, cy2, r,
-          angle + Math.PI*0.5 + t0*Math.PI,
-          angle + Math.PI*0.5 + t1*Math.PI, false);
-        ctx.strokeStyle = `rgba(0,0,0,${baseAlpha * taper})`;
-        ctx.lineWidth = lw;
-        ctx.lineCap = 'butt';
-        ctx.stroke();
-      }
+    // Draw at every pts point tail→head (densely overlapping → flush tube)
+    // Pass 1: base
+    for (let i = pts.length - 1; i >= 0; i--) {
+      ctx.beginPath(); ctx.arc(pts[i].x, pts[i].y, R, 0, Math.PI*2);
+      ctx.fillStyle = bodyGrad(pts[i].x, pts[i].y, R); ctx.fill();
     }
-
-    // Body
-    buildPath();
-    ctx.lineWidth = R * 2;
-    ctx.strokeStyle = color;
-    ctx.stroke();
-
-    // Crease lines
-    const CREASE_SPACING = R * 0.88;
-    const PASSES = 20;
-    let dist = -R * 0.35;
-    for (let i = 1; i < PN-1; i++) {
-      const dx = pts[i].x - pts[i-1].x, dy = pts[i].y - pts[i-1].y;
-      dist += Math.sqrt(dx*dx + dy*dy);
-      if (dist < CREASE_SPACING) continue;
-      dist -= CREASE_SPACING;
-      const ax = pts[Math.max(i-2,0)].x - pts[Math.min(i+2,PN-1)].x;
-      const ay = pts[Math.max(i-2,0)].y - pts[Math.min(i+2,PN-1)].y;
-      const fwdAngle = Math.atan2(ay, ax);
-      for (let p = 0; p < PASSES; p++) {
-        const t = p / (PASSES - 1);
-        taperedArc(pts[i].x, pts[i].y,
-          R * (0.88 + t * 0.12),
-          0.0003 + Math.pow(t, 2.5) * 0.012,
-          R * (0.50 * Math.pow(1-t, 1.5) + 0.035),
-          fwdAngle);
-      }
+    // Pass 2: gloss
+    for (let i = pts.length - 1; i >= 0; i--) {
+      ctx.beginPath(); ctx.arc(pts[i].x, pts[i].y, R, 0, Math.PI*2);
+      ctx.fillStyle = glossGrad(pts[i].x, pts[i].y, R); ctx.fill();
     }
 
     // Head
     const hx = pts[0].x, hy = pts[0].y;
+    ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI*2);
+    ctx.fillStyle = bodyGrad(hx, hy, HR); ctx.fill();
+    ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI*2);
+    ctx.fillStyle = glossGrad(hx, hy, HR); ctx.fill();
+
+    // Eyes
     const ang  = Math.atan2(pts[0].y - pts[1].y, pts[0].x - pts[1].x);
     const fwdX = Math.cos(ang), fwdY = Math.sin(ang);
     const perpX = -Math.sin(ang), perpY = Math.cos(ang);
-
-    ctx.beginPath(); ctx.arc(hx, hy, R, 0, Math.PI*2);
-    ctx.fillStyle = color; ctx.fill();
-
-    for (let p = 0; p < PASSES; p++) {
-      const t = p / (PASSES - 1);
-      taperedArc(hx, hy,
-        R * (0.88 + t * 0.12),
-        0.0003 + Math.pow(t, 2.5) * 0.012,
-        R * (0.50 * Math.pow(1-t, 1.5) + 0.035),
-        ang);
-    }
-
-    // Eyes
-    const eyeR = R * 0.40, pupilR = eyeR * 0.54;
+    const eyeR = HR * 0.33, pupilR = HR * 0.19, pupilFwd = eyeR * 0.28;
     for (const s of [-1, 1]) {
-      const ex = hx + fwdX*R*0.38 + perpX*R*0.46*s;
-      const ey = hy + fwdY*R*0.38 + perpY*R*0.46*s;
+      const ex = hx + fwdX*HR*0.22 + perpX*HR*0.38*s;
+      const ey = hy + fwdY*HR*0.22 + perpY*HR*0.38*s;
       ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI*2);
       ctx.fillStyle = '#FFFFFF'; ctx.fill();
-      ctx.beginPath(); ctx.arc(ex+fwdX*(eyeR-pupilR), ey+fwdY*(eyeR-pupilR), pupilR, 0, Math.PI*2);
-      ctx.fillStyle = '#060606'; ctx.fill();
+      ctx.beginPath(); ctx.arc(ex+fwdX*pupilFwd, ey+fwdY*pupilFwd, pupilR, 0, Math.PI*2);
+      ctx.fillStyle = '#080808'; ctx.fill();
+      ctx.beginPath(); ctx.arc(ex-eyeR*0.18, ey-eyeR*0.22, eyeR*0.22, 0, Math.PI*2);
+      ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.fill();
     }
   }
 
@@ -1350,99 +1323,83 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     const t = s.trail, len = t.length;
     const W = canvas.width, H = canvas.height;
     const wrapThresh = Math.min(W, H) * 0.35;
-    const color = s.color;
+    const HR = R + 5;
+
+    function blend(hex, target, f) {
+      let r1=150,g1=150,b1=150;
+      if(hex&&hex[0]==='#'&&hex.length>=7){r1=parseInt(hex.slice(1,3),16);g1=parseInt(hex.slice(3,5),16);b1=parseInt(hex.slice(5,7),16);}
+      const r2=parseInt(target.slice(1,3),16),g2=parseInt(target.slice(3,5),16),b2=parseInt(target.slice(5,7),16);
+      return `rgb(${Math.round(r1+(r2-r1)*f)},${Math.round(g1+(g2-g1)*f)},${Math.round(b1+(b2-b1)*f)})`;
+    }
+    const color=s.color;
+    const cBright=blend(color,'#ffffff',0.70),cLight=blend(color,'#ffffff',0.20);
+    const cDark=blend(color,'#000000',0.40),cShadow=blend(color,'#000000',0.75);
+
+    function bodyGrad(x,y,r){
+      const hx=x-r*0.55,hy=y-r*0.60;
+      const g=ctx.createRadialGradient(hx,hy,r*0.05,x,y,r);
+      g.addColorStop(0.00,cBright);g.addColorStop(0.30,cLight);
+      g.addColorStop(0.60,color);g.addColorStop(0.82,cDark);g.addColorStop(1.00,cShadow);
+      return g;
+    }
+    function glossGrad(x,y,r){
+      const hx=x-r*0.30,hy=y-r*0.36;
+      const g=ctx.createRadialGradient(hx,hy,0,hx,hy,r*0.58);
+      g.addColorStop(0.0,'rgba(255,255,255,0.52)');g.addColorStop(0.4,'rgba(255,255,255,0.14)');g.addColorStop(1.0,'rgba(255,255,255,0)');
+      return g;
+    }
+
+    // Draw circles tail→head at min spacing R*0.45 (densely overlapping → flush tube)
+    // Skip across screen-wrap gaps
+    const MIN_STEP = R * 0.45;
+    const circles = [];
+    let lastX = t[len-1].x, lastY = t[len-1].y, accum2 = MIN_STEP;
+    circles.push(t[len-1]);
+    for (let i = len - 2; i >= 0; i--) {
+      const dx = t[i].x - lastX, dy = t[i].y - lastY;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d > wrapThresh) { lastX = t[i].x; lastY = t[i].y; accum2 = MIN_STEP; continue; }
+      accum2 += d;
+      if (accum2 >= MIN_STEP) {
+        accum2 -= MIN_STEP;
+        circles.push(t[i]);
+        lastX = t[i].x; lastY = t[i].y;
+      }
+    }
+    if (circles[circles.length-1] !== t[0]) circles.push(t[0]);
 
     ctx.save();
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
 
-    function buildPath() {
-      ctx.beginPath();
-      ctx.moveTo(t[0].x, t[0].y);
-      for (let i = 1; i < len; i++) {
-        const dx = t[i].x - t[i-1].x, dy = t[i].y - t[i-1].y;
-        if (Math.sqrt(dx*dx+dy*dy) > wrapThresh) { ctx.moveTo(t[i].x, t[i].y); continue; }
-        if (i < len-1) {
-          const mx=(t[i].x+t[i+1].x)/2, my=(t[i].y+t[i+1].y)/2;
-          ctx.quadraticCurveTo(t[i].x, t[i].y, mx, my);
-        } else {
-          ctx.lineTo(t[i].x, t[i].y);
-        }
-      }
+    // Pass 1: base
+    for (const c of circles) {
+      ctx.beginPath(); ctx.arc(c.x, c.y, R, 0, Math.PI*2);
+      ctx.fillStyle = bodyGrad(c.x, c.y, R); ctx.fill();
     }
-
-    function taperedArc(cx, cy, r, baseAlpha, lw, angle) {
-      const SEGS = 12;
-      for (let ss = 0; ss < SEGS; ss++) {
-        const t0 = ss/SEGS, t1 = (ss+1)/SEGS;
-        const taper = Math.sin((t0+t1)/2 * Math.PI);
-        ctx.beginPath();
-        ctx.arc(cx, cy, r,
-          angle + Math.PI*0.5 + t0*Math.PI,
-          angle + Math.PI*0.5 + t1*Math.PI, false);
-        ctx.strokeStyle = `rgba(0,0,0,${baseAlpha * taper})`;
-        ctx.lineWidth = lw;
-        ctx.lineCap = 'butt';
-        ctx.stroke();
-      }
-    }
-
-    // Body
-    buildPath();
-    ctx.lineWidth = R * 2;
-    ctx.strokeStyle = color;
-    ctx.stroke();
-
-    // Crease lines (t[0]=head, t[len-1]=tail)
-    const CREASE_SPACING = R * 0.88;
-    const PASSES = 20;
-    let dist = -R * 0.35;
-    for (let i = 1; i < len-1; i++) {
-      const dx = t[i].x - t[i-1].x, dy = t[i].y - t[i-1].y;
-      const d = Math.sqrt(dx*dx+dy*dy);
-      if (d > wrapThresh) { dist = -R * 0.35; continue; }
-      dist += d;
-      if (dist < CREASE_SPACING) continue;
-      dist -= CREASE_SPACING;
-      const ax = t[Math.max(i-2,0)].x - t[Math.min(i+2,len-1)].x;
-      const ay = t[Math.max(i-2,0)].y - t[Math.min(i+2,len-1)].y;
-      const fwdAngle = Math.atan2(ay, ax);
-      for (let p = 0; p < PASSES; p++) {
-        const tp = p / (PASSES - 1);
-        taperedArc(t[i].x, t[i].y,
-          R * (0.88 + tp * 0.12),
-          0.0003 + Math.pow(tp, 2.5) * 0.012,
-          R * (0.50 * Math.pow(1-tp, 1.5) + 0.035),
-          fwdAngle);
-      }
+    // Pass 2: gloss
+    for (const c of circles) {
+      ctx.beginPath(); ctx.arc(c.x, c.y, R, 0, Math.PI*2);
+      ctx.fillStyle = glossGrad(c.x, c.y, R); ctx.fill();
     }
 
     // Head
-    const hx = s.x, hy = s.y;
-    const fwdX = Math.cos(s.angle), fwdY = Math.sin(s.angle);
-    const perpX = -Math.sin(s.angle), perpY = Math.cos(s.angle);
-
-    ctx.beginPath(); ctx.arc(hx, hy, R, 0, Math.PI*2);
-    ctx.fillStyle = color; ctx.fill();
-
-    for (let p = 0; p < PASSES; p++) {
-      const tp = p / (PASSES - 1);
-      taperedArc(hx, hy,
-        R * (0.88 + tp * 0.12),
-        0.0003 + Math.pow(tp, 2.5) * 0.012,
-        R * (0.50 * Math.pow(1-tp, 1.5) + 0.035),
-        s.angle);
-    }
+    ctx.beginPath(); ctx.arc(s.x, s.y, HR, 0, Math.PI*2);
+    ctx.fillStyle = bodyGrad(s.x, s.y, HR); ctx.fill();
+    ctx.beginPath(); ctx.arc(s.x, s.y, HR, 0, Math.PI*2);
+    ctx.fillStyle = glossGrad(s.x, s.y, HR); ctx.fill();
 
     // Eyes
-    const eyeR = R * 0.40, pupilR = eyeR * 0.54;
+    const fwdX = Math.cos(s.angle), fwdY = Math.sin(s.angle);
+    const perpX = -Math.sin(s.angle), perpY = Math.cos(s.angle);
+    const eyeR = HR * 0.33, pupilR = HR * 0.19, pupilFwd = eyeR * 0.28;
     for (const side of [-1, 1]) {
-      const ex = hx + fwdX*R*0.38 + perpX*R*0.46*side;
-      const ey = hy + fwdY*R*0.38 + perpY*R*0.46*side;
+      const ex = s.x + fwdX*HR*0.22 + perpX*HR*0.38*side;
+      const ey = s.y + fwdY*HR*0.22 + perpY*HR*0.38*side;
       ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI*2);
       ctx.fillStyle = '#FFFFFF'; ctx.fill();
-      ctx.beginPath(); ctx.arc(ex+fwdX*(eyeR-pupilR), ey+fwdY*(eyeR-pupilR), pupilR, 0, Math.PI*2);
-      ctx.fillStyle = '#060606'; ctx.fill();
+      ctx.beginPath(); ctx.arc(ex+fwdX*pupilFwd, ey+fwdY*pupilFwd, pupilR, 0, Math.PI*2);
+      ctx.fillStyle = '#080808'; ctx.fill();
+      ctx.beginPath(); ctx.arc(ex-eyeR*0.18, ey-eyeR*0.22, eyeR*0.22, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fill();
     }
 
     ctx.restore();
