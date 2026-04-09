@@ -125,9 +125,16 @@ class Snake {
   }
 
   serialize() {
+    // Progressive decimation: fine detail near head, coarser toward tail.
+    // Large snakes send ~60% less data with no visible difference at game zoom.
     const segs = [];
-    for (let i = 0; i < this.segments.length; i += 2) {
+    const total = this.segments.length;
+    let i = 0;
+    while (i < total) {
       segs.push(this.segments[i].x, this.segments[i].y);
+      if      (i < 80)  i += 2;
+      else if (i < 200) i += 4;
+      else              i += 6;
     }
     return {
       id: this.id,

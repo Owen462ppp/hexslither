@@ -155,7 +155,7 @@ class Renderer {
 
     // Tapered arc: draws a back-facing semicircle that fades to 0 at both tips
     function taperedArc(cx, cy, r, baseAlpha, lw, angle) {
-      const SEGS = 12;
+      const SEGS = 8;
       for (let s = 0; s < SEGS; s++) {
         const t0 = s/SEGS, t1 = (s+1)/SEGS;
         const taper = Math.sin((t0+t1)/2 * Math.PI);
@@ -170,34 +170,46 @@ class Renderer {
       }
     }
 
+    // Viewport bounds in world space for crease culling
+    const { camera } = this;
+    const _W = ctx.canvas.width, _H = ctx.canvas.height;
+    const _m = R * 4;
+    const vpL = -camera.x / camera.scale - _m;
+    const vpR = (_W - camera.x) / camera.scale + _m;
+    const vpT = -camera.y / camera.scale - _m;
+    const vpB = (_H - camera.y) / camera.scale + _m;
+
     // ── Body ─────────────────────────────────────────────────────────────────
+    buildPath();
+    ctx.lineWidth = boosting ? R * 2.4 : R * 2;
+    ctx.strokeStyle = boosting ? 'rgba(255,255,255,0.18)' : color;
+    ctx.stroke();
     if (boosting) {
       buildPath();
-      ctx.lineWidth = R * 2.4;
-      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.lineWidth = R * 2;
+      ctx.strokeStyle = color;
       ctx.stroke();
     }
-    buildPath();
-    ctx.lineWidth = R * 2;
-    ctx.strokeStyle = color;
-    ctx.stroke();
 
-    // ── Crease lines (near-head → tail) ──────────────────────────────────────
+    // ── Crease lines (near-head → tail, viewport-culled) ─────────────────────
     const CREASE_SPACING = R * 0.88;
-    const PASSES = 20;
+    const PASSES = 10;
     let dist = -R * 0.35;
     for (let i = 1; i < SN-1; i++) {
       const dx = spine[i].x - spine[i-1].x, dy = spine[i].y - spine[i-1].y;
       dist += Math.sqrt(dx*dx + dy*dy);
       if (dist < CREASE_SPACING) continue;
       dist -= CREASE_SPACING;
+      // Skip drawing if off-screen (still track dist for even spacing)
+      const sx = spine[i].x, sy = spine[i].y;
+      if (sx < vpL || sx > vpR || sy < vpT || sy > vpB) continue;
       // Forward angle toward head (lower index)
       const ax = spine[Math.max(i-2,0)].x - spine[Math.min(i+2,SN-1)].x;
       const ay = spine[Math.max(i-2,0)].y - spine[Math.min(i+2,SN-1)].y;
       const fwdAngle = Math.atan2(ay, ax);
       for (let p = 0; p < PASSES; p++) {
         const t = p / (PASSES - 1);
-        taperedArc(spine[i].x, spine[i].y,
+        taperedArc(sx, sy,
           R * (0.88 + t * 0.12),
           0.0003 + Math.pow(t, 2.5) * 0.012,
           R * (0.50 * Math.pow(1-t, 1.5) + 0.035),
@@ -214,13 +226,15 @@ class Renderer {
     ctx.beginPath(); ctx.arc(hx, hy, R, 0, Math.PI*2);
     ctx.fillStyle = color; ctx.fill();
 
-    for (let p = 0; p < PASSES; p++) {
-      const t = p / (PASSES - 1);
-      taperedArc(hx, hy,
-        R * (0.88 + t * 0.12),
-        0.0003 + Math.pow(t, 2.5) * 0.012,
-        R * (0.50 * Math.pow(1-t, 1.5) + 0.035),
-        angle);
+    if (hx >= vpL && hx <= vpR && hy >= vpT && hy <= vpB) {
+      for (let p = 0; p < PASSES; p++) {
+        const t = p / (PASSES - 1);
+        taperedArc(hx, hy,
+          R * (0.88 + t * 0.12),
+          0.0003 + Math.pow(t, 2.5) * 0.012,
+          R * (0.50 * Math.pow(1-t, 1.5) + 0.035),
+          angle);
+      }
     }
 
     // ── Eyes ─────────────────────────────────────────────────────────────────
