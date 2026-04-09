@@ -331,20 +331,26 @@ const socket = io();
 let account = null;
 let walletAddress = null;
 
-// Check if logged in via Google session
-fetch('/auth/me')
-  .then(r => r.json())
-  .then(({ loggedIn, account: acc }) => {
-    if (loggedIn && acc) {
-      account = acc;
-      showLobby();
-    } else {
-      document.getElementById('login-screen').classList.remove('hidden');
+// Check if logged in via Google session — retry once on failure (handles cold starts)
+async function checkAuth() {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const r = await fetch('/auth/me');
+      const { loggedIn, account: acc } = await r.json();
+      if (loggedIn && acc) {
+        account = acc;
+        showLobby();
+      } else {
+        document.getElementById('login-screen').classList.remove('hidden');
+      }
+      return;
+    } catch (e) {
+      if (attempt === 0) await new Promise(r => setTimeout(r, 1500));
     }
-  })
-  .catch(() => {
-    document.getElementById('login-screen').classList.remove('hidden');
-  });
+  }
+  document.getElementById('login-screen').classList.remove('hidden');
+}
+checkAuth();
 
 // Check for auth error param
 if (new URLSearchParams(location.search).get('error') === 'auth') {
@@ -367,6 +373,15 @@ socket.on(CONSTANTS.EVENTS.WALLET_BALANCE, ({ balance }) => {
 });
 
 socket.on(CONSTANTS.EVENTS.ERROR, ({ message }) => alert('Error: ' + message));
+
+socket.on('connect', () => {
+  // Re-join lobby on reconnect so server knows we're here
+  if (account) socket.emit('lobby:join', { googleId: account.googleId });
+});
+
+socket.on('disconnect', () => {
+  // Silently wait — Socket.IO auto-reconnects; no action needed
+});
 
 // ─── Lobby navigation ─────────────────────────────────────────────────────────
 let currentLobby = 1;

@@ -22,10 +22,11 @@ const app    = express();
 const server = http.createServer(app);
 const io     = new Server(server, { cors: { origin: '*' } });
 
-app.set('trust proxy', 1); // Render runs behind a proxy
+// Render's load balancer uses keep-alive connections; match its timeout to prevent 502s
+server.keepAliveTimeout = 120000;
+server.headersTimeout   = 121000;
 
-// ─── Init DB then start server ────────────────────────────────────────────────
-db.init().catch(e => console.error('[DB] Init failed:', e.message));
+app.set('trust proxy', 1); // Render runs behind a proxy
 
 // ─── Session & Passport ───────────────────────────────────────────────────────
 app.use(cookieParser());
@@ -271,6 +272,9 @@ app.post('/wallet/withdraw', async (req, res) => {
   }
 });
 
+// ─── Health check (Render uses this to know the server is ready) ─────────────
+app.get('/healthz', (req, res) => res.sendStatus(200));
+
 // ─── Static files ─────────────────────────────────────────────────────────────
 // All-time leaderboard API
 app.get('/api/leaderboard', (req, res) => {
@@ -420,5 +424,23 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
+// ─── Start ────────────────────────────────────────────────────────────────────
+(async () => {
+  // Wait for DB before accepting requests so sessions work from the first request
+  let dbReady = false;
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    try {
+      await db.init();
+      dbReady = true;
+      console.log('[DB] Connected');
+      break;
+    } catch (e) {
+      console.error(`[DB] Init attempt ${attempt}/5 failed: ${e.message}`);
+      if (attempt < 5) await new Promise(r => setTimeout(r, 2000 * attempt));
+    }
+  }
+  if (!dbReady) console.warn('[DB] Starting without DB — sessions may not persist');
+
+  const PORT = process.env.PORT || 3000;
+  server.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
+})();
