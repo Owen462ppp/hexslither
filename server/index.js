@@ -425,22 +425,22 @@ io.on('connection', (socket) => {
 });
 
 // ─── Start ────────────────────────────────────────────────────────────────────
+// Listen immediately so Render's health check can reach us right away.
+// DB init runs in the background with retries — the pg.Pool reconnects lazily
+// so sessions will work once the DB is reachable.
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
+
 (async () => {
-  // Wait for DB before accepting requests so sessions work from the first request
-  let dbReady = false;
-  for (let attempt = 1; attempt <= 5; attempt++) {
+  for (let attempt = 1; attempt <= 8; attempt++) {
     try {
       await db.init();
-      dbReady = true;
       console.log('[DB] Connected');
-      break;
+      return;
     } catch (e) {
-      console.error(`[DB] Init attempt ${attempt}/5 failed: ${e.message}`);
-      if (attempt < 5) await new Promise(r => setTimeout(r, 2000 * attempt));
+      console.error(`[DB] Init attempt ${attempt}/8 failed: ${e.message}`);
+      await new Promise(r => setTimeout(r, Math.min(attempt * 2000, 15000)));
     }
   }
-  if (!dbReady) console.warn('[DB] Starting without DB — sessions may not persist');
-
-  const PORT = process.env.PORT || 3000;
-  server.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
+  console.warn('[DB] Could not connect after 8 attempts — sessions may not persist');
 })();
