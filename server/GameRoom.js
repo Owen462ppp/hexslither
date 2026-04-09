@@ -18,7 +18,6 @@ class GameRoom {
     this.borderDrift = 0;  // positive = expanded, negative = contracted
     this.tickInterval = null;
     this.leaderboard = [];
-    this.tickCount = 0;
   }
 
   get playerCount() { return this.players.size; }
@@ -128,8 +127,6 @@ class GameRoom {
   }
 
   tick() {
-    this.tickCount++;
-
     // Border drifts outward on deaths, inward on joins, gradually fading back to base
     this.borderDrift *= 0.995; // half-life ≈ 2.3 seconds — smooth fade back to base
     const targetRadius = Math.max(C.MIN_WORLD_RADIUS,
@@ -138,10 +135,10 @@ class GameRoom {
 
     const foodList  = this.foodManager.getAll();
     const allSnakes = Array.from(this.snakes.values());
-    // Update snakes — bot AI runs every 2 ticks to reduce CPU
+    // Update snakes
     for (const snake of allSnakes) {
       if (!snake.alive) continue;
-      if (snake.isBot && this.tickCount % 2 === 0) snake.updateAI(foodList, this.worldRadius, allSnakes);
+      if (snake.isBot) snake.updateAI(foodList, this.worldRadius, allSnakes);
       snake.update();
 
       // Spawn food from boost drops
@@ -207,8 +204,8 @@ class GameRoom {
     // Refill food
     this.foodManager.refill(this.worldRadius);
 
-    // Broadcast at 30 Hz (every 2 ticks) — client interpolation handles the gap
-    if (this.tickCount % 2 === 0) this.broadcastSnapshot();
+    // Build and broadcast snapshot
+    this.broadcastSnapshot();
   }
 
   killSnake(snake, killerId) {
