@@ -153,25 +153,8 @@ class Renderer {
     const cDark   = blend(color, '#000000', 0.40);
     const cShadow = blend(color, '#000000', 0.75);
 
-    // Build spine tail→head from segs flat array [x0,y0,x1,y1,...]
-    // segs[0],segs[1] = head; sample circle positions at fixed arc spacing
-    const SPACING = R * 1.25;
-    const spine = [];
-    for (let i = segs.length - 2; i >= 0; i -= 2) spine.push({ x: segs[i], y: segs[i+1] });
-
-    const circles = [];
-    let accum = SPACING; // trigger immediate first placement
-    for (let i = 0; i < spine.length; i++) {
-      if (i === 0) { circles.push(spine[0]); continue; }
-      const dx = spine[i].x - spine[i-1].x, dy = spine[i].y - spine[i-1].y;
-      accum += Math.sqrt(dx*dx + dy*dy);
-      if (accum >= SPACING) { accum -= SPACING; circles.push(spine[i]); }
-    }
-    // Ensure head circle is last (drawn on top)
-    const headPt = spine[spine.length - 1];
-    if (!circles.length || circles[circles.length-1] !== headPt) circles.push(headPt);
-
-    // Shared radial gradient for a circle at (x,y) with radius r
+    // Draw a circle at every seg point tail→head so they densely overlap → flush tube
+    // segs: [headX,headY, s1x,s1y, ..., tailX,tailY]
     function bodyGrad(x, y, r) {
       const hx = x - r * 0.55, hy = y - r * 0.60;
       const g = ctx.createRadialGradient(hx, hy, r * 0.05, x, y, r);
@@ -195,20 +178,20 @@ class Renderer {
 
     // ── Pass 1: base body circles (tail → head) ───────────────────────────────
     if (boosting) {
-      for (const c of circles) {
-        ctx.beginPath(); ctx.arc(c.x, c.y, R * 1.18, 0, Math.PI*2);
+      for (let i = segs.length - 2; i >= 2; i -= 2) {
+        ctx.beginPath(); ctx.arc(segs[i], segs[i+1], R * 1.18, 0, Math.PI*2);
         ctx.fillStyle = 'rgba(255,255,255,0.10)'; ctx.fill();
       }
     }
-    for (const c of circles) {
-      ctx.beginPath(); ctx.arc(c.x, c.y, R, 0, Math.PI*2);
-      ctx.fillStyle = bodyGrad(c.x, c.y, R); ctx.fill();
+    for (let i = segs.length - 2; i >= 2; i -= 2) {
+      ctx.beginPath(); ctx.arc(segs[i], segs[i+1], R, 0, Math.PI*2);
+      ctx.fillStyle = bodyGrad(segs[i], segs[i+1], R); ctx.fill();
     }
 
-    // ── Pass 2: gloss overlay ─────────────────────────────────────────────────
-    for (const c of circles) {
-      ctx.beginPath(); ctx.arc(c.x, c.y, R, 0, Math.PI*2);
-      ctx.fillStyle = glossGrad(c.x, c.y, R); ctx.fill();
+    // ── Pass 2: gloss overlay (tail → head) ──────────────────────────────────
+    for (let i = segs.length - 2; i >= 2; i -= 2) {
+      ctx.beginPath(); ctx.arc(segs[i], segs[i+1], R, 0, Math.PI*2);
+      ctx.fillStyle = glossGrad(segs[i], segs[i+1], R); ctx.fill();
     }
 
     // ── Head ─────────────────────────────────────────────────────────────────

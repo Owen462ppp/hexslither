@@ -1003,27 +1003,16 @@ document.getElementById('btn-play').addEventListener('click', async () => {
       return g;
     }
 
-    // Sample circle positions from tail (pts end) to head (pts[0])
-    const SPACING = R * 1.25;
-    const circles = [];
-    let accum = SPACING;
-    for (let i = pts.length - 1; i >= 0; i--) {
-      if (i === pts.length - 1) { circles.push(pts[i]); continue; }
-      const dx = pts[i].x - pts[i+1].x, dy = pts[i].y - pts[i+1].y;
-      accum += Math.sqrt(dx*dx + dy*dy);
-      if (accum >= SPACING) { accum -= SPACING; circles.push(pts[i]); }
-    }
-    if (!circles.length || circles[circles.length-1] !== pts[0]) circles.push(pts[0]);
-
+    // Draw at every pts point tail→head (densely overlapping → flush tube)
     // Pass 1: base
-    for (const c of circles) {
-      ctx.beginPath(); ctx.arc(c.x, c.y, R, 0, Math.PI*2);
-      ctx.fillStyle = bodyGrad(c.x, c.y, R); ctx.fill();
+    for (let i = pts.length - 1; i >= 0; i--) {
+      ctx.beginPath(); ctx.arc(pts[i].x, pts[i].y, R, 0, Math.PI*2);
+      ctx.fillStyle = bodyGrad(pts[i].x, pts[i].y, R); ctx.fill();
     }
     // Pass 2: gloss
-    for (const c of circles) {
-      ctx.beginPath(); ctx.arc(c.x, c.y, R, 0, Math.PI*2);
-      ctx.fillStyle = glossGrad(c.x, c.y, R); ctx.fill();
+    for (let i = pts.length - 1; i >= 0; i--) {
+      ctx.beginPath(); ctx.arc(pts[i].x, pts[i].y, R, 0, Math.PI*2);
+      ctx.fillStyle = glossGrad(pts[i].x, pts[i].y, R); ctx.fill();
     }
 
     // Head
@@ -1360,19 +1349,24 @@ document.getElementById('btn-play').addEventListener('click', async () => {
       return g;
     }
 
-    // Sample circles from tail (t[len-1]) to head (t[0]), skip across wrap gaps
-    const SPACING = R * 1.25;
+    // Draw circles tail→head at min spacing R*0.45 (densely overlapping → flush tube)
+    // Skip across screen-wrap gaps
+    const MIN_STEP = R * 0.45;
     const circles = [];
-    let accum = SPACING;
-    for (let i = len - 1; i >= 0; i--) {
-      if (i === len - 1) { circles.push(t[i]); continue; }
-      const dx = t[i].x - t[i+1].x, dy = t[i].y - t[i+1].y;
+    let lastX = t[len-1].x, lastY = t[len-1].y, accum2 = MIN_STEP;
+    circles.push(t[len-1]);
+    for (let i = len - 2; i >= 0; i--) {
+      const dx = t[i].x - lastX, dy = t[i].y - lastY;
       const d = Math.sqrt(dx*dx + dy*dy);
-      if (d > wrapThresh) { accum = SPACING; continue; } // reset across screen wrap
-      accum += d;
-      if (accum >= SPACING) { accum -= SPACING; circles.push(t[i]); }
+      if (d > wrapThresh) { lastX = t[i].x; lastY = t[i].y; accum2 = MIN_STEP; continue; }
+      accum2 += d;
+      if (accum2 >= MIN_STEP) {
+        accum2 -= MIN_STEP;
+        circles.push(t[i]);
+        lastX = t[i].x; lastY = t[i].y;
+      }
     }
-    if (!circles.length || circles[circles.length-1] !== t[0]) circles.push(t[0]);
+    if (circles[circles.length-1] !== t[0]) circles.push(t[0]);
 
     ctx.save();
 
