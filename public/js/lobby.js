@@ -331,26 +331,20 @@ const socket = io();
 let account = null;
 let walletAddress = null;
 
-// Check if logged in via Google session — retry once on failure (handles cold starts)
-async function checkAuth() {
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const r = await fetch('/auth/me');
-      const { loggedIn, account: acc } = await r.json();
-      if (loggedIn && acc) {
-        account = acc;
-        showLobby();
-      } else {
-        document.getElementById('login-screen').classList.remove('hidden');
-      }
-      return;
-    } catch (e) {
-      if (attempt === 0) await new Promise(r => setTimeout(r, 1500));
+// Check if logged in via Google session
+fetch('/auth/me')
+  .then(r => r.json())
+  .then(({ loggedIn, account: acc }) => {
+    if (loggedIn && acc) {
+      account = acc;
+      showLobby();
+    } else {
+      document.getElementById('login-screen').classList.remove('hidden');
     }
-  }
-  document.getElementById('login-screen').classList.remove('hidden');
-}
-checkAuth();
+  })
+  .catch(() => {
+    document.getElementById('login-screen').classList.remove('hidden');
+  });
 
 // Check for auth error param
 if (new URLSearchParams(location.search).get('error') === 'auth') {
@@ -375,12 +369,7 @@ socket.on(CONSTANTS.EVENTS.WALLET_BALANCE, ({ balance }) => {
 socket.on(CONSTANTS.EVENTS.ERROR, ({ message }) => alert('Error: ' + message));
 
 socket.on('connect', () => {
-  // Re-join lobby on reconnect so server knows we're here
   if (account) socket.emit('lobby:join', { googleId: account.googleId });
-});
-
-socket.on('disconnect', () => {
-  // Silently wait — Socket.IO auto-reconnects; no action needed
 });
 
 // ─── Lobby navigation ─────────────────────────────────────────────────────────
@@ -984,73 +973,104 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     ctx.clearRect(0, 0, W, H);
 
     const R  = Math.max(9, H * 0.085);
-    const HR = R * 1.15;
     const cx = W * 0.78, cy = H * 0.5;
     const amp = H * 0.22, freq = 0.055, step = 3.5;
     const N = Math.floor((W * 0.85) / step);
 
-    // Build smooth points: gentle horizontal S-curve (head first)
+    // Build smooth points: gentle horizontal S-curve
     const pts = [];
     for (let i = 0; i < N; i++) {
-      pts.push({ x: cx - i * step, y: cy + Math.sin(i * freq) * amp });
+      pts.push({
+        x: cx - i * step,
+        y: cy + Math.sin(i * freq) * amp,
+      });
     }
 
-    function blend(hex, target, t) {
-      let r1=150,g1=150,b1=150;
-      if (hex&&hex[0]==='#'&&hex.length>=7){r1=parseInt(hex.slice(1,3),16);g1=parseInt(hex.slice(3,5),16);b1=parseInt(hex.slice(5,7),16);}
-      const r2=parseInt(target.slice(1,3),16),g2=parseInt(target.slice(3,5),16),b2=parseInt(target.slice(5,7),16);
-      return `rgb(${Math.round(r1+(r2-r1)*t)},${Math.round(g1+(g2-g1)*t)},${Math.round(b1+(b2-b1)*t)})`;
-    }
-    const cBright=blend(color,'#ffffff',0.70),cLight=blend(color,'#ffffff',0.20);
-    const cDark=blend(color,'#000000',0.40),cShadow=blend(color,'#000000',0.75);
-
-    function bodyGrad(x,y,r){
-      const hx=x-r*0.55,hy=y-r*0.60;
-      const g=ctx.createRadialGradient(hx,hy,r*0.05,x,y,r);
-      g.addColorStop(0.00,cBright);g.addColorStop(0.30,cLight);
-      g.addColorStop(0.60,color);g.addColorStop(0.82,cDark);g.addColorStop(1.00,cShadow);
-      return g;
-    }
-    function glossGrad(x,y,r){
-      const hx=x-r*0.30,hy=y-r*0.36;
-      const g=ctx.createRadialGradient(hx,hy,0,hx,hy,r*0.58);
-      g.addColorStop(0.0,'rgba(255,255,255,0.52)');g.addColorStop(0.4,'rgba(255,255,255,0.14)');g.addColorStop(1.0,'rgba(255,255,255,0)');
-      return g;
+    function strokePath(lw, style) {
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length - 1; i++) {
+        const mx = (pts[i].x + pts[i+1].x) / 2;
+        const my = (pts[i].y + pts[i+1].y) / 2;
+        ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+      }
+      ctx.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
+      ctx.strokeStyle = style;
+      ctx.lineWidth   = lw;
+      ctx.lineCap     = 'round';
+      ctx.lineJoin    = 'round';
+      ctx.stroke();
     }
 
-    // Draw at every pts point tail→head (densely overlapping → flush tube)
-    // Pass 1: base
-    for (let i = pts.length - 1; i >= 0; i--) {
-      ctx.beginPath(); ctx.arc(pts[i].x, pts[i].y, R, 0, Math.PI*2);
-      ctx.fillStyle = bodyGrad(pts[i].x, pts[i].y, R); ctx.fill();
+    // Segment rings
+    let dist = 0;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const dx = pts[i].x - pts[i-1].x, dy = pts[i].y - pts[i-1].y;
+      dist += Math.sqrt(dx*dx + dy*dy);
+      if (dist >= R * 1.3) {
+        dist -= R * 1.3;
+        const ax = pts[Math.min(i+1,pts.length-1)].x - pts[i-1].x;
+        const ay = pts[Math.min(i+1,pts.length-1)].y - pts[i-1].y;
+        const al = Math.sqrt(ax*ax + ay*ay) || 1;
+        const px = -ay/al, py = ax/al;
+        ctx.beginPath();
+        ctx.moveTo(pts[i].x + px*(R-1), pts[i].y + py*(R-1));
+        ctx.lineTo(pts[i].x - px*(R-1), pts[i].y - py*(R-1));
+        ctx.strokeStyle = 'rgba(0,0,0,0.20)';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      }
     }
-    // Pass 2: gloss
-    for (let i = pts.length - 1; i >= 0; i--) {
-      ctx.beginPath(); ctx.arc(pts[i].x, pts[i].y, R, 0, Math.PI*2);
-      ctx.fillStyle = glossGrad(pts[i].x, pts[i].y, R); ctx.fill();
+
+    strokePath(R * 2,    color);
+    strokePath(R * 1.15, 'rgba(0,0,0,0.28)');
+    strokePath(R * 0.65, 'rgba(255,255,255,0.28)');
+
+    // Segment rings on top
+    dist = 0;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const dx = pts[i].x - pts[i-1].x, dy = pts[i].y - pts[i-1].y;
+      dist += Math.sqrt(dx*dx + dy*dy);
+      if (dist >= R * 1.3) {
+        dist -= R * 1.3;
+        const ax = pts[Math.min(i+1,pts.length-1)].x - pts[i-1].x;
+        const ay = pts[Math.min(i+1,pts.length-1)].y - pts[i-1].y;
+        const al = Math.sqrt(ax*ax + ay*ay) || 1;
+        const px = -ay/al, py = ax/al;
+        ctx.beginPath();
+        ctx.moveTo(pts[i].x + px*(R-1), pts[i].y + py*(R-1));
+        ctx.lineTo(pts[i].x - px*(R-1), pts[i].y - py*(R-1));
+        ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+        ctx.lineWidth = 1.8;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      }
     }
 
     // Head
     const hx = pts[0].x, hy = pts[0].y;
+    const HR = R + Math.max(3, R * 0.35);
     ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI*2);
-    ctx.fillStyle = bodyGrad(hx, hy, HR); ctx.fill();
+    ctx.fillStyle = color; ctx.fill();
     ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI*2);
-    ctx.fillStyle = glossGrad(hx, hy, HR); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(hx - HR*0.18, hy - HR*0.22, HR*0.55, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI*2);
+    ctx.fillStyle = color; ctx.globalAlpha = 0.4; ctx.fill(); ctx.globalAlpha = 1;
 
     // Eyes
     const ang  = Math.atan2(pts[0].y - pts[1].y, pts[0].x - pts[1].x);
-    const fwdX = Math.cos(ang), fwdY = Math.sin(ang);
     const perpX = -Math.sin(ang), perpY = Math.cos(ang);
-    const eyeR = HR * 0.33, pupilR = HR * 0.19, pupilFwd = eyeR * 0.28;
+    const eyeR  = HR * 0.40;
     for (const s of [-1, 1]) {
-      const ex = hx + fwdX*HR*0.22 + perpX*HR*0.38*s;
-      const ey = hy + fwdY*HR*0.22 + perpY*HR*0.38*s;
+      const ex = hx + perpX*HR*0.36*s + Math.cos(ang)*HR*0.50;
+      const ey = hy + perpY*HR*0.36*s + Math.sin(ang)*HR*0.50;
       ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI*2);
-      ctx.fillStyle = '#FFFFFF'; ctx.fill();
-      ctx.beginPath(); ctx.arc(ex+fwdX*pupilFwd, ey+fwdY*pupilFwd, pupilR, 0, Math.PI*2);
-      ctx.fillStyle = '#080808'; ctx.fill();
-      ctx.beginPath(); ctx.arc(ex-eyeR*0.18, ey-eyeR*0.22, eyeR*0.22, 0, Math.PI*2);
-      ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.fill();
+      ctx.fillStyle = '#f2f2f2'; ctx.fill();
+      ctx.beginPath(); ctx.arc(ex + Math.cos(ang)*eyeR*0.2, ey + Math.sin(ang)*eyeR*0.2, eyeR*0.62, 0, Math.PI*2);
+      ctx.fillStyle = '#111'; ctx.fill();
     }
   }
 
@@ -1333,87 +1353,88 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     if (s.trail.length > TRAIL) s.trail.pop();
   }
 
+  function drawTrailPass(t, len, wrapThresh, strokeStyle, lineWidth) {
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth   = lineWidth;
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i < len; i++) {
+      if (i > 0) {
+        const dx = Math.abs(t[i].x - t[i-1].x), dy = Math.abs(t[i].y - t[i-1].y);
+        if (dx > wrapThresh || dy > wrapThresh) {
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(t[i].x, t[i].y);
+          started = true;
+          continue;
+        }
+      }
+      if (!started || i === 0) { ctx.moveTo(t[i].x, t[i].y); started = true; }
+      else ctx.lineTo(t[i].x, t[i].y);
+    }
+    ctx.stroke();
+  }
+
   function drawSnake(s) {
     if (s.trail.length < 4) return;
     const t = s.trail, len = t.length;
     const W = canvas.width, H = canvas.height;
     const wrapThresh = Math.min(W, H) * 0.35;
-    const HR = R + 5;
-
-    function blend(hex, target, f) {
-      let r1=150,g1=150,b1=150;
-      if(hex&&hex[0]==='#'&&hex.length>=7){r1=parseInt(hex.slice(1,3),16);g1=parseInt(hex.slice(3,5),16);b1=parseInt(hex.slice(5,7),16);}
-      const r2=parseInt(target.slice(1,3),16),g2=parseInt(target.slice(3,5),16),b2=parseInt(target.slice(5,7),16);
-      return `rgb(${Math.round(r1+(r2-r1)*f)},${Math.round(g1+(g2-g1)*f)},${Math.round(b1+(b2-b1)*f)})`;
-    }
-    const color=s.color;
-    const cBright=blend(color,'#ffffff',0.70),cLight=blend(color,'#ffffff',0.20);
-    const cDark=blend(color,'#000000',0.40),cShadow=blend(color,'#000000',0.75);
-
-    function bodyGrad(x,y,r){
-      const hx=x-r*0.55,hy=y-r*0.60;
-      const g=ctx.createRadialGradient(hx,hy,r*0.05,x,y,r);
-      g.addColorStop(0.00,cBright);g.addColorStop(0.30,cLight);
-      g.addColorStop(0.60,color);g.addColorStop(0.82,cDark);g.addColorStop(1.00,cShadow);
-      return g;
-    }
-    function glossGrad(x,y,r){
-      const hx=x-r*0.30,hy=y-r*0.36;
-      const g=ctx.createRadialGradient(hx,hy,0,hx,hy,r*0.58);
-      g.addColorStop(0.0,'rgba(255,255,255,0.52)');g.addColorStop(0.4,'rgba(255,255,255,0.14)');g.addColorStop(1.0,'rgba(255,255,255,0)');
-      return g;
-    }
-
-    // Draw circles tail→head at min spacing R*0.45 (densely overlapping → flush tube)
-    // Skip across screen-wrap gaps
-    const MIN_STEP = R * 0.45;
-    const circles = [];
-    let lastX = t[len-1].x, lastY = t[len-1].y, accum2 = MIN_STEP;
-    circles.push(t[len-1]);
-    for (let i = len - 2; i >= 0; i--) {
-      const dx = t[i].x - lastX, dy = t[i].y - lastY;
-      const d = Math.sqrt(dx*dx + dy*dy);
-      if (d > wrapThresh) { lastX = t[i].x; lastY = t[i].y; accum2 = MIN_STEP; continue; }
-      accum2 += d;
-      if (accum2 >= MIN_STEP) {
-        accum2 -= MIN_STEP;
-        circles.push(t[i]);
-        lastX = t[i].x; lastY = t[i].y;
-      }
-    }
-    if (circles[circles.length-1] !== t[0]) circles.push(t[0]);
 
     ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
 
-    // Pass 1: base
-    for (const c of circles) {
-      ctx.beginPath(); ctx.arc(c.x, c.y, R, 0, Math.PI*2);
-      ctx.fillStyle = bodyGrad(c.x, c.y, R); ctx.fill();
-    }
-    // Pass 2: gloss
-    for (const c of circles) {
-      ctx.beginPath(); ctx.arc(c.x, c.y, R, 0, Math.PI*2);
-      ctx.fillStyle = glossGrad(c.x, c.y, R); ctx.fill();
+    drawTrailPass(t, len, wrapThresh, s.color,                  R * 2);
+    drawTrailPass(t, len, wrapThresh, 'rgba(0,0,0,0.28)',       R * 1.2);
+    drawTrailPass(t, len, wrapThresh, 'rgba(255,255,255,0.30)', R * 0.72);
+
+    // Segment rings
+    let dist = 0;
+    for (let i = 1; i < len - 1; i++) {
+      const dx = t[i].x - t[i-1].x, dy = t[i].y - t[i-1].y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d > wrapThresh) { dist = 0; continue; }
+      dist += d;
+      if (dist >= 13) {
+        dist -= 13;
+        const ax = t[Math.min(i+1,len-1)].x - t[i-1].x;
+        const ay = t[Math.min(i+1,len-1)].y - t[i-1].y;
+        const al = Math.sqrt(ax*ax + ay*ay) || 1;
+        const px = -ay/al, py = ax/al;
+        ctx.beginPath();
+        ctx.moveTo(t[i].x + px*(R-1), t[i].y + py*(R-1));
+        ctx.lineTo(t[i].x - px*(R-1), t[i].y - py*(R-1));
+        ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+        ctx.lineWidth   = 2.5;
+        ctx.stroke();
+      }
     }
 
-    // Head
+    // Head dome
+    const HR = R + 5;
     ctx.beginPath(); ctx.arc(s.x, s.y, HR, 0, Math.PI*2);
-    ctx.fillStyle = bodyGrad(s.x, s.y, HR); ctx.fill();
+    ctx.fillStyle = s.color; ctx.fill();
     ctx.beginPath(); ctx.arc(s.x, s.y, HR, 0, Math.PI*2);
-    ctx.fillStyle = glossGrad(s.x, s.y, HR); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(s.x - HR*0.18, s.y - HR*0.22, HR*0.55, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,255,255,0.24)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(s.x, s.y, HR, 0, Math.PI*2);
+    ctx.fillStyle = s.color; ctx.globalAlpha = 0.45; ctx.fill();
+    ctx.globalAlpha = 1;
 
     // Eyes
-    const fwdX = Math.cos(s.angle), fwdY = Math.sin(s.angle);
     const perpX = -Math.sin(s.angle), perpY = Math.cos(s.angle);
-    const eyeR = HR * 0.33, pupilR = HR * 0.19, pupilFwd = eyeR * 0.28;
+    const fwdX  =  Math.cos(s.angle), fwdY  = Math.sin(s.angle);
+    const eyeSep = HR * 0.36, eyeFwd = HR * 0.52, eyeR = HR * 0.42;
     for (const side of [-1, 1]) {
-      const ex = s.x + fwdX*HR*0.22 + perpX*HR*0.38*side;
-      const ey = s.y + fwdY*HR*0.22 + perpY*HR*0.38*side;
+      const ex = s.x + perpX*eyeSep*side + fwdX*eyeFwd;
+      const ey = s.y + perpY*eyeSep*side + fwdY*eyeFwd;
       ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI*2);
-      ctx.fillStyle = '#FFFFFF'; ctx.fill();
-      ctx.beginPath(); ctx.arc(ex+fwdX*pupilFwd, ey+fwdY*pupilFwd, pupilR, 0, Math.PI*2);
-      ctx.fillStyle = '#080808'; ctx.fill();
-      ctx.beginPath(); ctx.arc(ex-eyeR*0.18, ey-eyeR*0.22, eyeR*0.22, 0, Math.PI*2);
+      ctx.fillStyle = '#f2f2f2'; ctx.fill();
+      ctx.beginPath(); ctx.arc(ex + fwdX*eyeR*0.18, ey + fwdY*eyeR*0.18, eyeR*0.64, 0, Math.PI*2);
+      ctx.fillStyle = '#111'; ctx.fill();
+      ctx.beginPath(); ctx.arc(ex - eyeR*0.18, ey - eyeR*0.28, eyeR*0.26, 0, Math.PI*2);
       ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fill();
     }
 

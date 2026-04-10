@@ -132,9 +132,10 @@ class Renderer {
 
     const growthScale = 1 + Math.min(1.5, (snake.length || 20) / 200);
     const R  = CONSTANTS.SNAKE_HEAD_RADIUS * growthScale;
+    const BW = R * 2;
     const HR = R * 1.15;
 
-    // Blend hex color toward black or white
+    // Blend helper — mix hex color toward black or white
     function blend(hex, target, t) {
       let r1 = 150, g1 = 150, b1 = 150;
       if (hex && hex[0] === '#' && hex.length >= 7) {
@@ -148,50 +149,67 @@ class Renderer {
       return `rgb(${Math.round(r1+(r2-r1)*t)},${Math.round(g1+(g2-g1)*t)},${Math.round(b1+(b2-b1)*t)})`;
     }
 
-    const cBright = blend(color, '#ffffff', 0.70);
-    const cLight  = blend(color, '#ffffff', 0.20);
-    const cDark   = blend(color, '#000000', 0.40);
-    const cShadow = blend(color, '#000000', 0.75);
-
-    // Draw a circle at every seg point tail→head so they densely overlap → flush tube
-    // segs: [headX,headY, s1x,s1y, ..., tailX,tailY]
-    function bodyGrad(x, y, r) {
-      const hx = x - r * 0.55, hy = y - r * 0.60;
-      const g = ctx.createRadialGradient(hx, hy, r * 0.05, x, y, r);
-      g.addColorStop(0.00, cBright);
-      g.addColorStop(0.30, cLight);
-      g.addColorStop(0.60, color);
-      g.addColorStop(0.82, cDark);
-      g.addColorStop(1.00, cShadow);
-      return g;
-    }
-    function glossGrad(x, y, r) {
-      const hx = x - r * 0.30, hy = y - r * 0.36;
-      const g = ctx.createRadialGradient(hx, hy, 0, hx, hy, r * 0.58);
-      g.addColorStop(0.0, 'rgba(255,255,255,0.52)');
-      g.addColorStop(0.4, 'rgba(255,255,255,0.14)');
-      g.addColorStop(1.0, 'rgba(255,255,255,0)');
-      return g;
-    }
+    const dark1 = blend(color, '#000000', 0.55); // deep shadow
+    const dark2 = blend(color, '#000000', 0.30); // mid shadow
+    const light1 = blend(color, '#ffffff', 0.30); // upper light
+    const light2 = blend(color, '#ffffff', 0.70); // bright highlight
+    const spec   = blend(color, '#ffffff', 0.90); // specular
 
     ctx.save();
+    ctx.lineCap  = 'round';
+    ctx.lineJoin = 'round';
 
-    // ── Pass 1: base body circles (tail → head) ───────────────────────────────
-    if (boosting) {
-      for (let i = segs.length - 2; i >= 2; i -= 2) {
-        ctx.beginPath(); ctx.arc(segs[i], segs[i+1], R * 1.18, 0, Math.PI*2);
-        ctx.fillStyle = 'rgba(255,255,255,0.10)'; ctx.fill();
+    function strokeBody(lw, style, alpha) {
+      ctx.globalAlpha = alpha !== undefined ? alpha : 1;
+      ctx.beginPath();
+      ctx.moveTo(segs[0], segs[1]);
+      for (let i = 2; i < segs.length; i += 2) ctx.lineTo(segs[i], segs[i + 1]);
+      ctx.strokeStyle = style;
+      ctx.lineWidth = lw;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    // ── Body layers — bottom to top ──────────────────────────────────────────
+    if (boosting) strokeBody(BW * 1.22, 'rgba(255,255,255,0.13)');
+    strokeBody(BW,        dark1);          // 1. dark outer shadow
+    strokeBody(BW * 0.90, color);          // 2. base color
+    strokeBody(BW * 0.68, dark2);          // 3. lower-half shadow
+    strokeBody(BW * 0.48, color);          // 4. restore mid color
+    strokeBody(BW * 0.34, light1);         // 5. upper-half light
+    strokeBody(BW * 0.20, light2);         // 6. highlight stripe
+    strokeBody(BW * 0.08, spec, 0.75);     // 7. specular
+
+    // ── Segment creases ──────────────────────────────────────────────────────
+    const ringSpacing = BW * 0.95;
+    let dist = 0;
+    for (let i = 2; i < segs.length - 2; i += 2) {
+      const dx = segs[i] - segs[i-2], dy = segs[i+1] - segs[i-1];
+      dist += Math.sqrt(dx*dx + dy*dy);
+      if (dist >= ringSpacing) {
+        dist -= ringSpacing;
+        const ax = segs[i+2] - segs[i-2], ay = segs[i+3] - segs[i-1];
+        const al = Math.sqrt(ax*ax + ay*ay) || 1;
+        const px = -ay/al, py = ax/al;
+        const hw = BW * 0.46;
+        // Dark crease line
+        ctx.beginPath();
+        ctx.moveTo(segs[i] + px*hw, segs[i+1] + py*hw);
+        ctx.lineTo(segs[i] - px*hw, segs[i+1] - py*hw);
+        ctx.strokeStyle = dark1;
+        ctx.lineWidth = BW * 0.14;
+        ctx.globalAlpha = 0.60;
+        ctx.stroke();
+        // Thin light rim just below crease — gives depth
+        ctx.beginPath();
+        ctx.moveTo(segs[i] + px*hw*0.85, segs[i+1] + py*hw*0.85);
+        ctx.lineTo(segs[i] - px*hw*0.85, segs[i+1] - py*hw*0.85);
+        ctx.strokeStyle = light1;
+        ctx.lineWidth = BW * 0.05;
+        ctx.globalAlpha = 0.30;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
       }
-    }
-    for (let i = segs.length - 2; i >= 2; i -= 2) {
-      ctx.beginPath(); ctx.arc(segs[i], segs[i+1], R, 0, Math.PI*2);
-      ctx.fillStyle = bodyGrad(segs[i], segs[i+1], R); ctx.fill();
-    }
-
-    // ── Pass 2: gloss overlay (tail → head) ──────────────────────────────────
-    for (let i = segs.length - 2; i >= 2; i -= 2) {
-      ctx.beginPath(); ctx.arc(segs[i], segs[i+1], R, 0, Math.PI*2);
-      ctx.fillStyle = glossGrad(segs[i], segs[i+1], R); ctx.fill();
     }
 
     // ── Head ─────────────────────────────────────────────────────────────────
@@ -200,36 +218,53 @@ class Renderer {
     const fwdX = Math.cos(angle), fwdY = Math.sin(angle);
     const perpX = -Math.sin(angle), perpY = Math.cos(angle);
 
+    // Shadow base
     ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI*2);
-    ctx.fillStyle = bodyGrad(hx, hy, HR); ctx.fill();
-    ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI*2);
-    ctx.fillStyle = glossGrad(hx, hy, HR); ctx.fill();
+    ctx.fillStyle = dark1; ctx.fill();
+    // Main color
+    ctx.beginPath(); ctx.arc(hx, hy, HR*0.93, 0, Math.PI*2);
+    ctx.fillStyle = color; ctx.fill();
+    // Lower shadow
+    ctx.beginPath(); ctx.arc(hx, hy, HR*0.93, 0, Math.PI*2);
+    ctx.fillStyle = dark2; ctx.globalAlpha = 0.55; ctx.fill(); ctx.globalAlpha = 1;
+    // Upper light blob
+    ctx.beginPath(); ctx.arc(hx - fwdX*HR*0.08 - perpX*HR*0.05, hy - fwdY*HR*0.08 - perpY*HR*0.05, HR*0.60, 0, Math.PI*2);
+    ctx.fillStyle = light1; ctx.globalAlpha = 0.60; ctx.fill(); ctx.globalAlpha = 1;
+    // Highlight
+    ctx.beginPath(); ctx.arc(hx - fwdX*HR*0.12, hy - fwdY*HR*0.12, HR*0.35, 0, Math.PI*2);
+    ctx.fillStyle = light2; ctx.globalAlpha = 0.75; ctx.fill(); ctx.globalAlpha = 1;
+    // Specular
+    ctx.beginPath(); ctx.arc(hx - fwdX*HR*0.16, hy - fwdY*HR*0.16, HR*0.14, 0, Math.PI*2);
+    ctx.fillStyle = spec; ctx.globalAlpha = 0.65; ctx.fill(); ctx.globalAlpha = 1;
 
     if (boosting) {
-      ctx.beginPath(); ctx.arc(hx, hy, HR + 4, 0, Math.PI*2);
+      ctx.beginPath(); ctx.arc(hx, hy, HR+4, 0, Math.PI*2);
       ctx.strokeStyle = 'rgba(255,255,255,0.5)';
       ctx.lineWidth = 2.5; ctx.stroke();
     }
 
     // ── Eyes ─────────────────────────────────────────────────────────────────
-    const eyeSide = HR * 0.38;
-    const eyeFwd  = HR * 0.22;
-    const eyeR    = HR * 0.33;
-    const pupilR  = HR * 0.19;
-    const pupilFwd = eyeR * 0.28;
+    const eyeSep = HR * 0.36;
+    const eyeFwd = HR * 0.52;
+    const eyeR   = HR * 0.40;
 
     for (const side of [-1, 1]) {
-      const ex = hx + fwdX * eyeFwd + perpX * eyeSide * side;
-      const ey = hy + fwdY * eyeFwd + perpY * eyeSide * side;
+      const ex = hx + perpX*eyeSep*side + fwdX*eyeFwd;
+      const ey = hy + perpY*eyeSep*side + fwdY*eyeFwd;
 
+      // White sclera with slight shadow ring
       ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI*2);
-      ctx.fillStyle = '#FFFFFF'; ctx.fill();
+      ctx.fillStyle = '#e8e8e8'; ctx.fill();
+      ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = eyeR*0.12; ctx.stroke();
 
-      ctx.beginPath(); ctx.arc(ex + fwdX*pupilFwd, ey + fwdY*pupilFwd, pupilR, 0, Math.PI*2);
-      ctx.fillStyle = '#080808'; ctx.fill();
+      // Black pupil — slightly forward-biased
+      ctx.beginPath(); ctx.arc(ex + fwdX*eyeR*0.18, ey + fwdY*eyeR*0.18, eyeR*0.52, 0, Math.PI*2);
+      ctx.fillStyle = '#111'; ctx.fill();
 
-      ctx.beginPath(); ctx.arc(ex - eyeR*0.18, ey - eyeR*0.22, eyeR*0.22, 0, Math.PI*2);
-      ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fill();
+      // Glint
+      ctx.beginPath(); ctx.arc(ex - eyeR*0.14, ey - eyeR*0.18, eyeR*0.20, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.fill();
     }
 
     // ── Labels ───────────────────────────────────────────────────────────────

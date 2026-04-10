@@ -22,11 +22,26 @@ const app    = express();
 const server = http.createServer(app);
 const io     = new Server(server, { cors: { origin: '*' } });
 
-// Render's load balancer uses keep-alive connections; match its timeout to prevent 502s
+// Prevent Render 502s — match their load balancer keep-alive timeout
 server.keepAliveTimeout = 120000;
 server.headersTimeout   = 121000;
 
 app.set('trust proxy', 1); // Render runs behind a proxy
+
+// Init DB in background with retries — server listens immediately so health checks pass
+(async () => {
+  for (let attempt = 1; attempt <= 8; attempt++) {
+    try {
+      await db.init();
+      console.log('[DB] Connected');
+      return;
+    } catch (e) {
+      console.error(`[DB] Init attempt ${attempt}/8 failed: ${e.message}`);
+      await new Promise(r => setTimeout(r, Math.min(attempt * 2000, 15000)));
+    }
+  }
+  console.warn('[DB] Could not connect — sessions may not persist');
+})();
 
 // ─── Session & Passport ───────────────────────────────────────────────────────
 app.use(cookieParser());
@@ -272,7 +287,7 @@ app.post('/wallet/withdraw', async (req, res) => {
   }
 });
 
-// ─── Health check (Render uses this to know the server is ready) ─────────────
+// ─── Health check ─────────────────────────────────────────────────────────────
 app.get('/healthz', (req, res) => res.sendStatus(200));
 
 // ─── Static files ─────────────────────────────────────────────────────────────
@@ -424,23 +439,5 @@ io.on('connection', (socket) => {
   });
 });
 
-// ─── Start ────────────────────────────────────────────────────────────────────
-// Listen immediately so Render's health check can reach us right away.
-// DB init runs in the background with retries — the pg.Pool reconnects lazily
-// so sessions will work once the DB is reachable.
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
-
-(async () => {
-  for (let attempt = 1; attempt <= 8; attempt++) {
-    try {
-      await db.init();
-      console.log('[DB] Connected');
-      return;
-    } catch (e) {
-      console.error(`[DB] Init attempt ${attempt}/8 failed: ${e.message}`);
-      await new Promise(r => setTimeout(r, Math.min(attempt * 2000, 15000)));
-    }
-  }
-  console.warn('[DB] Could not connect after 8 attempts — sessions may not persist');
-})();
