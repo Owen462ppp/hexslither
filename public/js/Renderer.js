@@ -42,8 +42,17 @@ class Renderer {
     ctx.restore();
 
     // Snakes drawn outside the clip so bodies stay visible under the red border zone
+    // Viewport bounds in world space (with margin for snake body radius)
+    const margin = 300;
+    const visL = (-camera.x) / camera.scale - margin;
+    const visR = (W - camera.x) / camera.scale + margin;
+    const visT = (-camera.y) / camera.scale - margin;
+    const visB = (H - camera.y) / camera.scale + margin;
     for (const snake of state.snakes) {
-      if (snake.id !== myId) this._drawSnake(ctx, snake, false);
+      if (snake.id === myId) continue;
+      const hx = snake.segs && snake.segs[0], hy = snake.segs && snake.segs[1];
+      if (hx < visL || hx > visR || hy < visT || hy > visB) continue; // off-screen
+      this._drawSnake(ctx, snake, false);
     }
     if (mySnake) this._drawSnake(ctx, mySnake, true);
 
@@ -166,8 +175,8 @@ class Renderer {
     // ── Crease arcs — 25-pass tapered arc (same technique as preview_snake) ──
     // Each pass is individually imperceptible; together they form a smooth shadow
     const CREASE_SPACING = R * 1.76; // = diameter * 0.88, matches preview ratio
-    const PASSES = 25;
-    const SEGS   = 12;
+    const PASSES = 15;
+    const SEGS   = 8;
 
     function taperedArc(cx, cy, fwdAngle, r, baseAlpha, lw) {
       for (let s = 0; s < SEGS; s++) {
@@ -204,7 +213,7 @@ class Renderer {
         const t  = p / (PASSES - 1);
         const r  = R * (0.88 + t * 0.12);
         const lw = R * (0.50 * Math.pow(1 - t, 1.5) + 0.035);
-        const a  = 0.0006 + Math.pow(t, 2.5) * 0.025;
+        const a  = 0.001 + Math.pow(t, 2.5) * 0.042;
         taperedArc(cx, cy, fwdAngle, r, a, lw);
       }
     }
@@ -225,7 +234,7 @@ class Renderer {
       const t  = p / (PASSES - 1);
       const r  = HR * (0.88 + t * 0.12);
       const lw = HR * (0.50 * Math.pow(1 - t, 1.5) + 0.035);
-      const a  = 0.0006 + Math.pow(t, 2.5) * 0.025;
+      const a  = 0.001 + Math.pow(t, 2.5) * 0.042;
       taperedArc(hx, hy, angle, r, a, lw);
     }
 

@@ -1000,7 +1000,7 @@ document.getElementById('btn-play').addEventListener('click', async () => {
 
     // Tapered arc creases (same technique as in-game renderer)
     const CREASE_SPACING = R * 1.76;
-    const PASSES = 25, SEGS = 12;
+    const PASSES = 15, SEGS = 8;
     function taperedArc(cx, cy, fwdAngle, r, baseAlpha, lw) {
       for (let s = 0; s < SEGS; s++) {
         const t0 = s / SEGS, t1 = (s+1) / SEGS;
@@ -1029,7 +1029,7 @@ document.getElementById('btn-play').addEventListener('click', async () => {
         taperedArc(pts[i].x, pts[i].y, fwdAngle,
           R * (0.88 + t*0.12),
           R * (0.50 * Math.pow(1-t, 1.5) + 0.035),
-          0.0006 + Math.pow(t, 2.5) * 0.025);
+          0.001 + Math.pow(t, 2.5) * 0.042);
       }
     }
 
@@ -1044,7 +1044,7 @@ document.getElementById('btn-play').addEventListener('click', async () => {
       taperedArc(hx, hy, ang,
         R * (0.88 + t*0.12),
         R * (0.50 * Math.pow(1-t, 1.5) + 0.035),
-        0.0006 + Math.pow(t, 2.5) * 0.025);
+        0.001 + Math.pow(t, 2.5) * 0.042);
     }
 
     const fwdX = Math.cos(ang), fwdY = Math.sin(ang);
@@ -1296,7 +1296,7 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   ];
 
   const R     = 18;
-  const SPEED = 1.2;
+  const SPEED = 2.8;
   const TRAIL = 280;
   const TURN  = 0.018;
 
@@ -1374,12 +1374,32 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // Body — solid color base (keeps wrap-handling logic)
-    drawTrailPass(t, len, wrapThresh, s.color, R * 2);
+    // Body — bezier path from tail→head, restarting sub-path at screen wraps
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = R * 2;
+    let bi = len - 1;
+    while (bi >= 0) {
+      ctx.beginPath();
+      ctx.moveTo(t[bi].x, t[bi].y);
+      bi--;
+      while (bi >= 0) {
+        const wdx = Math.abs(t[bi+1].x - t[bi].x), wdy = Math.abs(t[bi+1].y - t[bi].y);
+        if (wdx > wrapThresh || wdy > wrapThresh) break;
+        if (bi > 0) {
+          const ndx = Math.abs(t[bi].x - t[bi-1].x), ndy = Math.abs(t[bi].y - t[bi-1].y);
+          if (ndx <= wrapThresh && ndy <= wrapThresh) {
+            const mx = (t[bi].x + t[bi-1].x) / 2, my = (t[bi].y + t[bi-1].y) / 2;
+            ctx.quadraticCurveTo(t[bi].x, t[bi].y, mx, my);
+          } else { ctx.lineTo(t[bi].x, t[bi].y); }
+        } else { ctx.lineTo(t[bi].x, t[bi].y); }
+        bi--;
+      }
+      ctx.stroke();
+    }
 
-    // Tapered arc creases
+    // Tapered arc creases — same params as in-game renderer
     const CREASE_SPACING = R * 1.76;
-    const PASSES = 25, SEGS = 12;
+    const PASSES = 15, SEGS = 8;
     function taperedArc(cx, cy, fwdAngle, r, baseAlpha, lw) {
       for (let sg = 0; sg < SEGS; sg++) {
         const t0 = sg / SEGS, t1 = (sg+1) / SEGS;
@@ -1410,7 +1430,7 @@ document.getElementById('btn-play').addEventListener('click', async () => {
         taperedArc(t[i].x, t[i].y, fwdAngle,
           R * (0.88 + tv*0.12),
           R * (0.50 * Math.pow(1-tv, 1.5) + 0.035),
-          0.0006 + Math.pow(tv, 2.5) * 0.025);
+          0.001 + Math.pow(tv, 2.5) * 0.042);
       }
     }
 
@@ -1424,7 +1444,7 @@ document.getElementById('btn-play').addEventListener('click', async () => {
       taperedArc(hx, hy, s.angle,
         R * (0.88 + tv*0.12),
         R * (0.50 * Math.pow(1-tv, 1.5) + 0.035),
-        0.0006 + Math.pow(tv, 2.5) * 0.025);
+        0.001 + Math.pow(tv, 2.5) * 0.042);
     }
 
     const fwdX = Math.cos(s.angle), fwdY = Math.sin(s.angle);
