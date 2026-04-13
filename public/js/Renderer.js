@@ -132,150 +132,136 @@ class Renderer {
 
     const growthScale = 1 + Math.min(1.5, (snake.length || 20) / 200);
     const R  = CONSTANTS.SNAKE_HEAD_RADIUS * growthScale;
-    const BW = R * 2;
     const HR = R * 1.15;
-
-    // Blend helper — mix hex color toward black or white
-    function blend(hex, target, t) {
-      let r1 = 150, g1 = 150, b1 = 150;
-      if (hex && hex[0] === '#' && hex.length >= 7) {
-        r1 = parseInt(hex.slice(1,3),16);
-        g1 = parseInt(hex.slice(3,5),16);
-        b1 = parseInt(hex.slice(5,7),16);
-      }
-      const r2 = parseInt(target.slice(1,3),16);
-      const g2 = parseInt(target.slice(3,5),16);
-      const b2 = parseInt(target.slice(5,7),16);
-      return `rgb(${Math.round(r1+(r2-r1)*t)},${Math.round(g1+(g2-g1)*t)},${Math.round(b1+(b2-b1)*t)})`;
-    }
-
-    const dark1 = blend(color, '#000000', 0.55); // deep shadow
-    const dark2 = blend(color, '#000000', 0.30); // mid shadow
-    const light1 = blend(color, '#ffffff', 0.30); // upper light
-    const light2 = blend(color, '#ffffff', 0.70); // bright highlight
-    const spec   = blend(color, '#ffffff', 0.90); // specular
+    const SN = segs.length >> 1; // number of (x,y) pairs
 
     ctx.save();
     ctx.lineCap  = 'round';
     ctx.lineJoin = 'round';
 
-    function strokeBody(lw, style, alpha) {
-      ctx.globalAlpha = alpha !== undefined ? alpha : 1;
+    // ── Smooth body path (tail → head via quadratic bezier) ──────────────────
+    function buildPath() {
       ctx.beginPath();
-      ctx.moveTo(segs[0], segs[1]);
-      for (let i = 2; i < segs.length; i += 2) ctx.lineTo(segs[i], segs[i + 1]);
-      ctx.strokeStyle = style;
-      ctx.lineWidth = lw;
-      ctx.stroke();
-      ctx.globalAlpha = 1;
+      ctx.moveTo(segs[segs.length - 2], segs[segs.length - 1]);
+      for (let i = segs.length - 4; i >= 2; i -= 2) {
+        const mx = (segs[i] + segs[i - 2]) / 2;
+        const my = (segs[i + 1] + segs[i - 1]) / 2;
+        ctx.quadraticCurveTo(segs[i], segs[i + 1], mx, my);
+      }
+      ctx.lineTo(segs[0], segs[1]);
     }
 
-    // ── Body layers — bottom to top ──────────────────────────────────────────
-    if (boosting) strokeBody(BW * 1.22, 'rgba(255,255,255,0.13)');
-    strokeBody(BW,        dark1);          // 1. dark outer shadow
-    strokeBody(BW * 0.90, color);          // 2. base color
-    strokeBody(BW * 0.68, dark2);          // 3. lower-half shadow
-    strokeBody(BW * 0.48, color);          // 4. restore mid color
-    strokeBody(BW * 0.34, light1);         // 5. upper-half light
-    strokeBody(BW * 0.20, light2);         // 6. highlight stripe
-    strokeBody(BW * 0.08, spec, 0.75);     // 7. specular
+    // ── Body base ─────────────────────────────────────────────────────────────
+    if (boosting) {
+      buildPath();
+      ctx.lineWidth   = R * 2.44;
+      ctx.strokeStyle = 'rgba(255,255,255,0.13)';
+      ctx.stroke();
+    }
+    buildPath();
+    ctx.lineWidth   = R * 2;
+    ctx.strokeStyle = color;
+    ctx.stroke();
 
-    // ── Segment creases ──────────────────────────────────────────────────────
-    const ringSpacing = BW * 0.95;
-    let dist = 0;
-    for (let i = 2; i < segs.length - 2; i += 2) {
-      const dx = segs[i] - segs[i-2], dy = segs[i+1] - segs[i-1];
-      dist += Math.sqrt(dx*dx + dy*dy);
-      if (dist >= ringSpacing) {
-        dist -= ringSpacing;
-        const ax = segs[i+2] - segs[i-2], ay = segs[i+3] - segs[i-1];
-        const al = Math.sqrt(ax*ax + ay*ay) || 1;
-        const px = -ay/al, py = ax/al;
-        const hw = BW * 0.46;
-        // Dark crease line
+    // ── Crease arcs — 25-pass tapered arc (same technique as preview_snake) ──
+    // Each pass is individually imperceptible; together they form a smooth shadow
+    const CREASE_SPACING = R * 1.76; // = diameter * 0.88, matches preview ratio
+    const PASSES = 25;
+    const SEGS   = 12;
+
+    function taperedArc(cx, cy, fwdAngle, r, baseAlpha, lw) {
+      for (let s = 0; s < SEGS; s++) {
+        const t0 = s / SEGS, t1 = (s + 1) / SEGS;
+        const taper = Math.sin((t0 + t1) / 2 * Math.PI);
         ctx.beginPath();
-        ctx.moveTo(segs[i] + px*hw, segs[i+1] + py*hw);
-        ctx.lineTo(segs[i] - px*hw, segs[i+1] - py*hw);
-        ctx.strokeStyle = dark1;
-        ctx.lineWidth = BW * 0.14;
-        ctx.globalAlpha = 0.60;
+        ctx.arc(cx, cy, r,
+          fwdAngle + Math.PI * 0.5 + t0 * Math.PI,
+          fwdAngle + Math.PI * 0.5 + t1 * Math.PI,
+          false);
+        ctx.strokeStyle = `rgba(0,0,0,${baseAlpha * taper})`;
+        ctx.lineWidth   = lw;
+        ctx.lineCap     = 'butt';
         ctx.stroke();
-        // Thin light rim just below crease — gives depth
-        ctx.beginPath();
-        ctx.moveTo(segs[i] + px*hw*0.85, segs[i+1] + py*hw*0.85);
-        ctx.lineTo(segs[i] - px*hw*0.85, segs[i+1] - py*hw*0.85);
-        ctx.strokeStyle = light1;
-        ctx.lineWidth = BW * 0.05;
-        ctx.globalAlpha = 0.30;
-        ctx.stroke();
-        ctx.globalAlpha = 1;
       }
     }
 
-    // ── Head ─────────────────────────────────────────────────────────────────
-    const hx = segs[0], hy = segs[1];
+    // Iterate head→tail (si=0 is head), place a crease every CREASE_SPACING units
+    let dist = -R * 0.35; // offset so first crease clears the head circle
+    for (let si = 1; si < SN - 1; si++) {
+      const dx = segs[si*2] - segs[(si-1)*2];
+      const dy = segs[si*2+1] - segs[(si-1)*2+1];
+      dist += Math.sqrt(dx*dx + dy*dy);
+      if (dist < CREASE_SPACING) continue;
+      dist -= CREASE_SPACING;
+
+      // Forward direction = toward head (smaller si index)
+      const pi = Math.max(0, si - 2);
+      const ni = Math.min(SN - 1, si + 2);
+      const fwdAngle = Math.atan2(segs[pi*2+1] - segs[ni*2+1], segs[pi*2] - segs[ni*2]);
+
+      const cx = segs[si*2], cy = segs[si*2+1];
+      for (let p = 0; p < PASSES; p++) {
+        const t  = p / (PASSES - 1);
+        const r  = R * (0.88 + t * 0.12);
+        const lw = R * (0.50 * Math.pow(1 - t, 1.5) + 0.035);
+        const a  = 0.0006 + Math.pow(t, 2.5) * 0.025;
+        taperedArc(cx, cy, fwdAngle, r, a, lw);
+      }
+    }
+
+    // ── Head ──────────────────────────────────────────────────────────────────
+    const hx    = segs[0], hy = segs[1];
     const angle = snake.angle || 0;
-    const fwdX = Math.cos(angle), fwdY = Math.sin(angle);
+    const fwdX  = Math.cos(angle), fwdY  = Math.sin(angle);
     const perpX = -Math.sin(angle), perpY = Math.cos(angle);
 
-    // Shadow base
-    ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI*2);
-    ctx.fillStyle = dark1; ctx.fill();
-    // Main color
-    ctx.beginPath(); ctx.arc(hx, hy, HR*0.93, 0, Math.PI*2);
-    ctx.fillStyle = color; ctx.fill();
-    // Lower shadow
-    ctx.beginPath(); ctx.arc(hx, hy, HR*0.93, 0, Math.PI*2);
-    ctx.fillStyle = dark2; ctx.globalAlpha = 0.55; ctx.fill(); ctx.globalAlpha = 1;
-    // Upper light blob
-    ctx.beginPath(); ctx.arc(hx - fwdX*HR*0.08 - perpX*HR*0.05, hy - fwdY*HR*0.08 - perpY*HR*0.05, HR*0.60, 0, Math.PI*2);
-    ctx.fillStyle = light1; ctx.globalAlpha = 0.60; ctx.fill(); ctx.globalAlpha = 1;
-    // Highlight
-    ctx.beginPath(); ctx.arc(hx - fwdX*HR*0.12, hy - fwdY*HR*0.12, HR*0.35, 0, Math.PI*2);
-    ctx.fillStyle = light2; ctx.globalAlpha = 0.75; ctx.fill(); ctx.globalAlpha = 1;
-    // Specular
-    ctx.beginPath(); ctx.arc(hx - fwdX*HR*0.16, hy - fwdY*HR*0.16, HR*0.14, 0, Math.PI*2);
-    ctx.fillStyle = spec; ctx.globalAlpha = 0.65; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.arc(hx, hy, HR, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+
+    // Head crease — same tapered arc centred on head, using snake.angle
+    for (let p = 0; p < PASSES; p++) {
+      const t  = p / (PASSES - 1);
+      const r  = HR * (0.88 + t * 0.12);
+      const lw = HR * (0.50 * Math.pow(1 - t, 1.5) + 0.035);
+      const a  = 0.0006 + Math.pow(t, 2.5) * 0.025;
+      taperedArc(hx, hy, angle, r, a, lw);
+    }
 
     if (boosting) {
-      ctx.beginPath(); ctx.arc(hx, hy, HR+4, 0, Math.PI*2);
+      ctx.beginPath();
+      ctx.arc(hx, hy, HR + 4, 0, Math.PI * 2);
       ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-      ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
     }
 
-    // ── Eyes ─────────────────────────────────────────────────────────────────
-    const eyeSep = HR * 0.36;
-    const eyeFwd = HR * 0.52;
-    const eyeR   = HR * 0.40;
+    // ── Eyes ──────────────────────────────────────────────────────────────────
+    const eyeR    = HR * 0.40;
+    const pupilR  = eyeR * 0.54;
+    const eyeSide = HR * 0.46;
+    const eyeFwd  = HR * 0.38;
 
     for (const side of [-1, 1]) {
-      const ex = hx + perpX*eyeSep*side + fwdX*eyeFwd;
-      const ey = hy + perpY*eyeSep*side + fwdY*eyeFwd;
-
-      // White sclera with slight shadow ring
-      ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI*2);
-      ctx.fillStyle = '#e8e8e8'; ctx.fill();
-      ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI*2);
-      ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = eyeR*0.12; ctx.stroke();
-
-      // Black pupil — slightly forward-biased
-      ctx.beginPath(); ctx.arc(ex + fwdX*eyeR*0.18, ey + fwdY*eyeR*0.18, eyeR*0.52, 0, Math.PI*2);
-      ctx.fillStyle = '#111'; ctx.fill();
-
-      // Glint
-      ctx.beginPath(); ctx.arc(ex - eyeR*0.14, ey - eyeR*0.18, eyeR*0.20, 0, Math.PI*2);
-      ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.fill();
+      const ex = hx + fwdX * eyeFwd + perpX * eyeSide * side;
+      const ey = hy + fwdY * eyeFwd + perpY * eyeSide * side;
+      ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI * 2);
+      ctx.fillStyle = '#FFFFFF'; ctx.fill();
+      const ps = eyeR - pupilR;
+      ctx.beginPath(); ctx.arc(ex + fwdX * ps, ey + fwdY * ps, pupilR, 0, Math.PI * 2);
+      ctx.fillStyle = '#060606'; ctx.fill();
     }
 
-    // ── Labels ───────────────────────────────────────────────────────────────
+    // ── Labels ────────────────────────────────────────────────────────────────
     ctx.textAlign = 'center';
     if (name) {
       const fs = Math.round(R * 1.1);
       ctx.font = `bold ${fs}px Segoe UI`;
       ctx.strokeStyle = 'rgba(0,0,0,0.65)'; ctx.lineWidth = fs * 0.18;
-      ctx.strokeText(name, hx, hy - HR*2.5);
+      ctx.strokeText(name, hx, hy - HR * 2.5);
       ctx.fillStyle = isMe ? '#ffe066' : '#fff';
-      ctx.fillText(name, hx, hy - HR*2.5);
+      ctx.fillText(name, hx, hy - HR * 2.5);
     }
     if (snake.worth > 0) {
       const rate = typeof solCadRate !== 'undefined' ? solCadRate : 200;
@@ -283,9 +269,9 @@ class Renderer {
       const wfs = Math.round(R * 1.0);
       ctx.font = `bold ${wfs}px Segoe UI`;
       ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = wfs * 0.18;
-      ctx.strokeText(`C$${cadVal}`, hx, hy - HR*(name ? 3.8 : 2.5));
+      ctx.strokeText(`C$${cadVal}`, hx, hy - HR * (name ? 3.8 : 2.5));
       ctx.fillStyle = '#14F195';
-      ctx.fillText(`C$${cadVal}`, hx, hy - HR*(name ? 3.8 : 2.5));
+      ctx.fillText(`C$${cadVal}`, hx, hy - HR * (name ? 3.8 : 2.5));
     }
 
     ctx.restore();
