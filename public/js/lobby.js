@@ -977,101 +977,90 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     const amp = H * 0.22, freq = 0.055, step = 3.5;
     const N = Math.floor((W * 0.85) / step);
 
-    // Build smooth points: gentle horizontal S-curve
     const pts = [];
     for (let i = 0; i < N; i++) {
-      pts.push({
-        x: cx - i * step,
-        y: cy + Math.sin(i * freq) * amp,
-      });
+      pts.push({ x: cx - i * step, y: cy + Math.sin(i * freq) * amp });
     }
 
-    function strokePath(lw, style) {
-      ctx.beginPath();
-      ctx.moveTo(pts[0].x, pts[0].y);
-      for (let i = 1; i < pts.length - 1; i++) {
-        const mx = (pts[i].x + pts[i+1].x) / 2;
-        const my = (pts[i].y + pts[i+1].y) / 2;
-        ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
-      }
-      ctx.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
-      ctx.strokeStyle = style;
-      ctx.lineWidth   = lw;
-      ctx.lineCap     = 'round';
-      ctx.lineJoin    = 'round';
-      ctx.stroke();
-    }
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
 
-    // Segment rings
-    let dist = 0;
-    for (let i = 1; i < pts.length - 1; i++) {
-      const dx = pts[i].x - pts[i-1].x, dy = pts[i].y - pts[i-1].y;
-      dist += Math.sqrt(dx*dx + dy*dy);
-      if (dist >= R * 1.3) {
-        dist -= R * 1.3;
-        const ax = pts[Math.min(i+1,pts.length-1)].x - pts[i-1].x;
-        const ay = pts[Math.min(i+1,pts.length-1)].y - pts[i-1].y;
-        const al = Math.sqrt(ax*ax + ay*ay) || 1;
-        const px = -ay/al, py = ax/al;
+    // Body — bezier path from tail → head
+    ctx.beginPath();
+    ctx.moveTo(pts[N-1].x, pts[N-1].y);
+    for (let i = N-2; i >= 1; i--) {
+      const mx = (pts[i].x + pts[i-1].x) / 2, my = (pts[i].y + pts[i-1].y) / 2;
+      ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+    }
+    ctx.lineTo(pts[0].x, pts[0].y);
+    ctx.lineWidth = R * 2;
+    ctx.strokeStyle = color;
+    ctx.stroke();
+
+    // Tapered arc creases (same technique as in-game renderer)
+    const CREASE_SPACING = R * 1.76;
+    const PASSES = 25, SEGS = 12;
+    function taperedArc(cx, cy, fwdAngle, r, baseAlpha, lw) {
+      for (let s = 0; s < SEGS; s++) {
+        const t0 = s / SEGS, t1 = (s+1) / SEGS;
+        const taper = Math.sin((t0+t1) / 2 * Math.PI);
         ctx.beginPath();
-        ctx.moveTo(pts[i].x + px*(R-1), pts[i].y + py*(R-1));
-        ctx.lineTo(pts[i].x - px*(R-1), pts[i].y - py*(R-1));
-        ctx.strokeStyle = 'rgba(0,0,0,0.20)';
-        ctx.lineWidth = 2;
-        ctx.lineCap = 'round';
+        ctx.arc(cx, cy, r,
+          fwdAngle + Math.PI*0.5 + t0*Math.PI,
+          fwdAngle + Math.PI*0.5 + t1*Math.PI, false);
+        ctx.strokeStyle = `rgba(0,0,0,${baseAlpha * taper})`;
+        ctx.lineWidth = lw;
+        ctx.lineCap = 'butt';
         ctx.stroke();
       }
     }
 
-    strokePath(R * 2,    color);
-    strokePath(R * 1.15, 'rgba(0,0,0,0.28)');
-    strokePath(R * 0.65, 'rgba(255,255,255,0.28)');
-
-    // Segment rings on top
-    dist = 0;
-    for (let i = 1; i < pts.length - 1; i++) {
+    let dist = -R * 0.35;
+    for (let i = 1; i < N - 1; i++) {
       const dx = pts[i].x - pts[i-1].x, dy = pts[i].y - pts[i-1].y;
       dist += Math.sqrt(dx*dx + dy*dy);
-      if (dist >= R * 1.3) {
-        dist -= R * 1.3;
-        const ax = pts[Math.min(i+1,pts.length-1)].x - pts[i-1].x;
-        const ay = pts[Math.min(i+1,pts.length-1)].y - pts[i-1].y;
-        const al = Math.sqrt(ax*ax + ay*ay) || 1;
-        const px = -ay/al, py = ax/al;
-        ctx.beginPath();
-        ctx.moveTo(pts[i].x + px*(R-1), pts[i].y + py*(R-1));
-        ctx.lineTo(pts[i].x - px*(R-1), pts[i].y - py*(R-1));
-        ctx.strokeStyle = 'rgba(0,0,0,0.18)';
-        ctx.lineWidth = 1.8;
-        ctx.lineCap = 'round';
-        ctx.stroke();
+      if (dist < CREASE_SPACING) continue;
+      dist -= CREASE_SPACING;
+      const pi = Math.max(0, i-2), ni = Math.min(N-1, i+2);
+      const fwdAngle = Math.atan2(pts[pi].y - pts[ni].y, pts[pi].x - pts[ni].x);
+      for (let p = 0; p < PASSES; p++) {
+        const t = p / (PASSES-1);
+        taperedArc(pts[i].x, pts[i].y, fwdAngle,
+          R * (0.88 + t*0.12),
+          R * (0.50 * Math.pow(1-t, 1.5) + 0.035),
+          0.0006 + Math.pow(t, 2.5) * 0.025);
       }
     }
 
-    // Head
+    // Head — flush circle + crease + eyes
     const hx = pts[0].x, hy = pts[0].y;
-    const HR = R + Math.max(3, R * 0.35);
-    ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI*2);
-    ctx.fillStyle = color; ctx.fill();
-    ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fill();
-    ctx.beginPath(); ctx.arc(hx - HR*0.18, hy - HR*0.22, HR*0.55, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fill();
-    ctx.beginPath(); ctx.arc(hx, hy, HR, 0, Math.PI*2);
-    ctx.fillStyle = color; ctx.globalAlpha = 0.4; ctx.fill(); ctx.globalAlpha = 1;
-
-    // Eyes
     const ang  = Math.atan2(pts[0].y - pts[1].y, pts[0].x - pts[1].x);
-    const perpX = -Math.sin(ang), perpY = Math.cos(ang);
-    const eyeR  = HR * 0.40;
-    for (const s of [-1, 1]) {
-      const ex = hx + perpX*HR*0.36*s + Math.cos(ang)*HR*0.50;
-      const ey = hy + perpY*HR*0.36*s + Math.sin(ang)*HR*0.50;
-      ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI*2);
-      ctx.fillStyle = '#f2f2f2'; ctx.fill();
-      ctx.beginPath(); ctx.arc(ex + Math.cos(ang)*eyeR*0.2, ey + Math.sin(ang)*eyeR*0.2, eyeR*0.62, 0, Math.PI*2);
-      ctx.fillStyle = '#111'; ctx.fill();
+    ctx.beginPath(); ctx.arc(hx, hy, R, 0, Math.PI*2);
+    ctx.fillStyle = color; ctx.fill();
+
+    for (let p = 0; p < PASSES; p++) {
+      const t = p / (PASSES-1);
+      taperedArc(hx, hy, ang,
+        R * (0.88 + t*0.12),
+        R * (0.50 * Math.pow(1-t, 1.5) + 0.035),
+        0.0006 + Math.pow(t, 2.5) * 0.025);
     }
+
+    const fwdX = Math.cos(ang), fwdY = Math.sin(ang);
+    const perpX = -Math.sin(ang), perpY = Math.cos(ang);
+    const eyeR = R * 0.40, pupilR = eyeR * 0.54;
+    const eyeSide = R * 0.46, eyeFwd = R * 0.38;
+    for (const s of [-1, 1]) {
+      const ex = hx + fwdX*eyeFwd + perpX*eyeSide*s;
+      const ey = hy + fwdY*eyeFwd + perpY*eyeSide*s;
+      ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI*2);
+      ctx.fillStyle = '#FFFFFF'; ctx.fill();
+      const ps = eyeR - pupilR;
+      ctx.beginPath(); ctx.arc(ex + fwdX*ps, ey + fwdY*ps, pupilR, 0, Math.PI*2);
+      ctx.fillStyle = '#060606'; ctx.fill();
+    }
+    ctx.restore();
   }
 
   // Which lobby opened the customize modal (1=snake preview, 2=circle preview)
@@ -1385,57 +1374,71 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    drawTrailPass(t, len, wrapThresh, s.color,                  R * 2);
-    drawTrailPass(t, len, wrapThresh, 'rgba(0,0,0,0.28)',       R * 1.2);
-    drawTrailPass(t, len, wrapThresh, 'rgba(255,255,255,0.30)', R * 0.72);
+    // Body — solid color base (keeps wrap-handling logic)
+    drawTrailPass(t, len, wrapThresh, s.color, R * 2);
 
-    // Segment rings
-    let dist = 0;
-    for (let i = 1; i < len - 1; i++) {
-      const dx = t[i].x - t[i-1].x, dy = t[i].y - t[i-1].y;
-      const d = Math.sqrt(dx*dx + dy*dy);
-      if (d > wrapThresh) { dist = 0; continue; }
-      dist += d;
-      if (dist >= 13) {
-        dist -= 13;
-        const ax = t[Math.min(i+1,len-1)].x - t[i-1].x;
-        const ay = t[Math.min(i+1,len-1)].y - t[i-1].y;
-        const al = Math.sqrt(ax*ax + ay*ay) || 1;
-        const px = -ay/al, py = ax/al;
+    // Tapered arc creases
+    const CREASE_SPACING = R * 1.76;
+    const PASSES = 25, SEGS = 12;
+    function taperedArc(cx, cy, fwdAngle, r, baseAlpha, lw) {
+      for (let sg = 0; sg < SEGS; sg++) {
+        const t0 = sg / SEGS, t1 = (sg+1) / SEGS;
+        const taper = Math.sin((t0+t1) / 2 * Math.PI);
         ctx.beginPath();
-        ctx.moveTo(t[i].x + px*(R-1), t[i].y + py*(R-1));
-        ctx.lineTo(t[i].x - px*(R-1), t[i].y - py*(R-1));
-        ctx.strokeStyle = 'rgba(0,0,0,0.22)';
-        ctx.lineWidth   = 2.5;
+        ctx.arc(cx, cy, r,
+          fwdAngle + Math.PI*0.5 + t0*Math.PI,
+          fwdAngle + Math.PI*0.5 + t1*Math.PI, false);
+        ctx.strokeStyle = `rgba(0,0,0,${baseAlpha * taper})`;
+        ctx.lineWidth = lw;
+        ctx.lineCap = 'butt';
         ctx.stroke();
       }
     }
 
-    // Head dome
-    const HR = R + 5;
-    ctx.beginPath(); ctx.arc(s.x, s.y, HR, 0, Math.PI*2);
-    ctx.fillStyle = s.color; ctx.fill();
-    ctx.beginPath(); ctx.arc(s.x, s.y, HR, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fill();
-    ctx.beginPath(); ctx.arc(s.x - HR*0.18, s.y - HR*0.22, HR*0.55, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(255,255,255,0.24)'; ctx.fill();
-    ctx.beginPath(); ctx.arc(s.x, s.y, HR, 0, Math.PI*2);
-    ctx.fillStyle = s.color; ctx.globalAlpha = 0.45; ctx.fill();
-    ctx.globalAlpha = 1;
+    let dist = -R * 0.35;
+    for (let i = 1; i < len - 1; i++) {
+      const dx = t[i].x - t[i-1].x, dy = t[i].y - t[i-1].y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d > wrapThresh) { dist = -R * 0.35; continue; }
+      dist += d;
+      if (dist < CREASE_SPACING) continue;
+      dist -= CREASE_SPACING;
+      const pi = Math.max(0, i-2), ni = Math.min(len-1, i+2);
+      const fwdAngle = Math.atan2(t[pi].y - t[ni].y, t[pi].x - t[ni].x);
+      for (let p = 0; p < PASSES; p++) {
+        const tv = p / (PASSES-1);
+        taperedArc(t[i].x, t[i].y, fwdAngle,
+          R * (0.88 + tv*0.12),
+          R * (0.50 * Math.pow(1-tv, 1.5) + 0.035),
+          0.0006 + Math.pow(tv, 2.5) * 0.025);
+      }
+    }
 
-    // Eyes
+    // Head — flush circle + crease + eyes
+    const hx = s.x, hy = s.y;
+    ctx.beginPath(); ctx.arc(hx, hy, R, 0, Math.PI*2);
+    ctx.fillStyle = s.color; ctx.fill();
+
+    for (let p = 0; p < PASSES; p++) {
+      const tv = p / (PASSES-1);
+      taperedArc(hx, hy, s.angle,
+        R * (0.88 + tv*0.12),
+        R * (0.50 * Math.pow(1-tv, 1.5) + 0.035),
+        0.0006 + Math.pow(tv, 2.5) * 0.025);
+    }
+
+    const fwdX = Math.cos(s.angle), fwdY = Math.sin(s.angle);
     const perpX = -Math.sin(s.angle), perpY = Math.cos(s.angle);
-    const fwdX  =  Math.cos(s.angle), fwdY  = Math.sin(s.angle);
-    const eyeSep = HR * 0.36, eyeFwd = HR * 0.52, eyeR = HR * 0.42;
+    const eyeR = R * 0.40, pupilR = eyeR * 0.54;
+    const eyeSide = R * 0.46, eyeFwd = R * 0.38;
     for (const side of [-1, 1]) {
-      const ex = s.x + perpX*eyeSep*side + fwdX*eyeFwd;
-      const ey = s.y + perpY*eyeSep*side + fwdY*eyeFwd;
+      const ex = hx + fwdX*eyeFwd + perpX*eyeSide*side;
+      const ey = hy + fwdY*eyeFwd + perpY*eyeSide*side;
       ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI*2);
-      ctx.fillStyle = '#f2f2f2'; ctx.fill();
-      ctx.beginPath(); ctx.arc(ex + fwdX*eyeR*0.18, ey + fwdY*eyeR*0.18, eyeR*0.64, 0, Math.PI*2);
-      ctx.fillStyle = '#111'; ctx.fill();
-      ctx.beginPath(); ctx.arc(ex - eyeR*0.18, ey - eyeR*0.28, eyeR*0.26, 0, Math.PI*2);
-      ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fill();
+      ctx.fillStyle = '#FFFFFF'; ctx.fill();
+      const ps = eyeR - pupilR;
+      ctx.beginPath(); ctx.arc(ex + fwdX*ps, ey + fwdY*ps, pupilR, 0, Math.PI*2);
+      ctx.fillStyle = '#060606'; ctx.fill();
     }
 
     ctx.restore();

@@ -115,7 +115,10 @@ function interpolateState(now) {
   const interpolatedSnakes = [];
   for (const snakeAfter of after.state.snakes) {
     const snakeBefore = beforeMap.get(snakeAfter.id);
-    if (!snakeBefore) {
+    if (!snakeBefore || snakeAfter.boosting) {
+      // Skip interpolation for boosting snakes — segment index drift at boost speed
+      // causes the body to visually stretch. Using the latest snapshot directly
+      // gives a max ~16ms lag which is imperceptible at 60Hz.
       interpolatedSnakes.push(snakeAfter);
       continue;
     }

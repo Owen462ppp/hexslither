@@ -132,7 +132,7 @@ class Renderer {
 
     const growthScale = 1 + Math.min(1.5, (snake.length || 20) / 200);
     const R  = CONSTANTS.SNAKE_HEAD_RADIUS * growthScale;
-    const HR = R * 1.15;
+    const HR = R; // same radius as body so head is flush
     const SN = segs.length >> 1; // number of (x,y) pairs
 
     ctx.save();
@@ -227,14 +227,6 @@ class Renderer {
       const lw = HR * (0.50 * Math.pow(1 - t, 1.5) + 0.035);
       const a  = 0.0006 + Math.pow(t, 2.5) * 0.025;
       taperedArc(hx, hy, angle, r, a, lw);
-    }
-
-    if (boosting) {
-      ctx.beginPath();
-      ctx.arc(hx, hy, HR + 4, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-      ctx.lineWidth = 2.5;
-      ctx.stroke();
     }
 
     // ── Eyes ──────────────────────────────────────────────────────────────────
