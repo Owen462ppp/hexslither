@@ -119,19 +119,18 @@ function interpolateState(now) {
       interpolatedSnakes.push(snakeAfter);
       continue;
     }
-    // Only interpolate the head position and angle.
-    // Interpolating all body segments causes rubber-band because each tick
-    // shifts all segment indices — segs[i] refers to a different point between
-    // snapshots. Head-only lerp gives smooth head movement; the body follows
-    // naturally from the latest snapshot.
-    const headX = lerp(snakeBefore.segs[0], snakeAfter.segs[0], alpha);
-    const headY = lerp(snakeBefore.segs[1], snakeAfter.segs[1], alpha);
-    const interpSegs = snakeAfter.segs.slice();
-    interpSegs[0] = headX;
-    interpSegs[1] = headY;
+    // Full segs interpolation. This works without rubber-band because the server
+    // now uses uniform 3-unit sub-steps at all speeds, so every segs[k] in the
+    // before and after snapshots represents the same physical point on the snake
+    // shifted by one tick of movement — the whole snake translates smoothly.
+    const segs = [];
+    const len = Math.min(snakeBefore.segs.length, snakeAfter.segs.length);
+    for (let i = 0; i < len; i++) {
+      segs.push(lerp(snakeBefore.segs[i], snakeAfter.segs[i], alpha));
+    }
     interpolatedSnakes.push({
       ...snakeAfter,
-      segs: interpSegs,
+      segs,
       angle: lerpAngle(snakeBefore.angle, snakeAfter.angle, alpha),
     });
   }
