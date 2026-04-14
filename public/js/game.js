@@ -115,22 +115,23 @@ function interpolateState(now) {
   const interpolatedSnakes = [];
   for (const snakeAfter of after.state.snakes) {
     const snakeBefore = beforeMap.get(snakeAfter.id);
-    if (!snakeBefore || snakeAfter.boosting) {
-      // Skip interpolation for boosting snakes — segment index drift at boost speed
-      // causes the body to visually stretch. Using the latest snapshot directly
-      // gives a max ~16ms lag which is imperceptible at 60Hz.
+    if (!snakeBefore) {
       interpolatedSnakes.push(snakeAfter);
       continue;
     }
-    // Interpolate each segment pair
-    const segs = [];
-    const len = Math.min(snakeBefore.segs.length, snakeAfter.segs.length);
-    for (let i = 0; i < len; i++) {
-      segs.push(lerp(snakeBefore.segs[i], snakeAfter.segs[i], alpha));
-    }
+    // Only interpolate the head position and angle.
+    // Interpolating all body segments causes rubber-band because each tick
+    // shifts all segment indices — segs[i] refers to a different point between
+    // snapshots. Head-only lerp gives smooth head movement; the body follows
+    // naturally from the latest snapshot.
+    const headX = lerp(snakeBefore.segs[0], snakeAfter.segs[0], alpha);
+    const headY = lerp(snakeBefore.segs[1], snakeAfter.segs[1], alpha);
+    const interpSegs = snakeAfter.segs.slice();
+    interpSegs[0] = headX;
+    interpSegs[1] = headY;
     interpolatedSnakes.push({
       ...snakeAfter,
-      segs,
+      segs: interpSegs,
       angle: lerpAngle(snakeBefore.angle, snakeAfter.angle, alpha),
     });
   }
