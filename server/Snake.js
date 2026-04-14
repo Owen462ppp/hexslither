@@ -69,12 +69,14 @@ class Snake {
       this.angle = this.targetAngle;
     }
 
-    // Speed & boost shrink
-    let speed = C.SNAKE_BASE_SPEED;
+    // Steps: 3 sub-steps at base speed during boost keeps segment spacing uniform.
+    // Previously one 9-unit step per tick caused head to race ahead while only one
+    // 3-unit tail segment was removed → snake visually stretched during boost.
+    // With 3×3-unit sub-steps: head moves 9 units total, tail is trimmed 3× → no stretch.
+    let steps = 1;
     if (this.boosting) {
       if (this.boostFuel > 0) {
-        speed = C.SNAKE_BOOST_SPEED;
-        // Burn only every 4 ticks instead of every tick — much less shrink
+        steps = 3;
         if (this._boostTick === undefined) this._boostTick = 0;
         this._boostTick++;
         if (this._boostTick >= 12) {
@@ -89,18 +91,19 @@ class Snake {
       this._boostTick = 0;
     }
 
-    // Advance head
-    const newHead = {
-      x: this.segments[0].x + Math.cos(this.angle) * speed,
-      y: this.segments[0].y + Math.sin(this.angle) * speed,
-    };
-    this.segments.unshift(newHead);
-
-    // Grow or trim tail
-    if (this.pendingGrowth > 0) {
-      this.pendingGrowth--;
-    } else {
-      this.segments.pop();
+    const speed = C.SNAKE_BASE_SPEED;
+    for (let step = 0; step < steps; step++) {
+      // Advance head
+      this.segments.unshift({
+        x: this.segments[0].x + Math.cos(this.angle) * speed,
+        y: this.segments[0].y + Math.sin(this.angle) * speed,
+      });
+      // Grow or trim tail
+      if (this.pendingGrowth > 0) {
+        this.pendingGrowth--;
+      } else {
+        this.segments.pop();
+      }
     }
   }
 
