@@ -28,8 +28,8 @@ let boostActive = false;
 
 // --- Interpolation buffers ---
 let snapBuffer   = [];    // [{t, state}]  — t is server Date.now() ms
-let clockOffset  = null;  // server Date.now() minus client performance.now(), set on first snap
-const INTERP_DELAY_MS = 50; // 50ms gives ~3 buffered snaps at 60Hz — smooth yet responsive
+let clockOffset  = null;  // server Date.now() minus client performance.now()
+const INTERP_DELAY_MS = 100; // 100ms gives ~6 buffered snaps at 60Hz — stable against network jitter
 
 // Displayed (interpolated) state used for rendering
 let displayState = { snakes: [], food: [], worldRadius: CONSTANTS.BASE_WORLD_RADIUS, leaderboard: [] };
@@ -57,11 +57,18 @@ socket.on(CONSTANTS.EVENTS.GAME_JOINED, ({ playerId, worldRadius, snakeColor, fo
 });
 
 socket.on(CONSTANTS.EVENTS.SNAPSHOT, (snap) => {
-  // Establish clock offset on first snapshot so we can compare server Date.now()
-  // against client performance.now() (they are different timescales)
-  if (clockOffset === null) clockOffset = snap.t - performance.now();
+  // Track clock offset as an exponential moving average of (server_time - client_time).
+  // A fixed first-snap offset is fragile — if that packet had unusually high latency,
+  // serverNow underestimates actual server time and renderTime falls outside the buffer.
+  const sample = snap.t - performance.now();
+  if (clockOffset === null) {
+    clockOffset = sample;
+  } else {
+    // Blend 10% toward each new sample — adapts within ~10 snaps (~165ms at 60Hz)
+    clockOffset += (sample - clockOffset) * 0.1;
+  }
   snapBuffer.push({ t: snap.t, state: snap });
-  if (snapBuffer.length > 8) snapBuffer.shift();
+  if (snapBuffer.length > 12) snapBuffer.shift(); // 12 × 16.7ms ≈ 200ms of history
   updateHUD(snap);
   updateLeaderboard(snap);
 });
@@ -96,10 +103,27 @@ function interpolateState(now) {
     }
   }
 
-  // If we can't bracket (buffer too small or renderTime is ahead), use latest snapshot
+  // If we can't bracket renderTime, dead-reckon from the latest snapshot instead of
+  // snapping — this prevents the whole snake from jumping when the buffer runs dry.
   if (!before || !after) {
     const latest = snapBuffer[snapBuffer.length - 1];
-    displayState = { ...latest.state };
+    const extMs = Math.max(0, Math.min(renderTime - latest.t, 200));
+    if (extMs > 0) {
+      const msPerTick = 1000 / CONSTANTS.TICK_RATE;
+      const extSnakes = latest.state.snakes.map(s => {
+        if (!s.segs || s.segs.length < 2) return s;
+        const speed = s.boosting ? CONSTANTS.SNAKE_BOOST_SPEED : CONSTANTS.SNAKE_BASE_SPEED;
+        const dist = speed * extMs / msPerTick;
+        const dx = Math.cos(s.angle) * dist;
+        const dy = Math.sin(s.angle) * dist;
+        const extSegs = s.segs.slice();
+        for (let i = 0; i < extSegs.length; i += 2) { extSegs[i] += dx; extSegs[i + 1] += dy; }
+        return { ...s, segs: extSegs };
+      });
+      displayState = { ...latest.state, snakes: extSnakes };
+    } else {
+      displayState = { ...latest.state };
+    }
     return;
   }
 
