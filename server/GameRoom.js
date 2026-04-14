@@ -289,10 +289,9 @@ class GameRoom {
       leaderboard: this.buildLeaderboard(),
     };
 
-    // Emit directly to each player socket — guaranteed to stay within this room
-    for (const player of this.players.values()) {
-      player.socket.emit(C.EVENTS.SNAPSHOT, snapshot);
-    }
+    // Broadcast to the whole room at once — Socket.IO serializes the payload
+    // only once regardless of player count, vs N serializations with per-socket emit.
+    this.io.to(this.socketRoomName).emit(C.EVENTS.SNAPSHOT, snapshot);
   }
 }
 

@@ -29,7 +29,7 @@ let boostActive = false;
 // --- Interpolation buffers ---
 let snapBuffer   = [];    // [{t, state}]  — t is server Date.now() ms
 let clockOffset  = null;  // server Date.now() minus client performance.now()
-const INTERP_DELAY_MS = 100; // 100ms gives ~6 buffered snaps at 60Hz — stable against network jitter
+const INTERP_DELAY_MS = 150; // 150ms gives ~4 buffered snaps at 30Hz — stable against network jitter
 
 // Displayed (interpolated) state used for rendering
 let displayState = { snakes: [], food: [], worldRadius: CONSTANTS.BASE_WORLD_RADIUS, leaderboard: [] };

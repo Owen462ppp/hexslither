@@ -1,6 +1,6 @@
 const CONSTANTS = {
   // Server tick rate
-  TICK_RATE: 60, // ticks per second
+  TICK_RATE: 30, // ticks per second — 30Hz halves CPU/GC vs 60Hz; client interpolates smoothly
 
   // World
   BASE_WORLD_RADIUS: 2000,
@@ -8,13 +8,13 @@ const CONSTANTS = {
   MIN_WORLD_RADIUS: 1200,
   MAX_WORLD_RADIUS: 6000,
 
-  // Snake
-  SNAKE_BASE_SPEED: 3,
-  SNAKE_BOOST_SPEED: 9,
+  // Snake — speeds doubled vs 60Hz to keep same world-units/sec
+  SNAKE_BASE_SPEED: 6,
+  SNAKE_BOOST_SPEED: 18,
   SNAKE_SEGMENT_SPACING: 6,
   SNAKE_HEAD_RADIUS: 10,
   SNAKE_MIN_SEGMENTS: 10,
-  MAX_TURN_RATE: 0.08, // radians per tick
+  MAX_TURN_RATE: 0.16, // radians per tick (doubled to keep same turn rate at 30Hz)
 
   // Food
   FOOD_RADIUS: 3,
