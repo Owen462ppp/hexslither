@@ -414,6 +414,8 @@ io.on('connection', (socket) => {
     if (socket._room) socket._room.respawnPlayer(socket.id, entrySol || 0);
   });
 
+  socket.on('ping_check', () => socket.emit('pong_check'));
+
   socket.on('admin:spawnbot', ({ count } = {}) => {
     const ownerGoogleId = process.env.OWNER_GOOGLE_ID;
     if (!ownerGoogleId || socket._googleId !== ownerGoogleId) return;

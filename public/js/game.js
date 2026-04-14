@@ -451,6 +451,26 @@ function updateLeaderboard(snap) {
   }
 }
 
+// Ping tracker
+const pingDotEl   = document.getElementById('ping-dot');
+const pingValueEl = document.getElementById('ping-value');
+let pingMs = null;
+let pingSentAt = null;
+
+function sendPing() {
+  pingSentAt = performance.now();
+  socket.emit('ping_check');
+}
+socket.on('pong_check', () => {
+  if (pingSentAt === null) return;
+  pingMs = Math.round(performance.now() - pingSentAt);
+  pingSentAt = null;
+  pingValueEl.textContent = pingMs + ' ms';
+  pingDotEl.className = 'ping-dot ' + (pingMs < 50 ? 'ping-green' : pingMs < 100 ? 'ping-orange' : 'ping-red');
+});
+setInterval(sendPing, 2000);
+sendPing();
+
 // FPS counter
 let fpsFrames = 0, fpsLast = performance.now(), fpsDisplay = 0;
 const fpsEl = document.getElementById('fps-counter');
