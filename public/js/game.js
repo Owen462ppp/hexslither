@@ -25,6 +25,7 @@ let myId = null;
 let isDead = false;
 let mousePos = { x: 0, y: 0 };
 let boostActive = false;
+let lastInputAngle = null; // most recent angle sent to server — used for client-side prediction
 
 // --- Interpolation buffers ---
 let snapBuffer   = [];    // [{t, state}]  — t is server Date.now() ms
@@ -167,6 +168,39 @@ function lerpAngle(a, b, t) {
   while (diff > Math.PI)  diff -= Math.PI * 2;
   while (diff < -Math.PI) diff += Math.PI * 2;
   return a + diff * t;
+}
+
+// Client-side prediction for the local player's snake.
+// Instead of showing the server-delayed interpolated position, we dead-reckon
+// from the latest snapshot using the player's actual mouse angle. This removes
+// the INTERP_DELAY_MS latency from the player's own snake, making steering
+// feel instant regardless of ping.
+function getPredictedLocalSnake(now) {
+  if (!myId || clockOffset === null || snapBuffer.length === 0 || lastInputAngle === null) return null;
+
+  // Find the newest snapshot that contains our snake
+  let latestT = -Infinity, latestSnake = null;
+  for (const snap of snapBuffer) {
+    if (snap.t > latestT) {
+      const found = snap.state.snakes.find(s => s.id === myId);
+      if (found) { latestT = snap.t; latestSnake = found; }
+    }
+  }
+  if (!latestSnake) return null;
+
+  // How many ms ahead of that snapshot is right now on the server clock?
+  const msAhead = Math.min((now + clockOffset) - latestT, 500); // cap at 500ms
+  if (msAhead <= 0) return latestSnake;
+
+  const speed = boostActive ? CONSTANTS.SNAKE_BOOST_SPEED : CONSTANTS.SNAKE_BASE_SPEED;
+  const dist = speed * msAhead / (1000 / CONSTANTS.TICK_RATE);
+  const dx = Math.cos(lastInputAngle) * dist;
+  const dy = Math.sin(lastInputAngle) * dist;
+
+  const segs = latestSnake.segs.slice();
+  for (let i = 0; i < segs.length; i += 2) { segs[i] += dx; segs[i + 1] += dy; }
+
+  return { ...latestSnake, segs, angle: lastInputAngle };
 }
 
 // --- Input ---
@@ -407,6 +441,7 @@ function sendInput() {
         renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).y - mySnake.segs[1],
         renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).x - mySnake.segs[0]
       );
+  lastInputAngle = angle;
   socket.emit(CONSTANTS.EVENTS.INPUT, { angle, boost: boostActive && !qHoldStart });
 }
 setInterval(sendInput, 1000 / 60);
@@ -478,6 +513,20 @@ const fpsEl = document.getElementById('fps-counter');
 // Main render loop — runs at monitor refresh rate (60/144/240Hz)
 function gameLoop(now) {
   interpolateState(now);
+
+  // Override the local player's snake with a client-side predicted position so
+  // steering feels instant — other snakes still use server interpolation.
+  if (!isDead && !spectating && myId) {
+    const predicted = getPredictedLocalSnake(now);
+    if (predicted) {
+      const idx = displayState.snakes.findIndex(s => s.id === myId);
+      if (idx >= 0) {
+        displayState.snakes = displayState.snakes.slice(); // copy before mutating
+        displayState.snakes[idx] = predicted;
+      }
+    }
+  }
+
   let spectateSnake = null;
   if (spectating) {
     const targets = getSpectateTargets();
