@@ -100,6 +100,18 @@ app.get('/auth/google/callback',
       console.log(`[2FA] Device trusted: ${trusted}`);
       if (trusted) return res.redirect('/');
 
+      // Device was previously verified for a different account — skip 2FA, trust this account too
+      if (req.cookies.ds_device_verified === 'true') {
+        const token = await db.addTrustedDevice(req.user.googleId);
+        res.cookie('ds_device', token, {
+          httpOnly: true,
+          maxAge: 30 * 24 * 60 * 60 * 1000,
+          sameSite: 'lax',
+          secure: true,
+        });
+        return res.redirect('/');
+      }
+
       // New device — send 2FA code
       const code = String(Math.floor(100000 + Math.random() * 900000));
       await db.saveVerificationCode(req.user.googleId, code);
@@ -175,6 +187,13 @@ app.post('/auth/verify', express.json(), async (req, res) => {
   res.cookie('ds_device', token, {
     httpOnly: true,
     maxAge:   30 * 24 * 60 * 60 * 1000, // 30 days
+    sameSite: 'lax',
+    secure:   process.env.NODE_ENV === 'production',
+  });
+  // Long-lived device marker — never cleared on logout so switching accounts skips 2FA
+  res.cookie('ds_device_verified', 'true', {
+    httpOnly: true,
+    maxAge:   365 * 24 * 60 * 60 * 1000, // 1 year
     sameSite: 'lax',
     secure:   process.env.NODE_ENV === 'production',
   });
