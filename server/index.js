@@ -231,6 +231,8 @@ app.post('/wallet/entry-fee', express.json(), async (req, res) => {
   }
   const newBalance = await db.recordWithdrawal(req.user.googleId, null, feeSol, 'entry_fee');
   req.user.balance = newBalance;
+  // Deduct entry fee from net earnings so leaderboard shows true profit/loss
+  await db.addEarnings(req.user.googleId, -feeSol);
   res.json({ ok: true, feeSol, balance: newBalance });
 });
 

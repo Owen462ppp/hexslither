@@ -153,7 +153,7 @@ async function addEarnings(googleId, sol) {
 async function getTopEarners(n) {
   const res = await pool.query(
     `SELECT google_id AS id, name, total_earnings AS earnings
-     FROM accounts WHERE total_earnings > 0 ORDER BY total_earnings DESC LIMIT $1`,
+     FROM accounts WHERE total_earnings != 0 ORDER BY total_earnings DESC LIMIT $1`,
     [n]
   );
   return res.rows.map((r, i) => ({
