@@ -121,7 +121,10 @@ app.get('/auth/google/callback',
   }
 );
 app.get('/auth/logout', (req, res) => {
-  req.logout(() => res.redirect('/'));
+  req.logout(() => {
+    res.clearCookie('ds_device');
+    res.redirect('/');
+  });
 });
 app.get('/auth/me', async (req, res) => {
   if (req.isAuthenticated()) return res.json({ loggedIn: true, account: req.user });
