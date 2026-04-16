@@ -1294,10 +1294,10 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     '#5B8CFF', '#FF6B35', '#A855F7',
   ];
 
-  const R     = 14;
-  const SPEED = 1.5;
-  const TRAIL = 22;
-  const TURN  = 0.028;
+  const R     = 16;
+  const SPEED = 0.8;
+  const TRAIL = 78;
+  const TURN  = 0.022;
 
   function makeSnake(color, W, H) {
     const angle = Math.random() * Math.PI * 2;
