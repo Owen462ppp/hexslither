@@ -50,6 +50,7 @@ socket.on(CONSTANTS.EVENTS.GAME_JOINED, ({ playerId, worldRadius, snakeColor, fo
   isDead = false;
   cashedOut = false;
   lockedAngle = null;
+  cashoutDelay = 0;
   cancelQTimer();
   snapBuffer = [];
   clockOffset = null;
@@ -99,11 +100,14 @@ function interpolateState(now) {
   const baseDelay = spawnAge < 500 ? INTERP_DELAY_MS * (spawnAge / 500) : INTERP_DELAY_MS;
   // During Q cashout: ramp up interp delay so snake visually slows down.
   // On release: ramp back down slowly to avoid a jump.
-  const cashoutTarget = qHoldStart
-    ? Math.pow(Math.min(1, (now - qHoldStart) / Q_HOLD_MS), 2) * 1800
-    : 0;
-  cashoutDelay += (cashoutTarget - cashoutDelay) * (cashoutTarget > cashoutDelay ? 0.12 : 0.04);
-  if (cashoutDelay < 0.5) cashoutDelay = 0;
+  if (qHoldStart) {
+    // Ramp up delay while Q is held
+    const target = Math.pow(Math.min(1, (now - qHoldStart) / Q_HOLD_MS), 2) * 1800;
+    cashoutDelay += (target - cashoutDelay) * 0.12;
+  } else if (cashoutDelay > 0) {
+    // Q released: decay very slowly (2ms/frame ≈ 120ms/s) so snake barely speeds up — no jump
+    cashoutDelay = Math.max(0, cashoutDelay - 2);
+  }
   const renderTime = serverNow - baseDelay - cashoutDelay;
 
   // Find the two snapshots that bracket renderTime
