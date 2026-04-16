@@ -1297,7 +1297,7 @@ document.getElementById('btn-play').addEventListener('click', async () => {
 
   const R     = 10;
   const SPEED = 2.8;
-  const TRAIL = 85;
+  const TRAIL = 22;
   const TURN  = 0.018;
 
   function makeSnake(color, W, H) {
