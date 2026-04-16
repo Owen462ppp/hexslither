@@ -105,8 +105,8 @@ function interpolateState(now) {
     const target = Math.pow(Math.min(1, (now - qHoldStart) / Q_HOLD_MS), 2) * 700;
     cashoutDelay += (target - cashoutDelay) * 0.12;
   } else if (cashoutDelay > 0) {
-    // Q released: decay very slowly (2ms/frame ≈ 120ms/s) so snake barely speeds up — no jump
-    cashoutDelay = Math.max(0, cashoutDelay - 2);
+    // Q released: decay at 12ms/frame — clears 700ms in ~1 second, turning feels responsive
+    cashoutDelay = Math.max(0, cashoutDelay - 12);
   }
   const renderTime = serverNow - baseDelay - cashoutDelay;
 
