@@ -154,21 +154,24 @@ function interpolateState(now) {
       continue;
     }
     // Segs interpolation with length-mismatch handling.
-    // During Q cashout the trim accumulator means segment count can differ by 1
-    // between snapshots. Pad the shorter tail end with the last tail coordinate
-    // so the lerp never drops tail segments.
+    // Trim accumulator on server means segs can differ by 1 between snapshots.
+    // Always pad the SHORTER array at the tail so rendered length = max(before, after).
+    // Never truncate — that drops the tail visually.
     let bSegs = snakeBefore.segs;
     let aSegs = snakeAfter.segs;
-    if (aSegs.length > bSegs.length) {
-      const tailX = bSegs[bSegs.length - 2];
-      const tailY = bSegs[bSegs.length - 1];
+    const targetLen = Math.max(bSegs.length, aSegs.length);
+    if (bSegs.length < targetLen) {
+      const tx = bSegs[bSegs.length - 2], ty = bSegs[bSegs.length - 1];
       bSegs = bSegs.slice();
-      for (let p = bSegs.length; p < aSegs.length; p += 2) bSegs.push(tailX, tailY);
-    } else if (bSegs.length > aSegs.length) {
-      bSegs = bSegs.slice(0, aSegs.length);
+      for (let p = bSegs.length; p < targetLen; p += 2) bSegs.push(tx, ty);
+    }
+    if (aSegs.length < targetLen) {
+      const tx = aSegs[aSegs.length - 2], ty = aSegs[aSegs.length - 1];
+      aSegs = aSegs.slice();
+      for (let p = aSegs.length; p < targetLen; p += 2) aSegs.push(tx, ty);
     }
     const segs = [];
-    for (let i = 0; i < aSegs.length; i++) {
+    for (let i = 0; i < targetLen; i++) {
       segs.push(lerp(bSegs[i], aSegs[i], alpha));
     }
     interpolatedSnakes.push({
