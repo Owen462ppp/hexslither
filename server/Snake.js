@@ -69,11 +69,6 @@ class Snake {
       this.angle = this.targetAngle;
     }
 
-    // Smooth speed scaling: head always moves every tick (no jitter), but tail is only
-    // trimmed at the same fractional rate — so total snake length stays constant.
-    const mult = (this.speedMult !== undefined ? this.speedMult : 1);
-    if (this._trimAccum === undefined) this._trimAccum = 0;
-
     let steps = 1;
     if (this.boosting) {
       if (this.boostFuel > 0) {
@@ -93,21 +88,18 @@ class Snake {
       this._boostTick = 0;
     }
 
+    const mult = this.speedMult !== undefined ? this.speedMult : 1;
     const speed = C.SNAKE_BASE_SPEED * (steps === 3 ? 1 : mult);
-    const trimRate = steps === 3 ? 1 : mult; // boost always trims normally
 
     for (let step = 0; step < steps; step++) {
-      // Advance head smoothly
       this.segments.unshift({
         x: this.segments[0].x + Math.cos(this.angle) * speed,
         y: this.segments[0].y + Math.sin(this.angle) * speed,
       });
-      // Trim tail at same fractional rate as movement to keep length constant
-      this._trimAccum += trimRate;
       if (this.pendingGrowth > 0) {
-        if (this._trimAccum >= 1) { this._trimAccum -= 1; this.pendingGrowth--; }
+        this.pendingGrowth--;
       } else {
-        if (this._trimAccum >= 1) { this._trimAccum -= 1; this.segments.pop(); }
+        this.segments.pop();
       }
     }
   }
