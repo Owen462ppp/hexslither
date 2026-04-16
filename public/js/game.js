@@ -31,6 +31,7 @@ let snapBuffer   = [];    // [{t, state}]  — t is server Date.now() ms
 let clockOffset  = null;  // server Date.now() minus client performance.now()
 const INTERP_DELAY_MS = 80; // 80ms gives ~2.4 buffered snaps at 30Hz — minimum stable at 40-70ms ping
 let spawnTime    = null;  // performance.now() when last joined — used to ramp up interp delay
+let cashoutDelay = 0;     // current extra interp delay during Q cashout (ms), smoothly ramped
 
 // Displayed (interpolated) state used for rendering
 let displayState = { snakes: [], food: [], worldRadius: CONSTANTS.BASE_WORLD_RADIUS, leaderboard: [] };
@@ -96,14 +97,14 @@ function interpolateState(now) {
   // Ramp interp delay from 0→full over first 500ms after spawn to avoid initial lag
   const spawnAge = spawnTime ? now - spawnTime : Infinity;
   const baseDelay = spawnAge < 500 ? INTERP_DELAY_MS * (spawnAge / 500) : INTERP_DELAY_MS;
-  // During Q cashout: increase delay (show older state) so snake appears to slow down
-  // without touching server movement. Quadratic curve: barely noticeable early, ramps at end.
-  let cashoutExtra = 0;
-  if (qHoldStart) {
-    const p = Math.min(1, (now - qHoldStart) / Q_HOLD_MS);
-    cashoutExtra = Math.pow(p, 2) * 260;
-  }
-  const renderTime = serverNow - baseDelay - cashoutExtra;
+  // During Q cashout: ramp up interp delay so snake visually slows down.
+  // On release: ramp back down slowly to avoid a jump.
+  const cashoutTarget = qHoldStart
+    ? Math.pow(Math.min(1, (now - qHoldStart) / Q_HOLD_MS), 2) * 420
+    : 0;
+  cashoutDelay += (cashoutTarget - cashoutDelay) * (cashoutTarget > cashoutDelay ? 0.12 : 0.04);
+  if (cashoutDelay < 0.5) cashoutDelay = 0;
+  const renderTime = serverNow - baseDelay - cashoutDelay;
 
   // Find the two snapshots that bracket renderTime
   let before = null, after = null;
