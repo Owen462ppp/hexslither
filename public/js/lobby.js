@@ -1296,8 +1296,12 @@ document.getElementById('btn-play').addEventListener('click', async () => {
 
   const R     = 19;
   const SPEED = 0.8;
-  const TRAIL = 110;
-  const TURN  = 0.022;
+  const TRAIL = 160;
+  const TURN  = 0.032;
+
+  function pickTarget(W, H) {
+    return { tx: 80 + Math.random() * (W - 160), ty: 80 + Math.random() * (H - 160) };
+  }
 
   function makeSnake(color, W, H) {
     const angle = Math.random() * Math.PI * 2;
@@ -1306,7 +1310,7 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     const trail = [];
     for (let t = 0; t < TRAIL; t++)
       trail.push({ x: x - Math.cos(angle) * t * SPEED, y: y - Math.sin(angle) * t * SPEED });
-    return { x, y, angle, color, r: R, trail, turnDir: 1, turnTimer: 60 + Math.random() * 120 };
+    return { x, y, angle, color, r: R, trail, ...pickTarget(W, H), targetTimer: 200 + Math.random() * 300 };
   }
 
   let snakes = [];
@@ -1320,12 +1324,21 @@ document.getElementById('btn-play').addEventListener('click', async () => {
 
   function update(s) {
     const W = canvas.width, H = canvas.height;
-    s.turnTimer--;
-    if (s.turnTimer <= 0) {
-      s.turnDir   = (Math.random() < 0.5 ? -1 : 1);
-      s.turnTimer = 80 + Math.random() * 130;
+
+    // Pick a new target when timer expires or close enough
+    s.targetTimer--;
+    const distToTarget = Math.hypot(s.tx - s.x, s.ty - s.y);
+    if (s.targetTimer <= 0 || distToTarget < 60) {
+      Object.assign(s, pickTarget(W, H));
+      s.targetTimer = 250 + Math.random() * 350;
     }
-    s.angle += s.turnDir * TURN;
+
+    // Steer toward target — gentle turn so snake goes mostly straight
+    const desired = Math.atan2(s.ty - s.y, s.tx - s.x);
+    let delta = desired - s.angle;
+    while (delta >  Math.PI) delta -= Math.PI * 2;
+    while (delta < -Math.PI) delta += Math.PI * 2;
+    s.angle += Math.sign(delta) * Math.min(Math.abs(delta), TURN);
 
     s.x += Math.cos(s.angle) * SPEED;
     s.y += Math.sin(s.angle) * SPEED;
