@@ -1294,30 +1294,38 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     '#5B8CFF', '#FF6B35', '#A855F7',
   ];
 
-  const SPEED = 0.8;
-  const TRAIL = 220;
-  const TURN  = 0.032;
-  const SIZES = [14, 16, 19, 22, 17, 15]; // one per snake
+  const R      = 17;
+  const SPEED  = 0.8;
+  const TURN   = 0.032;
+  const TRAILS = [160, 220, 180, 260, 200, 240]; // varied lengths per snake
 
   function pickTarget(W, H) {
-    return { tx: 80 + Math.random() * (W - 160), ty: 80 + Math.random() * (H - 160) };
+    // Bias targets toward edges and corners so snakes spread across the whole screen
+    const margin = 60;
+    const tx = Math.random() < 0.4
+      ? (Math.random() < 0.5 ? margin + Math.random() * W * 0.2 : W - margin - Math.random() * W * 0.2)
+      : margin + Math.random() * (W - margin * 2);
+    const ty = Math.random() < 0.4
+      ? (Math.random() < 0.5 ? margin + Math.random() * H * 0.2 : H - margin - Math.random() * H * 0.2)
+      : margin + Math.random() * (H - margin * 2);
+    return { tx, ty };
   }
 
-  function makeSnake(color, W, H, r) {
+  function makeSnake(color, W, H, trailLen) {
     const angle = Math.random() * Math.PI * 2;
     const x = Math.random() * W;
     const y = Math.random() * H;
     const trail = [];
-    for (let t = 0; t < TRAIL; t++)
+    for (let t = 0; t < trailLen; t++)
       trail.push({ x: x - Math.cos(angle) * t * SPEED, y: y - Math.sin(angle) * t * SPEED });
-    return { x, y, angle, color, r, trail, ...pickTarget(W, H), targetTimer: 200 + Math.random() * 300 };
+    return { x, y, angle, color, r: R, trailLen, trail, ...pickTarget(W, H), targetTimer: 200 + Math.random() * 300 };
   }
 
   let snakes = [];
   function resize() {
     canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
-    snakes = COLORS.map((c, i) => makeSnake(c, canvas.width, canvas.height, SIZES[i]));
+    snakes = COLORS.map((c, i) => makeSnake(c, canvas.width, canvas.height, TRAILS[i]));
   }
   resize();
   window.addEventListener('resize', resize);
@@ -1370,7 +1378,7 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     if (s.y > H + pad) s.y -= H + pad * 2;
 
     s.trail.unshift({ x: s.x, y: s.y });
-    if (s.trail.length > TRAIL) s.trail.pop();
+    if (s.trail.length > s.trailLen) s.trail.pop();
   }
 
   function drawTrailPass(t, len, wrapThresh, strokeStyle, lineWidth) {
