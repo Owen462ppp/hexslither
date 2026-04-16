@@ -20,7 +20,7 @@ class Snake {
     this.score = 0;
 
     this.segments = [];
-    for (let i = 0; i < MIN_SEGMENTS; i++) {
+    for (let i = 0; i < MIN_SEGMENTS * 2; i++) {
       this.segments.push({
         x: x - Math.cos(this.angle) * i * C.SNAKE_SEGMENT_SPACING,
         y: y - Math.sin(this.angle) * i * C.SNAKE_SEGMENT_SPACING,

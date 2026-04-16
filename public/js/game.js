@@ -30,6 +30,7 @@ let boostActive = false;
 let snapBuffer   = [];    // [{t, state}]  — t is server Date.now() ms
 let clockOffset  = null;  // server Date.now() minus client performance.now()
 const INTERP_DELAY_MS = 80; // 80ms gives ~2.4 buffered snaps at 30Hz — minimum stable at 40-70ms ping
+let spawnTime    = null;  // performance.now() when last joined — used to ramp up interp delay
 
 // Displayed (interpolated) state used for rendering
 let displayState = { snakes: [], food: [], worldRadius: CONSTANTS.BASE_WORLD_RADIUS, leaderboard: [] };
@@ -51,12 +52,10 @@ socket.on(CONSTANTS.EVENTS.GAME_JOINED, ({ playerId, worldRadius, snakeColor, fo
   cancelQTimer();
   snapBuffer = [];
   clockOffset = null;
+  spawnTime = performance.now();
   displayState = { snakes: [], food: food || [], worldRadius, leaderboard: [] };
   document.getElementById('death-screen').classList.remove('active');
   document.getElementById('cashout-screen').classList.remove('active');
-  // Spawn boost — give a 2-second head start
-  boostActive = true;
-  setTimeout(() => { boostActive = false; }, 2000);
 });
 
 socket.on(CONSTANTS.EVENTS.SNAPSHOT, (snap) => {
@@ -94,7 +93,10 @@ function interpolateState(now) {
 
   // Convert client performance.now() to server time so we can compare against snap.t
   const serverNow = now + clockOffset;
-  const renderTime = serverNow - INTERP_DELAY_MS;
+  // Ramp interp delay from 0→full over first 500ms after spawn to avoid initial lag
+  const spawnAge = spawnTime ? now - spawnTime : Infinity;
+  const interpDelay = spawnAge < 500 ? INTERP_DELAY_MS * (spawnAge / 500) : INTERP_DELAY_MS;
+  const renderTime = serverNow - interpDelay;
 
   // Find the two snapshots that bracket renderTime
   let before = null, after = null;
