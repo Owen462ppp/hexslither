@@ -14,6 +14,9 @@ class Renderer {
   render(state, myId, mousePos, spectateSnake) {
     const { ctx, canvas, camera } = this;
     const W = canvas.width, H = canvas.height;
+    this._mousePos = mousePos;
+    this._canvasW = W;
+    this._canvasH = H;
 
     const mySnake = state.snakes.find(s => s.id === myId);
     const followSnake = spectateSnake || mySnake;
@@ -251,13 +254,22 @@ class Renderer {
     const eyeSide = HR * 0.46;
     const eyeFwd  = HR * 0.38;
 
+    // Pupils follow mouse for local player, movement direction for others
+    let pupilFwdX = fwdX, pupilFwdY = fwdY;
+    if (isMe && this._mousePos) {
+      const wm = this.camera.screenToWorld(this._mousePos.x, this._mousePos.y, this._canvasW, this._canvasH);
+      const pa = Math.atan2(wm.y - hy, wm.x - hx);
+      pupilFwdX = Math.cos(pa);
+      pupilFwdY = Math.sin(pa);
+    }
+
     for (const side of [-1, 1]) {
       const ex = hx + fwdX * eyeFwd + perpX * eyeSide * side;
       const ey = hy + fwdY * eyeFwd + perpY * eyeSide * side;
       ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI * 2);
       ctx.fillStyle = '#FFFFFF'; ctx.fill();
       const ps = eyeR - pupilR;
-      ctx.beginPath(); ctx.arc(ex + fwdX * ps, ey + fwdY * ps, pupilR, 0, Math.PI * 2);
+      ctx.beginPath(); ctx.arc(ex + pupilFwdX * ps, ey + pupilFwdY * ps, pupilR, 0, Math.PI * 2);
       ctx.fillStyle = '#060606'; ctx.fill();
     }
 

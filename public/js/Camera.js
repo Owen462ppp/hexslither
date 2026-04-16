@@ -22,7 +22,7 @@ class Camera {
   }
 
   update() {
-    this.scale += (this.targetScale - this.scale) * 0.05;
+    this.scale += (this.targetScale - this.scale) * 0.02;
     this.x += (this.targetX - this.x) * this.LERP;
     this.y += (this.targetY - this.y) * this.LERP;
   }

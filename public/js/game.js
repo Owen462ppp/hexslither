@@ -54,6 +54,9 @@ socket.on(CONSTANTS.EVENTS.GAME_JOINED, ({ playerId, worldRadius, snakeColor, fo
   displayState = { snakes: [], food: food || [], worldRadius, leaderboard: [] };
   document.getElementById('death-screen').classList.remove('active');
   document.getElementById('cashout-screen').classList.remove('active');
+  // Spawn boost — give a 2-second head start
+  boostActive = true;
+  setTimeout(() => { boostActive = false; }, 2000);
 });
 
 socket.on(CONSTANTS.EVENTS.SNAPSHOT, (snap) => {
