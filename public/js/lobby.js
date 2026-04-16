@@ -1294,30 +1294,30 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     '#5B8CFF', '#FF6B35', '#A855F7',
   ];
 
-  const R     = 19;
   const SPEED = 0.8;
-  const TRAIL = 160;
+  const TRAIL = 220;
   const TURN  = 0.032;
+  const SIZES = [14, 16, 19, 22, 17, 15]; // one per snake
 
   function pickTarget(W, H) {
     return { tx: 80 + Math.random() * (W - 160), ty: 80 + Math.random() * (H - 160) };
   }
 
-  function makeSnake(color, W, H) {
+  function makeSnake(color, W, H, r) {
     const angle = Math.random() * Math.PI * 2;
     const x = Math.random() * W;
     const y = Math.random() * H;
     const trail = [];
     for (let t = 0; t < TRAIL; t++)
       trail.push({ x: x - Math.cos(angle) * t * SPEED, y: y - Math.sin(angle) * t * SPEED });
-    return { x, y, angle, color, r: R, trail, ...pickTarget(W, H), targetTimer: 200 + Math.random() * 300 };
+    return { x, y, angle, color, r, trail, ...pickTarget(W, H), targetTimer: 200 + Math.random() * 300 };
   }
 
   let snakes = [];
   function resize() {
     canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
-    snakes = COLORS.map(c => makeSnake(c, canvas.width, canvas.height));
+    snakes = COLORS.map((c, i) => makeSnake(c, canvas.width, canvas.height, SIZES[i]));
   }
   resize();
   window.addEventListener('resize', resize);
@@ -1333,8 +1333,27 @@ document.getElementById('btn-play').addEventListener('click', async () => {
       s.targetTimer = 250 + Math.random() * 350;
     }
 
-    // Steer toward target — gentle turn so snake goes mostly straight
-    const desired = Math.atan2(s.ty - s.y, s.tx - s.x);
+    // Separation — steer away from nearby snakes
+    let avoidX = 0, avoidY = 0;
+    for (const other of snakes) {
+      if (other === s) continue;
+      const dx = s.x - other.x, dy = s.y - other.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      const minDist = 220;
+      if (dist < minDist) {
+        const strength = (minDist - dist) / minDist;
+        avoidX += (dx / dist) * strength;
+        avoidY += (dy / dist) * strength;
+      }
+    }
+
+    // Blend target direction with avoidance
+    const toTargetX = s.tx - s.x, toTargetY = s.ty - s.y;
+    const tLen = Math.hypot(toTargetX, toTargetY) || 1;
+    const dirX = toTargetX / tLen + avoidX * 1.8;
+    const dirY = toTargetY / tLen + avoidY * 1.8;
+
+    const desired = Math.atan2(dirY, dirX);
     let delta = desired - s.angle;
     while (delta >  Math.PI) delta -= Math.PI * 2;
     while (delta < -Math.PI) delta += Math.PI * 2;
