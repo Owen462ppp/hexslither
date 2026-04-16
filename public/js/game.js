@@ -106,7 +106,7 @@ function interpolateState(now) {
     cashoutDelay += (target - cashoutDelay) * 0.12;
   } else if (cashoutDelay > 0) {
     // Q released: decay at 12ms/frame — clears 700ms in ~1 second, turning feels responsive
-    cashoutDelay = Math.max(0, cashoutDelay - 12);
+    cashoutDelay = Math.max(0, cashoutDelay - 2);
   }
   const renderTime = serverNow - baseDelay - cashoutDelay;
 
