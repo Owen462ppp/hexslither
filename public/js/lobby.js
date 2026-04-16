@@ -1333,7 +1333,7 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     s.y += Math.sin(s.angle) * SPEED;
 
     // Wrap around screen edges
-    const pad = R * 3;
+    const pad = s.r * 3;
     if (s.x < -pad)    s.x += W + pad * 2;
     if (s.x > W + pad) s.x -= W + pad * 2;
     if (s.y < -pad)    s.y += H + pad * 2;
