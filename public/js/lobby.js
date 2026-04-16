@@ -1290,15 +1290,14 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   const ctx = canvas.getContext('2d');
 
   const COLORS = [
-    '#1ECEA8', '#F5C020', '#E85DA8', '#5B8CFF',
-    '#FF6B35', '#A855F7', '#34D399', '#F87171',
-    '#FBBF24', '#38BDF8',
+    '#1ECEA8', '#F5C020', '#E85DA8',
+    '#5B8CFF', '#FF6B35', '#A855F7',
   ];
 
-  const R     = 10;
-  const SPEED = 2.8;
+  const R     = 14;
+  const SPEED = 1.5;
   const TRAIL = 22;
-  const TURN  = 0.018;
+  const TURN  = 0.028;
 
   function makeSnake(color, W, H) {
     const angle = Math.random() * Math.PI * 2;
