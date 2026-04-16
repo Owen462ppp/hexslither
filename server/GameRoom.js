@@ -80,10 +80,10 @@ class GameRoom {
     this.players.delete(socketId);
   }
 
-  handleInput(socketId, targetAngle, boosting) {
+  handleInput(socketId, targetAngle, boosting, speedMult) {
     const snake = this.snakes.get(socketId);
     if (snake && snake.alive) {
-      snake.setInput(targetAngle, boosting);
+      snake.setInput(targetAngle, boosting, speedMult);
     }
   }
 

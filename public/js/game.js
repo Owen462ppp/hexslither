@@ -31,8 +31,6 @@ let snapBuffer   = [];    // [{t, state}]  — t is server Date.now() ms
 let clockOffset  = null;  // server Date.now() minus client performance.now()
 const INTERP_DELAY_MS = 80; // 80ms gives ~2.4 buffered snaps at 30Hz — minimum stable at 40-70ms ping
 let spawnTime    = null;  // performance.now() when last joined — used to ramp up interp delay
-let cashoutDelay = 0;     // current extra interp delay during Q cashout (ms), smoothly ramped
-let cashoutTransition = null; // {frozenSegs: {id: segs}, startTime} — smooth unfreeze on Q release
 
 // Displayed (interpolated) state used for rendering
 let displayState = { snakes: [], food: [], worldRadius: CONSTANTS.BASE_WORLD_RADIUS, leaderboard: [] };
@@ -51,8 +49,6 @@ socket.on(CONSTANTS.EVENTS.GAME_JOINED, ({ playerId, worldRadius, snakeColor, fo
   isDead = false;
   cashedOut = false;
   lockedAngle = null;
-  cashoutDelay = 0;
-  cashoutTransition = null;
   cancelQTimer();
   snapBuffer = [];
   clockOffset = null;
@@ -74,7 +70,7 @@ socket.on(CONSTANTS.EVENTS.SNAPSHOT, (snap) => {
     clockOffset += (sample - clockOffset) * 0.1;
   }
   snapBuffer.push({ t: snap.t, state: snap });
-  if (snapBuffer.length > 70) snapBuffer.shift(); // 70 × 33ms ≈ 2300ms — enough for cashout delay
+  if (snapBuffer.length > 20) snapBuffer.shift();
   updateHUD(snap);
   updateLeaderboard(snap);
 });
@@ -100,12 +96,7 @@ function interpolateState(now) {
   // Ramp interp delay from 0→full over first 500ms after spawn to avoid initial lag
   const spawnAge = spawnTime ? now - spawnTime : Infinity;
   const baseDelay = spawnAge < 500 ? INTERP_DELAY_MS * (spawnAge / 500) : INTERP_DELAY_MS;
-  // During Q cashout: ramp up interp delay so snake visually slows down.
-  if (qHoldStart) {
-    const target = Math.pow(Math.min(1, (now - qHoldStart) / Q_HOLD_MS), 2) * 700;
-    cashoutDelay += (target - cashoutDelay) * 0.12;
-  }
-  const renderTime = serverNow - baseDelay - cashoutDelay;
+  const renderTime = serverNow - baseDelay;
 
   // Find the two snapshots that bracket renderTime
   let before = null, after = null;
@@ -245,16 +236,6 @@ function cancelQTimer() {
   qTimerEl.classList.remove('active');
   qRingEl.style.strokeDashoffset = RING_CIRC;
   lockedAngle = null;
-  // If there was a cashout delay, freeze current positions and immediately clear the delay.
-  // The gameLoop will lerp from frozen → real positions over 250ms so there's no jump
-  // but turning is instantly responsive.
-  if (cashoutDelay > 10) {
-    cashoutTransition = {
-      frozenSegs: Object.fromEntries(displayState.snakes.map(s => [s.id, s.segs.slice()])),
-      startTime: performance.now(),
-    };
-    cashoutDelay = 0;
-  }
 }
 
 function triggerCashOut() {
@@ -445,8 +426,13 @@ function sendInput() {
         renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).y - mySnake.segs[1],
         renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).x - mySnake.segs[0]
       );
-  // Quadratic ease: barely changes early, smooth decline toward end, never below 0.35 (prevents jitter)
-  socket.emit(CONSTANTS.EVENTS.INPUT, { angle, boost: boostActive && !qHoldStart });
+  // When holding Q: ramp speed down to 0.35 over the hold duration
+  let speedMult = 1;
+  if (qHoldStart) {
+    const t = Math.min(1, (performance.now() - qHoldStart) / Q_HOLD_MS);
+    speedMult = 1 - 0.65 * Math.pow(t, 1.2);
+  }
+  socket.emit(CONSTANTS.EVENTS.INPUT, { angle, boost: boostActive && !qHoldStart, speedMult });
 }
 setInterval(sendInput, 1000 / 60);
 
@@ -518,22 +504,6 @@ const fpsEl = document.getElementById('fps-counter');
 function gameLoop(now) {
   interpolateState(now);
 
-  // Smooth unfreeze after Q release: lerp segments from frozen → current over 250ms
-  if (cashoutTransition) {
-    const t = Math.min(1, (now - cashoutTransition.startTime) / 250);
-    if (t >= 1) {
-      cashoutTransition = null;
-    } else {
-      displayState.snakes = displayState.snakes.map(snake => {
-        const frozen = cashoutTransition.frozenSegs[snake.id];
-        if (!frozen) return snake;
-        const len = Math.min(frozen.length, snake.segs.length);
-        const segs = snake.segs.slice();
-        for (let i = 0; i < len; i++) segs[i] = lerp(frozen[i], snake.segs[i], t);
-        return { ...snake, segs };
-      });
-    }
-  }
   let spectateSnake = null;
   if (spectating) {
     const targets = getSpectateTargets();
