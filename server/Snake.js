@@ -69,43 +69,45 @@ class Snake {
       this.angle = this.targetAngle;
     }
 
-    // Accumulator-based movement: snake always moves at full SNAKE_BASE_SPEED when it does
-    // step, but only steps when enough "movement credit" has accumulated. This keeps segment
-    // spacing uniform regardless of speedMult — no squishing at slow speeds.
+    // Smooth speed scaling: head always moves every tick (no jitter), but tail is only
+    // trimmed at the same fractional rate — so total snake length stays constant.
     const mult = (this.speedMult !== undefined ? this.speedMult : 1);
-    if (this._moveAccum === undefined) this._moveAccum = 0;
+    if (this._trimAccum === undefined) this._trimAccum = 0;
 
-    let steps = 0;
-    if (this.boosting && this.boostFuel > 0) {
-      // Boost: accumulate at 3× rate, up to 3 steps
-      this._moveAccum += mult * 3;
-      while (this._moveAccum >= 1 && steps < 3) { this._moveAccum -= 1; steps++; }
-      if (this._boostTick === undefined) this._boostTick = 0;
-      this._boostTick++;
-      if (this._boostTick >= 12) {
+    let steps = 1;
+    if (this.boosting) {
+      if (this.boostFuel > 0) {
+        steps = 3;
+        if (this._boostTick === undefined) this._boostTick = 0;
+        this._boostTick++;
+        if (this._boostTick >= 12) {
+          this._boostTick = 0;
+          const dropped = this.segments.pop();
+          if (dropped) this.boostDrops.push({ x: dropped.x, y: dropped.y, value: 0.15 });
+        }
+      } else {
+        this.boosting = false;
         this._boostTick = 0;
-        const dropped = this.segments.pop();
-        if (dropped) this.boostDrops.push({ x: dropped.x, y: dropped.y, value: 0.15 });
       }
     } else {
-      if (this.boosting) this.boosting = false; // no fuel
       this._boostTick = 0;
-      this._moveAccum += mult;
-      if (this._moveAccum >= 1) { this._moveAccum -= 1; steps = 1; }
     }
 
-    const speed = C.SNAKE_BASE_SPEED;
+    const speed = C.SNAKE_BASE_SPEED * (steps === 3 ? 1 : mult);
+    const trimRate = steps === 3 ? 1 : mult; // boost always trims normally
+
     for (let step = 0; step < steps; step++) {
-      // Advance head
+      // Advance head smoothly
       this.segments.unshift({
         x: this.segments[0].x + Math.cos(this.angle) * speed,
         y: this.segments[0].y + Math.sin(this.angle) * speed,
       });
-      // Grow or trim tail
+      // Trim tail at same fractional rate as movement to keep length constant
+      this._trimAccum += trimRate;
       if (this.pendingGrowth > 0) {
-        this.pendingGrowth--;
+        if (this._trimAccum >= 1) { this._trimAccum -= 1; this.pendingGrowth--; }
       } else {
-        this.segments.pop();
+        if (this._trimAccum >= 1) { this._trimAccum -= 1; this.segments.pop(); }
       }
     }
   }
