@@ -32,6 +32,7 @@ let clockOffset  = null;  // server Date.now() minus client performance.now()
 const INTERP_DELAY_MS = 80; // 80ms gives ~2.4 buffered snaps at 30Hz — minimum stable at 40-70ms ping
 let spawnTime    = null;  // performance.now() when last joined — used to ramp up interp delay
 let cashoutDelay = 0;     // current extra interp delay during Q cashout (ms), smoothly ramped
+let cashoutTransition = null; // {frozenSegs: {id: segs}, startTime} — smooth unfreeze on Q release
 
 // Displayed (interpolated) state used for rendering
 let displayState = { snakes: [], food: [], worldRadius: CONSTANTS.BASE_WORLD_RADIUS, leaderboard: [] };
@@ -51,6 +52,7 @@ socket.on(CONSTANTS.EVENTS.GAME_JOINED, ({ playerId, worldRadius, snakeColor, fo
   cashedOut = false;
   lockedAngle = null;
   cashoutDelay = 0;
+  cashoutTransition = null;
   cancelQTimer();
   snapBuffer = [];
   clockOffset = null;
@@ -99,14 +101,9 @@ function interpolateState(now) {
   const spawnAge = spawnTime ? now - spawnTime : Infinity;
   const baseDelay = spawnAge < 500 ? INTERP_DELAY_MS * (spawnAge / 500) : INTERP_DELAY_MS;
   // During Q cashout: ramp up interp delay so snake visually slows down.
-  // On release: ramp back down slowly to avoid a jump.
   if (qHoldStart) {
-    // Ramp up delay while Q is held
     const target = Math.pow(Math.min(1, (now - qHoldStart) / Q_HOLD_MS), 2) * 700;
     cashoutDelay += (target - cashoutDelay) * 0.12;
-  } else if (cashoutDelay > 0) {
-    // Q released: decay at 12ms/frame — clears 700ms in ~1 second, turning feels responsive
-    cashoutDelay = Math.max(0, cashoutDelay - 2);
   }
   const renderTime = serverNow - baseDelay - cashoutDelay;
 
@@ -248,6 +245,16 @@ function cancelQTimer() {
   qTimerEl.classList.remove('active');
   qRingEl.style.strokeDashoffset = RING_CIRC;
   lockedAngle = null;
+  // If there was a cashout delay, freeze current positions and immediately clear the delay.
+  // The gameLoop will lerp from frozen → real positions over 250ms so there's no jump
+  // but turning is instantly responsive.
+  if (cashoutDelay > 10) {
+    cashoutTransition = {
+      frozenSegs: Object.fromEntries(displayState.snakes.map(s => [s.id, s.segs.slice()])),
+      startTime: performance.now(),
+    };
+    cashoutDelay = 0;
+  }
 }
 
 function triggerCashOut() {
@@ -510,6 +517,23 @@ const fpsEl = document.getElementById('fps-counter');
 // Main render loop — runs at monitor refresh rate (60/144/240Hz)
 function gameLoop(now) {
   interpolateState(now);
+
+  // Smooth unfreeze after Q release: lerp segments from frozen → current over 250ms
+  if (cashoutTransition) {
+    const t = Math.min(1, (now - cashoutTransition.startTime) / 250);
+    if (t >= 1) {
+      cashoutTransition = null;
+    } else {
+      displayState.snakes = displayState.snakes.map(snake => {
+        const frozen = cashoutTransition.frozenSegs[snake.id];
+        if (!frozen) return snake;
+        const len = Math.min(frozen.length, snake.segs.length);
+        const segs = snake.segs.slice();
+        for (let i = 0; i < len; i++) segs[i] = lerp(frozen[i], snake.segs[i], t);
+        return { ...snake, segs };
+      });
+    }
+  }
   let spectateSnake = null;
   if (spectating) {
     const targets = getSpectateTargets();
