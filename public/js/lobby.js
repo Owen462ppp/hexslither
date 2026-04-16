@@ -1295,26 +1295,27 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     '#FBBF24', '#38BDF8',
   ];
 
-  const R     = 18;
   const SPEED = 2.8;
   const TRAIL = 280;
   const TURN  = 0.018;
 
-  function makeSnake(color, W, H) {
+  const SNAKE_SIZES = [8, 9, 10, 11, 12, 13, 14, 10, 9, 11]; // one per snake, all smaller
+
+  function makeSnake(color, W, H, r) {
     const angle = Math.random() * Math.PI * 2;
     const x = Math.random() * W;
     const y = Math.random() * H;
     const trail = [];
     for (let t = 0; t < TRAIL; t++)
       trail.push({ x: x - Math.cos(angle) * t * SPEED, y: y - Math.sin(angle) * t * SPEED });
-    return { x, y, angle, color, trail, turnDir: 1, turnTimer: 60 + Math.random() * 120 };
+    return { x, y, angle, color, r, trail, turnDir: 1, turnTimer: 60 + Math.random() * 120 };
   }
 
   let snakes = [];
   function resize() {
     canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
-    snakes = COLORS.map(c => makeSnake(c, canvas.width, canvas.height));
+    snakes = COLORS.map((c, i) => makeSnake(c, canvas.width, canvas.height, SNAKE_SIZES[i % SNAKE_SIZES.length]));
   }
   resize();
   window.addEventListener('resize', resize);
@@ -1368,6 +1369,7 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     if (s.trail.length < 4) return;
     const t = s.trail, len = t.length;
     const W = canvas.width, H = canvas.height;
+    const R = s.r;
     const wrapThresh = Math.min(W, H) * 0.35;
 
     ctx.save();
