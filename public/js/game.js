@@ -102,7 +102,7 @@ function interpolateState(now) {
   // On release: ramp back down slowly to avoid a jump.
   if (qHoldStart) {
     // Ramp up delay while Q is held
-    const target = Math.pow(Math.min(1, (now - qHoldStart) / Q_HOLD_MS), 2) * 1800;
+    const target = Math.pow(Math.min(1, (now - qHoldStart) / Q_HOLD_MS), 2) * 700;
     cashoutDelay += (target - cashoutDelay) * 0.12;
   } else if (cashoutDelay > 0) {
     // Q released: decay very slowly (2ms/frame ≈ 120ms/s) so snake barely speeds up — no jump
