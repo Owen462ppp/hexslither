@@ -30,7 +30,8 @@ let boostActive = false;
 let snapBuffer   = [];    // [{t, state}]  — t is server Date.now() ms
 let clockOffset  = null;  // server Date.now() minus client performance.now()
 const INTERP_DELAY_MS = 80; // 80ms gives ~2.4 buffered snaps at 30Hz — minimum stable at 40-70ms ping
-let spawnTime    = null;  // performance.now() when last joined — used to ramp up interp delay
+let spawnTime      = null;  // performance.now() when last joined — used to ramp up interp delay
+let myRenderDelay  = 0;     // extra ms of render delay applied only to the player's own snake (visual slowdown)
 
 // Displayed (interpolated) state used for rendering
 let displayState = { snakes: [], food: [], worldRadius: CONSTANTS.BASE_WORLD_RADIUS, leaderboard: [] };
@@ -49,6 +50,7 @@ socket.on(CONSTANTS.EVENTS.GAME_JOINED, ({ playerId, worldRadius, snakeColor, fo
   isDead = false;
   cashedOut = false;
   lockedAngle = null;
+  myRenderDelay = 0;
   cancelQTimer();
   snapBuffer = [];
   clockOffset = null;
@@ -153,26 +155,10 @@ function interpolateState(now) {
       interpolatedSnakes.push(snakeAfter);
       continue;
     }
-    // Segs interpolation with length-mismatch handling.
-    // Trim accumulator on server means segs can differ by 1 between snapshots.
-    // Always pad the SHORTER array at the tail so rendered length = max(before, after).
-    // Never truncate — that drops the tail visually.
-    let bSegs = snakeBefore.segs;
-    let aSegs = snakeAfter.segs;
-    const targetLen = Math.max(bSegs.length, aSegs.length);
-    if (bSegs.length < targetLen) {
-      const tx = bSegs[bSegs.length - 2], ty = bSegs[bSegs.length - 1];
-      bSegs = bSegs.slice();
-      for (let p = bSegs.length; p < targetLen; p += 2) bSegs.push(tx, ty);
-    }
-    if (aSegs.length < targetLen) {
-      const tx = aSegs[aSegs.length - 2], ty = aSegs[aSegs.length - 1];
-      aSegs = aSegs.slice();
-      for (let p = aSegs.length; p < targetLen; p += 2) aSegs.push(tx, ty);
-    }
     const segs = [];
-    for (let i = 0; i < targetLen; i++) {
-      segs.push(lerp(bSegs[i], aSegs[i], alpha));
+    const len = Math.min(snakeBefore.segs.length, snakeAfter.segs.length);
+    for (let i = 0; i < len; i++) {
+      segs.push(lerp(snakeBefore.segs[i], snakeAfter.segs[i], alpha));
     }
     interpolatedSnakes.push({
       ...snakeAfter,
@@ -181,6 +167,31 @@ function interpolateState(now) {
     });
   }
   displayState.snakes = interpolatedSnakes;
+
+  // Apply render delay to player's own snake for Q cashout visual slowdown.
+  // The server snake is always at full speed — only the rendering is held back.
+  if (myId && myRenderDelay > 1) {
+    const myRT = serverNow - baseDelay - myRenderDelay;
+    let myB = null, myA = null;
+    for (let i = 0; i < snapBuffer.length - 1; i++) {
+      if (snapBuffer[i].t <= myRT && snapBuffer[i + 1].t >= myRT) {
+        myB = snapBuffer[i]; myA = snapBuffer[i + 1]; break;
+      }
+    }
+    if (myB && myA) {
+      const sb = myB.state.snakes.find(s => s.id === myId);
+      const sa = myA.state.snakes.find(s => s.id === myId);
+      if (sb && sa) {
+        const a = Math.max(0, Math.min(1, (myRT - myB.t) / (myA.t - myB.t)));
+        const len = Math.min(sb.segs.length, sa.segs.length);
+        const segs = [];
+        for (let i = 0; i < len; i++) segs.push(lerp(sb.segs[i], sa.segs[i], a));
+        displayState.snakes = displayState.snakes.map(s =>
+          s.id === myId ? { ...sa, segs, angle: lerpAngle(sb.angle, sa.angle, a) } : s
+        );
+      }
+    }
+  }
 }
 
 function lerp(a, b, t) { return a + (b - a) * t; }
@@ -438,13 +449,7 @@ function sendInput() {
         renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).y - mySnake.segs[1],
         renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).x - mySnake.segs[0]
       );
-  // When holding Q: ramp speed down to 0.35 over the hold duration
-  let speedMult = 1;
-  if (qHoldStart) {
-    const t = Math.min(1, (performance.now() - qHoldStart) / Q_HOLD_MS);
-    speedMult = 1 - 0.65 * Math.pow(t, 1.2);
-  }
-  socket.emit(CONSTANTS.EVENTS.INPUT, { angle, boost: boostActive && !qHoldStart, speedMult });
+  socket.emit(CONSTANTS.EVENTS.INPUT, { angle, boost: boostActive && !qHoldStart });
 }
 setInterval(sendInput, 1000 / 60);
 
@@ -514,6 +519,15 @@ const fpsEl = document.getElementById('fps-counter');
 
 // Main render loop — runs at monitor refresh rate (60/144/240Hz)
 function gameLoop(now) {
+  // Update render delay for Q cashout visual slowdown
+  if (qHoldStart) {
+    const t = Math.min(1, (now - qHoldStart) / Q_HOLD_MS);
+    const target = Math.pow(t, 1.2) * 450;
+    myRenderDelay += (target - myRenderDelay) * 0.08;
+  } else if (myRenderDelay > 0) {
+    myRenderDelay = Math.max(0, myRenderDelay - 20); // 20ms/frame → clears in ~375ms
+  }
+
   interpolateState(now);
 
   let spectateSnake = null;
