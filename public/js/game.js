@@ -153,14 +153,23 @@ function interpolateState(now) {
       interpolatedSnakes.push(snakeAfter);
       continue;
     }
-    // Full segs interpolation. This works without rubber-band because the server
-    // now uses uniform 3-unit sub-steps at all speeds, so every segs[k] in the
-    // before and after snapshots represents the same physical point on the snake
-    // shifted by one tick of movement — the whole snake translates smoothly.
+    // Segs interpolation with length-mismatch handling.
+    // During Q cashout the trim accumulator means segment count can differ by 1
+    // between snapshots. Pad the shorter tail end with the last tail coordinate
+    // so the lerp never drops tail segments.
+    let bSegs = snakeBefore.segs;
+    let aSegs = snakeAfter.segs;
+    if (aSegs.length > bSegs.length) {
+      const tailX = bSegs[bSegs.length - 2];
+      const tailY = bSegs[bSegs.length - 1];
+      bSegs = bSegs.slice();
+      for (let p = bSegs.length; p < aSegs.length; p += 2) bSegs.push(tailX, tailY);
+    } else if (bSegs.length > aSegs.length) {
+      bSegs = bSegs.slice(0, aSegs.length);
+    }
     const segs = [];
-    const len = Math.min(snakeBefore.segs.length, snakeAfter.segs.length);
-    for (let i = 0; i < len; i++) {
-      segs.push(lerp(snakeBefore.segs[i], snakeAfter.segs[i], alpha));
+    for (let i = 0; i < aSegs.length; i++) {
+      segs.push(lerp(bSegs[i], aSegs[i], alpha));
     }
     interpolatedSnakes.push({
       ...snakeAfter,

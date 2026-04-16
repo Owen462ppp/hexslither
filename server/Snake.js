@@ -88,7 +88,10 @@ class Snake {
       this._boostTick = 0;
     }
 
-    const speed = C.SNAKE_BASE_SPEED * (this.speedMult || 1);
+    const mult  = this.speedMult || 1;
+    const speed = C.SNAKE_BASE_SPEED * mult;
+    if (this._trimAccum === undefined) this._trimAccum = 0;
+
     for (let step = 0; step < steps; step++) {
       this.segments.unshift({
         x: this.segments[0].x + Math.cos(this.angle) * speed,
@@ -97,7 +100,13 @@ class Snake {
       if (this.pendingGrowth > 0) {
         this.pendingGrowth--;
       } else {
-        this.segments.pop();
+        // Trim accumulator: tail is only removed proportional to actual movement.
+        // This keeps world-unit body length constant regardless of speed.
+        this._trimAccum += mult;
+        if (this._trimAccum >= 1) {
+          this._trimAccum -= 1;
+          this.segments.pop();
+        }
       }
     }
   }
