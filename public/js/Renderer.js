@@ -148,13 +148,32 @@ class Renderer {
     ctx.lineCap  = 'round';
     ctx.lineJoin = 'round';
 
-    // ── Body circles tail→head — later circles sit on top, so the forward part
-    //    correctly overlaps the tail when the snake crosses itself ──────────────
-    ctx.fillStyle = color;
-    for (let i = SN - 1; i >= 1; i--) {
+    // ── Body: short Catmull-Rom chunks drawn tail→head ────────────────────────
+    // Drawing separate strokes means each head-side chunk is a later canvas call
+    // and therefore sits on top at self-intersections.
+    const STEPS = 4;
+    const CHUNK = 4; // segments per draw call — small enough to layer correctly
+    ctx.lineWidth   = R * 2;
+    ctx.strokeStyle = color;
+
+    for (let end = SN - 1; end > 0; end -= CHUNK) {
+      const start = Math.max(0, end - CHUNK);
       ctx.beginPath();
-      ctx.arc(segs[i * 2], segs[i * 2 + 1], R, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(segs[end * 2], segs[end * 2 + 1]);
+      for (let j = end - 1; j >= start; j--) {
+        const pi = Math.min(SN - 1, j + 2) * 2;
+        const ai = (j + 1) * 2;
+        const bi = j * 2;
+        const ni = Math.max(0, j - 1) * 2;
+        for (let s = 1; s <= STEPS; s++) {
+          const t = s / STEPS, t2 = t * t, t3 = t2 * t;
+          ctx.lineTo(
+            0.5 * ((2*segs[ai])   + (-segs[pi]   + segs[bi])   * t + (2*segs[pi]   - 5*segs[ai]   + 4*segs[bi]   - segs[ni])   * t2 + (-segs[pi]   + 3*segs[ai]   - 3*segs[bi]   + segs[ni])   * t3),
+            0.5 * ((2*segs[ai+1]) + (-segs[pi+1] + segs[bi+1]) * t + (2*segs[pi+1] - 5*segs[ai+1] + 4*segs[bi+1] - segs[ni+1]) * t2 + (-segs[pi+1] + 3*segs[ai+1] - 3*segs[bi+1] + segs[ni+1]) * t3)
+          );
+        }
+      }
+      ctx.stroke();
     }
 
     // ── Crease arcs — 25-pass tapered arc (same technique as preview_snake) ──
