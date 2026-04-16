@@ -90,16 +90,31 @@ class Snake {
 
     const mult = (steps !== 3 && this.speedMult !== undefined) ? this.speedMult : 1;
     const speed = C.SNAKE_BASE_SPEED * mult;
+    if (this._trimAccum === undefined) this._trimAccum = 0;
+
+    if (mult < 1) {
+      // Save length when slowdown starts so we can restore it on release
+      if (this._cashoutLength === undefined) this._cashoutLength = this.segments.length;
+    } else if (this._cashoutLength !== undefined) {
+      // Q released — trim any extra segments that accumulated back to original length
+      while (this.segments.length > this._cashoutLength) this.segments.pop();
+      this._cashoutLength = undefined;
+      this._trimAccum = 0;
+    }
 
     for (let step = 0; step < steps; step++) {
       this.segments.unshift({
         x: this.segments[0].x + Math.cos(this.angle) * speed,
         y: this.segments[0].y + Math.sin(this.angle) * speed,
       });
-      if (this.pendingGrowth > 0) {
-        this.pendingGrowth--;
-      } else {
-        this.segments.pop();
+      this._trimAccum += mult;
+      if (this._trimAccum >= 1) {
+        this._trimAccum -= 1;
+        if (this.pendingGrowth > 0) {
+          this.pendingGrowth--;
+        } else {
+          this.segments.pop();
+        }
       }
     }
   }
