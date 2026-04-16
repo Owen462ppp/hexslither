@@ -71,7 +71,7 @@ socket.on(CONSTANTS.EVENTS.SNAPSHOT, (snap) => {
     clockOffset += (sample - clockOffset) * 0.1;
   }
   snapBuffer.push({ t: snap.t, state: snap });
-  if (snapBuffer.length > 18) snapBuffer.shift(); // 18 × 33ms ≈ 600ms — enough for cashout delay
+  if (snapBuffer.length > 35) snapBuffer.shift(); // 35 × 33ms ≈ 1150ms — enough for cashout delay
   updateHUD(snap);
   updateLeaderboard(snap);
 });
@@ -100,7 +100,7 @@ function interpolateState(now) {
   // During Q cashout: ramp up interp delay so snake visually slows down.
   // On release: ramp back down slowly to avoid a jump.
   const cashoutTarget = qHoldStart
-    ? Math.pow(Math.min(1, (now - qHoldStart) / Q_HOLD_MS), 2) * 420
+    ? Math.pow(Math.min(1, (now - qHoldStart) / Q_HOLD_MS), 2) * 900
     : 0;
   cashoutDelay += (cashoutTarget - cashoutDelay) * (cashoutTarget > cashoutDelay ? 0.12 : 0.04);
   if (cashoutDelay < 0.5) cashoutDelay = 0;
