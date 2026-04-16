@@ -148,35 +148,14 @@ class Renderer {
     ctx.lineCap  = 'round';
     ctx.lineJoin = 'round';
 
-    // ── Smooth body path (tail → head via Catmull-Rom spline) ────────────────
-    function buildPath() {
+    // ── Body circles tail→head — later circles sit on top, so the forward part
+    //    correctly overlaps the tail when the snake crosses itself ──────────────
+    ctx.fillStyle = color;
+    for (let i = SN - 1; i >= 1; i--) {
       ctx.beginPath();
-      ctx.moveTo(segs[(SN - 1) * 2], segs[(SN - 1) * 2 + 1]);
-      const STEPS = 4;
-      for (let j = SN - 2; j >= 0; j--) {
-        const pi = Math.min(SN - 1, j + 2) * 2;
-        const ai = (j + 1) * 2;
-        const bi = j * 2;
-        const ni = Math.max(0, j - 1) * 2;
-        const px = segs[pi], py = segs[pi + 1];
-        const ax = segs[ai], ay = segs[ai + 1];
-        const bx = segs[bi], by = segs[bi + 1];
-        const nx = segs[ni], ny = segs[ni + 1];
-        for (let s = 1; s <= STEPS; s++) {
-          const t = s / STEPS, t2 = t * t, t3 = t2 * t;
-          ctx.lineTo(
-            0.5 * ((2 * ax) + (-px + bx) * t + (2 * px - 5 * ax + 4 * bx - nx) * t2 + (-px + 3 * ax - 3 * bx + nx) * t3),
-            0.5 * ((2 * ay) + (-py + by) * t + (2 * py - 5 * ay + 4 * by - ny) * t2 + (-py + 3 * ay - 3 * by + ny) * t3)
-          );
-        }
-      }
+      ctx.arc(segs[i * 2], segs[i * 2 + 1], R, 0, Math.PI * 2);
+      ctx.fill();
     }
-
-    // ── Body base ─────────────────────────────────────────────────────────────
-    buildPath();
-    ctx.lineWidth   = R * 2;
-    ctx.strokeStyle = color;
-    ctx.stroke();
 
     // ── Crease arcs — 25-pass tapered arc (same technique as preview_snake) ──
     // Each pass is individually imperceptible; together they form a smooth shadow
