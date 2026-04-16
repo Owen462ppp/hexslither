@@ -326,6 +326,8 @@ body {
 #alltime-list .al-rank { min-width: 28px; font-weight: 700; color: #666; }
 #alltime-list li:first-child .al-rank { color: #ffe066; }
 #alltime-list .al-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#alltime-list .al-name-link { cursor: pointer; }
+#alltime-list .al-name-link:hover { color: #14F195; text-decoration: underline; }
 #alltime-list .al-score { font-weight: 600; color: #7dd3fc; }
 
 /* Q cash-out timer ring */

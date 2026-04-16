@@ -379,9 +379,15 @@ document.getElementById('btn-lobby').addEventListener('click', () => {
         }
         listEl.innerHTML = data.map(p =>
           `<li><span class="al-rank">#${p.rank}</span>` +
-          `<span class="al-name">${escHtmlLocal(p.name)}</span>` +
+          `<span class="al-name al-name-link" data-player-name="${escHtmlLocal(p.name)}">${escHtmlLocal(p.name)}</span>` +
           `<span class="al-score">${p.score}</span></li>`
         ).join('');
+        listEl.querySelectorAll('.al-name-link').forEach(el => {
+          el.addEventListener('click', () => {
+            modal.classList.add('hidden');
+            window.openProfile(el.dataset.playerName);
+          });
+        });
       })
       .catch(() => { listEl.innerHTML = '<li style="color:#c33">Failed to load</li>'; });
   });
@@ -671,7 +677,7 @@ requestAnimationFrame(gameLoop);
     drawChart(currentProfile.history[currentPeriod], currentPeriod);
   }
 
-  async function openProfile(playerName) {
+  window.openProfile = async function openProfile(playerName) {
     modal.classList.remove('hidden');
     nameEl.textContent = playerName;
     earningsEl.textContent = '—';
