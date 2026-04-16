@@ -88,18 +88,26 @@ class Snake {
       this._boostTick = 0;
     }
 
-    const mult = this.speedMult !== undefined ? this.speedMult : 1;
-    const speed = C.SNAKE_BASE_SPEED * (steps === 3 ? 1 : mult);
+    // speedMult < 1 during cashout. Head moves slower, so tail must also trim
+    // slower to keep snake the same length. _trimAccum accumulates the fractional
+    // trim debt; tail only pops when it reaches a whole number.
+    const mult = (this.speedMult !== undefined && steps !== 3) ? this.speedMult : 1;
+    const speed = C.SNAKE_BASE_SPEED * mult;
+    if (this._trimAccum === undefined) this._trimAccum = 0;
 
     for (let step = 0; step < steps; step++) {
       this.segments.unshift({
         x: this.segments[0].x + Math.cos(this.angle) * speed,
         y: this.segments[0].y + Math.sin(this.angle) * speed,
       });
-      if (this.pendingGrowth > 0) {
-        this.pendingGrowth--;
-      } else {
-        this.segments.pop();
+      this._trimAccum += mult;
+      if (this._trimAccum >= 1) {
+        this._trimAccum -= 1;
+        if (this.pendingGrowth > 0) {
+          this.pendingGrowth--;
+        } else {
+          this.segments.pop();
+        }
       }
     }
   }
