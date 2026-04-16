@@ -49,9 +49,10 @@ class Snake {
     return C.MAX_TURN_RATE * (1 - sizePenalty);
   }
 
-  setInput(targetAngle, boosting) {
+  setInput(targetAngle, boosting, speedMult) {
     this.targetAngle = targetAngle;
     this.boosting = boosting && this.boostFuel > 0;
+    this.speedMult = (typeof speedMult === 'number') ? Math.max(0.3, Math.min(1, speedMult)) : 1;
   }
 
   update() {
@@ -87,7 +88,9 @@ class Snake {
       this._boostTick = 0;
     }
 
-    const speed = C.SNAKE_BASE_SPEED;
+    const mult  = this.speedMult || 1;
+    const speed = C.SNAKE_BASE_SPEED * mult;
+    if (this._trimAccum === undefined) this._trimAccum = 0;
     for (let step = 0; step < steps; step++) {
       this.segments.unshift({
         x: this.segments[0].x + Math.cos(this.angle) * speed,
@@ -96,7 +99,12 @@ class Snake {
       if (this.pendingGrowth > 0) {
         this.pendingGrowth--;
       } else {
-        this.segments.pop();
+        // Tail trims proportionally so arc length stays constant at any speed
+        this._trimAccum += mult;
+        if (this._trimAccum >= 1) {
+          this._trimAccum -= 1;
+          this.segments.pop();
+        }
       }
     }
   }
