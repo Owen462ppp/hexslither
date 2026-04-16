@@ -70,7 +70,7 @@ socket.on(CONSTANTS.EVENTS.SNAPSHOT, (snap) => {
     clockOffset += (sample - clockOffset) * 0.1;
   }
   snapBuffer.push({ t: snap.t, state: snap });
-  if (snapBuffer.length > 12) snapBuffer.shift(); // 12 × 16.7ms ≈ 200ms of history
+  if (snapBuffer.length > 18) snapBuffer.shift(); // 18 × 33ms ≈ 600ms — enough for cashout delay
   updateHUD(snap);
   updateLeaderboard(snap);
 });
@@ -95,8 +95,15 @@ function interpolateState(now) {
   const serverNow = now + clockOffset;
   // Ramp interp delay from 0→full over first 500ms after spawn to avoid initial lag
   const spawnAge = spawnTime ? now - spawnTime : Infinity;
-  const interpDelay = spawnAge < 500 ? INTERP_DELAY_MS * (spawnAge / 500) : INTERP_DELAY_MS;
-  const renderTime = serverNow - interpDelay;
+  const baseDelay = spawnAge < 500 ? INTERP_DELAY_MS * (spawnAge / 500) : INTERP_DELAY_MS;
+  // During Q cashout: increase delay (show older state) so snake appears to slow down
+  // without touching server movement. Quadratic curve: barely noticeable early, ramps at end.
+  let cashoutExtra = 0;
+  if (qHoldStart) {
+    const p = Math.min(1, (now - qHoldStart) / Q_HOLD_MS);
+    cashoutExtra = Math.pow(p, 2) * 260;
+  }
+  const renderTime = serverNow - baseDelay - cashoutExtra;
 
   // Find the two snapshots that bracket renderTime
   let before = null, after = null;
@@ -422,10 +429,7 @@ function sendInput() {
         renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).x - mySnake.segs[0]
       );
   // Quadratic ease: barely changes early, smooth decline toward end, never below 0.35 (prevents jitter)
-  const speedMult = qHoldStart
-    ? Math.max(0.35, 1 - Math.pow((performance.now() - qHoldStart) / Q_HOLD_MS, 2) * 0.65)
-    : 1;
-  socket.emit(CONSTANTS.EVENTS.INPUT, { angle, boost: boostActive && !qHoldStart, speedMult });
+  socket.emit(CONSTANTS.EVENTS.INPUT, { angle, boost: boostActive && !qHoldStart });
 }
 setInterval(sendInput, 1000 / 60);
 

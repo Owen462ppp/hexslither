@@ -441,10 +441,9 @@ io.on('connection', (socket) => {
     socket.emit('cashout:result', { newBalance, earnedSol: playerShare, score: Math.floor(snake.score), length: snake.length });
   });
 
-  socket.on(C.EVENTS.INPUT, ({ angle, boost, speedMult }) => {
+  socket.on(C.EVENTS.INPUT, ({ angle, boost }) => {
     if (typeof angle !== 'number') return;
-    const sm = typeof speedMult === 'number' ? Math.max(0.1, Math.min(1, speedMult)) : 1;
-    if (socket._room) socket._room.handleInput(socket.id, angle, !!boost, sm);
+    if (socket._room) socket._room.handleInput(socket.id, angle, !!boost);
   });
 
   socket.on(C.EVENTS.RESPAWN, ({ entrySol } = {}) => {
