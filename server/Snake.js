@@ -69,29 +69,32 @@ class Snake {
       this.angle = this.targetAngle;
     }
 
-    // Steps: 3 sub-steps at base speed during boost keeps segment spacing uniform.
-    // Previously one 9-unit step per tick caused head to race ahead while only one
-    // 3-unit tail segment was removed → snake visually stretched during boost.
-    // With 3×3-unit sub-steps: head moves 9 units total, tail is trimmed 3× → no stretch.
-    let steps = 1;
-    if (this.boosting) {
-      if (this.boostFuel > 0) {
-        steps = 3;
-        if (this._boostTick === undefined) this._boostTick = 0;
-        this._boostTick++;
-        if (this._boostTick >= 12) {
-          this._boostTick = 0;
-          const dropped = this.segments.pop();
-          if (dropped) this.boostDrops.push({ x: dropped.x, y: dropped.y, value: 0.15 });
-        }
-      } else {
-        this.boosting = false;
+    // Accumulator-based movement: snake always moves at full SNAKE_BASE_SPEED when it does
+    // step, but only steps when enough "movement credit" has accumulated. This keeps segment
+    // spacing uniform regardless of speedMult — no squishing at slow speeds.
+    const mult = (this.speedMult !== undefined ? this.speedMult : 1);
+    if (this._moveAccum === undefined) this._moveAccum = 0;
+
+    let steps = 0;
+    if (this.boosting && this.boostFuel > 0) {
+      // Boost: accumulate at 3× rate, up to 3 steps
+      this._moveAccum += mult * 3;
+      while (this._moveAccum >= 1 && steps < 3) { this._moveAccum -= 1; steps++; }
+      if (this._boostTick === undefined) this._boostTick = 0;
+      this._boostTick++;
+      if (this._boostTick >= 12) {
+        this._boostTick = 0;
+        const dropped = this.segments.pop();
+        if (dropped) this.boostDrops.push({ x: dropped.x, y: dropped.y, value: 0.15 });
       }
     } else {
+      if (this.boosting) this.boosting = false; // no fuel
       this._boostTick = 0;
+      this._moveAccum += mult;
+      if (this._moveAccum >= 1) { this._moveAccum -= 1; steps = 1; }
     }
 
-    const speed = C.SNAKE_BASE_SPEED * (this.speedMult !== undefined ? this.speedMult : 1);
+    const speed = C.SNAKE_BASE_SPEED;
     for (let step = 0; step < steps; step++) {
       // Advance head
       this.segments.unshift({

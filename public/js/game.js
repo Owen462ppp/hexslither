@@ -421,7 +421,10 @@ function sendInput() {
         renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).y - mySnake.segs[1],
         renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).x - mySnake.segs[0]
       );
-  const speedMult = qHoldStart ? Math.max(0.1, 1 - (performance.now() - qHoldStart) / Q_HOLD_MS * 0.9) : 1;
+  // Cubic ease-in: barely moves for first ~70% of hold, then drops fast at the end
+  const speedMult = qHoldStart
+    ? Math.max(0.08, 1 - Math.pow((performance.now() - qHoldStart) / Q_HOLD_MS, 3) * 0.92)
+    : 1;
   socket.emit(CONSTANTS.EVENTS.INPUT, { angle, boost: boostActive && !qHoldStart, speedMult });
 }
 setInterval(sendInput, 1000 / 60);
