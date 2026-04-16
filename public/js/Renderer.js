@@ -148,16 +148,49 @@ class Renderer {
     ctx.lineCap  = 'round';
     ctx.lineJoin = 'round';
 
-    // ── Body: short Catmull-Rom chunks drawn tail→head ────────────────────────
-    // Drawing separate strokes means each head-side chunk is a later canvas call
-    // and therefore sits on top at self-intersections.
     const STEPS = 4;
-    const CHUNK = 4; // segments per draw call — small enough to layer correctly
-    ctx.lineWidth   = R * 2;
-    ctx.strokeStyle = color;
+    const CHUNK = 4;
+    const CREASE_SPACING = R * 1.76;
+    const PASSES = 15;
+    const ARC_SEGS = 8;
 
+    function taperedArc(cx, cy, fwdAngle, r, baseAlpha, lw) {
+      for (let s = 0; s < ARC_SEGS; s++) {
+        const t0 = s / ARC_SEGS, t1 = (s + 1) / ARC_SEGS;
+        const taper = Math.sin((t0 + t1) / 2 * Math.PI);
+        ctx.beginPath();
+        ctx.arc(cx, cy, r,
+          fwdAngle + Math.PI * 0.5 + t0 * Math.PI,
+          fwdAngle + Math.PI * 0.5 + t1 * Math.PI,
+          false);
+        ctx.strokeStyle = `rgba(0,0,0,${baseAlpha * taper})`;
+        ctx.lineWidth   = lw;
+        ctx.lineCap     = 'butt';
+        ctx.stroke();
+      }
+    }
+
+    // Pre-compute crease positions so we can draw them per-chunk
+    const creaseAngles = new Array(SN).fill(null);
+    let dist = -R * 0.35;
+    for (let si = 1; si < SN - 1; si++) {
+      const dx = segs[si*2] - segs[(si-1)*2];
+      const dy = segs[si*2+1] - segs[(si-1)*2+1];
+      dist += Math.sqrt(dx*dx + dy*dy);
+      if (dist < CREASE_SPACING) continue;
+      dist -= CREASE_SPACING;
+      const pi = Math.max(0, si - 2);
+      const ni = Math.min(SN - 1, si + 2);
+      creaseAngles[si] = Math.atan2(segs[pi*2+1] - segs[ni*2+1], segs[pi*2] - segs[ni*2]);
+    }
+
+    // ── Draw chunks tail→head: body stroke THEN creases for each chunk ────────
+    // Creases are drawn immediately after their chunk's body so head-side chunks
+    // fully cover tail-side body+creases — no texture bleeding at crossings.
     for (let end = SN - 1; end > 0; end -= CHUNK) {
       const start = Math.max(0, end - CHUNK);
+
+      // Body stroke for this chunk
       ctx.beginPath();
       ctx.moveTo(segs[end * 2], segs[end * 2 + 1]);
       for (let j = end - 1; j >= start; j--) {
@@ -173,52 +206,21 @@ class Renderer {
           );
         }
       }
+      ctx.lineWidth   = R * 2;
+      ctx.strokeStyle = color;
       ctx.stroke();
-    }
 
-    // ── Crease arcs — 25-pass tapered arc (same technique as preview_snake) ──
-    // Each pass is individually imperceptible; together they form a smooth shadow
-    const CREASE_SPACING = R * 1.76; // = diameter * 0.88, matches preview ratio
-    const PASSES = 15;
-    const SEGS   = 8;
-
-    function taperedArc(cx, cy, fwdAngle, r, baseAlpha, lw) {
-      for (let s = 0; s < SEGS; s++) {
-        const t0 = s / SEGS, t1 = (s + 1) / SEGS;
-        const taper = Math.sin((t0 + t1) / 2 * Math.PI);
-        ctx.beginPath();
-        ctx.arc(cx, cy, r,
-          fwdAngle + Math.PI * 0.5 + t0 * Math.PI,
-          fwdAngle + Math.PI * 0.5 + t1 * Math.PI,
-          false);
-        ctx.strokeStyle = `rgba(0,0,0,${baseAlpha * taper})`;
-        ctx.lineWidth   = lw;
-        ctx.lineCap     = 'butt';
-        ctx.stroke();
-      }
-    }
-
-    // Iterate head→tail (si=0 is head), place a crease every CREASE_SPACING units
-    let dist = -R * 0.35; // offset so first crease clears the head circle
-    for (let si = 1; si < SN - 1; si++) {
-      const dx = segs[si*2] - segs[(si-1)*2];
-      const dy = segs[si*2+1] - segs[(si-1)*2+1];
-      dist += Math.sqrt(dx*dx + dy*dy);
-      if (dist < CREASE_SPACING) continue;
-      dist -= CREASE_SPACING;
-
-      // Forward direction = toward head (smaller si index)
-      const pi = Math.max(0, si - 2);
-      const ni = Math.min(SN - 1, si + 2);
-      const fwdAngle = Math.atan2(segs[pi*2+1] - segs[ni*2+1], segs[pi*2] - segs[ni*2]);
-
-      const cx = segs[si*2], cy = segs[si*2+1];
-      for (let p = 0; p < PASSES; p++) {
-        const t  = p / (PASSES - 1);
-        const r  = R * (0.88 + t * 0.12);
-        const lw = R * (0.50 * Math.pow(1 - t, 1.5) + 0.035);
-        const a  = 0.001 + Math.pow(t, 2.5) * 0.042;
-        taperedArc(cx, cy, fwdAngle, r, a, lw);
+      // Crease marks for segments in this chunk (drawn immediately after body)
+      for (let si = end; si >= start; si--) {
+        if (creaseAngles[si] === null) continue;
+        const cx = segs[si*2], cy = segs[si*2+1];
+        for (let p = 0; p < PASSES; p++) {
+          const t  = p / (PASSES - 1);
+          const r  = R * (0.88 + t * 0.12);
+          const lw = R * (0.50 * Math.pow(1 - t, 1.5) + 0.035);
+          const a  = 0.001 + Math.pow(t, 2.5) * 0.042;
+          taperedArc(cx, cy, creaseAngles[si], r, a, lw);
+        }
       }
     }
 
