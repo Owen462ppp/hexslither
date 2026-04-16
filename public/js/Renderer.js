@@ -190,7 +190,8 @@ class Renderer {
     for (let end = SN - 1; end > 0; end -= CHUNK) {
       const start = Math.max(0, end - CHUNK);
 
-      // Body stroke for this chunk
+      // Body stroke for this chunk (reset lineCap — taperedArc sets it to 'butt')
+      ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.moveTo(segs[end * 2], segs[end * 2 + 1]);
       for (let j = end - 1; j >= start; j--) {
