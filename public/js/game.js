@@ -71,7 +71,7 @@ socket.on(CONSTANTS.EVENTS.SNAPSHOT, (snap) => {
     clockOffset += (sample - clockOffset) * 0.1;
   }
   snapBuffer.push({ t: snap.t, state: snap });
-  if (snapBuffer.length > 35) snapBuffer.shift(); // 35 × 33ms ≈ 1150ms — enough for cashout delay
+  if (snapBuffer.length > 70) snapBuffer.shift(); // 70 × 33ms ≈ 2300ms — enough for cashout delay
   updateHUD(snap);
   updateLeaderboard(snap);
 });
@@ -100,7 +100,7 @@ function interpolateState(now) {
   // During Q cashout: ramp up interp delay so snake visually slows down.
   // On release: ramp back down slowly to avoid a jump.
   const cashoutTarget = qHoldStart
-    ? Math.pow(Math.min(1, (now - qHoldStart) / Q_HOLD_MS), 2) * 900
+    ? Math.pow(Math.min(1, (now - qHoldStart) / Q_HOLD_MS), 2) * 1800
     : 0;
   cashoutDelay += (cashoutTarget - cashoutDelay) * (cashoutTarget > cashoutDelay ? 0.12 : 0.04);
   if (cashoutDelay < 0.5) cashoutDelay = 0;
@@ -116,9 +116,14 @@ function interpolateState(now) {
     }
   }
 
-  // If we can't bracket renderTime, dead-reckon from the latest snapshot instead of
-  // snapping — this prevents the whole snake from jumping when the buffer runs dry.
+  // If renderTime is older than the buffer, show the oldest available snapshot (not current).
+  // This is what makes the cashout slowdown work — we clamp to the oldest state we have.
   if (!before || !after) {
+    if (renderTime <= snapBuffer[0].t) {
+      displayState = { ...snapBuffer[0].state };
+      return;
+    }
+    // renderTime is newer than latest — dead-reckon forward
     const latest = snapBuffer[snapBuffer.length - 1];
     const extMs = Math.max(0, Math.min(renderTime - latest.t, 200));
     if (extMs > 0) {
