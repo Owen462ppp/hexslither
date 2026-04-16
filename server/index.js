@@ -329,6 +329,17 @@ app.get('/api/earningsboard', async (req, res) => {
   }
 });
 
+app.get('/api/profile/:name', async (req, res) => {
+  try {
+    const profile = await db.getProfile(req.params.name);
+    if (!profile) return res.status(404).json({ error: 'Player not found' });
+    res.json(profile);
+  } catch (e) {
+    console.error('[PROFILE]', e.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.use((req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 app.use(express.static(path.join(__dirname, '../public')));
 app.use('/shared', express.static(path.join(__dirname, '../shared')));
@@ -387,6 +398,7 @@ io.on('connection', (socket) => {
     }
     const room = getRoomForType(lobbyType);
     socket._room = room;
+    socket._joinTime = Date.now();
     console.log(`[>] ${playerName} joins ${lobbyType || 'free'} lobby (worth: ${entrySol || 0} SOL)`);
     room.addPlayer(socket, playerName, walletAddress || null, color || null, entrySol || 0);
     lobbyConnections.delete(socket);
@@ -455,7 +467,8 @@ io.on('connection', (socket) => {
     if (room) {
       const snake = room.snakes && room.snakes.get(socket.id);
       if (snake && socket._googleId) {
-        await db.recordGameResult(socket._googleId, snake.score).catch(() => {});
+        const duration = socket._joinTime ? Math.round((Date.now() - socket._joinTime) / 1000) : 0;
+        await db.recordGameResult(socket._googleId, snake.score, duration).catch(() => {});
       }
       room.removePlayer(socket.id);
     }

@@ -85,6 +85,41 @@
     <button id="spectate-stop">⬅ Lobby</button>
   </div>
 
+  <!-- Player Profile Modal -->
+  <div id="modal-profile" class="modal-overlay hidden">
+    <div class="modal-box profile-box">
+      <div class="modal-header">
+        <span id="profile-name" style="font-size:1.1rem"></span>
+        <button id="modal-profile-close">✕</button>
+      </div>
+      <div class="profile-stats-row">
+        <div class="profile-stat">
+          <div class="profile-stat-label">Net Earnings</div>
+          <div class="profile-stat-value" id="profile-earnings">—</div>
+        </div>
+        <div class="profile-stat">
+          <div class="profile-stat-label">Games</div>
+          <div class="profile-stat-value" id="profile-games">—</div>
+        </div>
+        <div class="profile-stat">
+          <div class="profile-stat-label">Play Time</div>
+          <div class="profile-stat-value" id="profile-time">—</div>
+        </div>
+      </div>
+      <div class="profile-chart-header">
+        <span class="profile-chart-title">Earnings Over Time</span>
+        <div class="profile-intervals">
+          <button class="interval-btn active" data-period="week">1W</button>
+          <button class="interval-btn" data-period="month">1M</button>
+          <button class="interval-btn" data-period="sixMonth">6M</button>
+          <button class="interval-btn" data-period="allTime">All</button>
+        </div>
+      </div>
+      <canvas id="profile-chart" width="340" height="160"></canvas>
+      <div id="profile-loading" style="color:#555;text-align:center;padding:20px 0;display:none">Loading…</div>
+    </div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/constants.js"></script>
   <script src="js/HexGrid.js"></script>

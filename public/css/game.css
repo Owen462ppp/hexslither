@@ -375,3 +375,64 @@ body {
   font-size: 1rem;
 }
 .cashout-btns { display: flex; gap: 16px; }
+
+/* Player profile modal */
+.profile-box {
+  min-width: 360px;
+  max-width: 400px;
+}
+.profile-stats-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.profile-stat {
+  flex: 1;
+  background: rgba(255,255,255,0.05);
+  border-radius: 10px;
+  padding: 10px 8px;
+  text-align: center;
+}
+.profile-stat-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: #666;
+  margin-bottom: 4px;
+}
+.profile-stat-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+}
+.profile-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.profile-chart-title {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #666;
+}
+.profile-intervals {
+  display: flex;
+  gap: 4px;
+}
+.interval-btn {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  color: #888;
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.interval-btn:hover { background: rgba(255,255,255,0.14); color: #fff; }
+.interval-btn.active { background: rgba(20,241,149,0.18); color: #14F195; border-color: rgba(20,241,149,0.4); }
+#profile-chart { display: block; width: 100%; border-radius: 8px; background: rgba(255,255,255,0.03); }
+#leaderboard-list li[data-player-name] { cursor: pointer; }
+#leaderboard-list li[data-player-name]:hover .lb-name { text-decoration: underline; color: #7dd3fc; }

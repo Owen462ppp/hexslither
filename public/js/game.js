@@ -444,9 +444,9 @@ function updateLeaderboard(snap) {
     const val = isPaid
       ? `C$${(p.worth * solCadRate).toFixed(2)}`
       : p.score;
-    return `<li class="${p.id === myId ? 'me' : ''}">` +
+    return `<li class="${p.id === myId ? 'me' : ''}" data-player-name="${escHtml(p.name)}">` +
       `<span class="lb-rank">#${p.rank}</span>` +
-      `<span>${escHtml(p.name)}</span>` +
+      `<span class="lb-name">${escHtml(p.name)}</span>` +
       `<span class="lb-score">${val}</span></li>`;
   }).join('') || '<li style="color:#555">—</li>';
   if (html !== _lastLbHtml) {
@@ -554,4 +554,161 @@ requestAnimationFrame(gameLoop);
     feedbackEl.textContent = '✓ ' + message;
     setTimeout(closeConsole, 1800);
   });
+})();
+
+// ─── Player Profile Modal ─────────────────────────────────────────────────────
+(function() {
+  const modal      = document.getElementById('modal-profile');
+  const closeBtn   = document.getElementById('modal-profile-close');
+  const nameEl     = document.getElementById('profile-name');
+  const earningsEl = document.getElementById('profile-earnings');
+  const gamesEl    = document.getElementById('profile-games');
+  const timeEl     = document.getElementById('profile-time');
+  const chartCanvas= document.getElementById('profile-chart');
+  const loadingEl  = document.getElementById('profile-loading');
+  const intervalBtns = document.querySelectorAll('.interval-btn');
+
+  let currentProfile = null;
+  let currentPeriod  = 'week';
+
+  function formatPlayTime(s) {
+    if (s < 60) return s + 's';
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  }
+
+  function formatPeriodLabel(dateStr, period) {
+    const d = new Date(dateStr);
+    if (period === 'week' || period === 'month') {
+      return (d.getMonth()+1) + '/' + d.getDate();
+    } else if (period === 'sixMonth') {
+      return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()] + ' W' + Math.ceil(d.getDate()/7);
+    } else {
+      return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()] + ' ' + d.getFullYear().toString().slice(2);
+    }
+  }
+
+  function drawChart(historyData, period) {
+    const ctx = chartCanvas.getContext('2d');
+    const W = chartCanvas.width, H = chartCanvas.height;
+    const rate = typeof solCadRate !== 'undefined' ? solCadRate : 200;
+    ctx.clearRect(0, 0, W, H);
+
+    if (!historyData || historyData.length === 0) {
+      ctx.fillStyle = '#444';
+      ctx.font = '13px Segoe UI';
+      ctx.textAlign = 'center';
+      ctx.fillText('No data for this period', W/2, H/2);
+      return;
+    }
+
+    const pad = { top: 12, right: 12, bottom: 28, left: 48 };
+    const cW = W - pad.left - pad.right;
+    const cH = H - pad.top - pad.bottom;
+
+    const vals = historyData.map(d => d.total * rate);
+    const maxAbs = Math.max(Math.abs(Math.min(...vals)), Math.abs(Math.max(...vals)), 0.01);
+    const barW = Math.max(4, Math.floor(cW / historyData.length) - 2);
+
+    // Zero line y
+    const zeroY = pad.top + cH / 2;
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const y = pad.top + (cH / 4) * i;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+    }
+
+    // Zero line
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad.left, zeroY); ctx.lineTo(W - pad.right, zeroY); ctx.stroke();
+
+    // Y axis labels
+    ctx.fillStyle = '#555';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'right';
+    const topVal = (maxAbs * rate).toFixed(2);
+    ctx.fillText('+C$' + topVal, pad.left - 4, pad.top + 4);
+    ctx.fillText('-C$' + topVal, pad.left - 4, H - pad.bottom - 4);
+    ctx.fillText('0', pad.left - 4, zeroY + 4);
+
+    // Bars
+    historyData.forEach((d, i) => {
+      const val = d.total * rate;
+      const barH = Math.abs(val) / maxAbs * (cH / 2);
+      const x = pad.left + i * (cW / historyData.length) + (cW / historyData.length - barW) / 2;
+      const y = val >= 0 ? zeroY - barH : zeroY;
+      ctx.fillStyle = val >= 0 ? '#14F195' : '#ef4444';
+      ctx.beginPath();
+      ctx.roundRect(x, y, barW, Math.max(barH, 2), 2);
+      ctx.fill();
+    });
+
+    // X axis labels — show up to 7 evenly spaced
+    ctx.fillStyle = '#555';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'center';
+    const labelCount = Math.min(7, historyData.length);
+    const step = Math.max(1, Math.floor(historyData.length / labelCount));
+    for (let i = 0; i < historyData.length; i += step) {
+      const x = pad.left + i * (cW / historyData.length) + (cW / historyData.length) / 2;
+      ctx.fillText(formatPeriodLabel(historyData[i].period, period), x, H - pad.bottom + 12);
+    }
+  }
+
+  function renderProfile() {
+    if (!currentProfile) return;
+    const rate = typeof solCadRate !== 'undefined' ? solCadRate : 200;
+    const cad = (currentProfile.totalEarnings * rate).toFixed(2);
+    const sign = currentProfile.totalEarnings >= 0 ? '+' : '';
+    earningsEl.textContent = sign + 'C$' + cad;
+    earningsEl.style.color = currentProfile.totalEarnings >= 0 ? '#14F195' : '#ef4444';
+    gamesEl.textContent = currentProfile.gamesPlayed;
+    timeEl.textContent = formatPlayTime(currentProfile.playTimeSeconds);
+    drawChart(currentProfile.history[currentPeriod], currentPeriod);
+  }
+
+  async function openProfile(playerName) {
+    modal.classList.remove('hidden');
+    nameEl.textContent = playerName;
+    earningsEl.textContent = '—';
+    gamesEl.textContent = '—';
+    timeEl.textContent = '—';
+    loadingEl.style.display = 'block';
+    chartCanvas.style.display = 'none';
+    currentProfile = null;
+    try {
+      const res = await fetch('/api/profile/' + encodeURIComponent(playerName));
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      currentProfile = data;
+      loadingEl.style.display = 'none';
+      chartCanvas.style.display = 'block';
+      renderProfile();
+    } catch (e) {
+      loadingEl.textContent = 'Failed to load profile';
+    }
+  }
+
+  // Leaderboard click
+  document.getElementById('leaderboard-list').addEventListener('click', (e) => {
+    const li = e.target.closest('li[data-player-name]');
+    if (li) openProfile(li.dataset.playerName);
+  });
+
+  // Interval buttons
+  intervalBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      intervalBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentPeriod = btn.dataset.period;
+      if (currentProfile) drawChart(currentProfile.history[currentPeriod], currentPeriod);
+    });
+  });
+
+  closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+  modal.addEventListener('click', e => { if (e.target === modal) modal.classList.add('hidden'); });
 })();

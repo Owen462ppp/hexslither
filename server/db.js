@@ -53,6 +53,16 @@ async function init() {
       created_at   TIMESTAMPTZ DEFAULT NOW(),
       PRIMARY KEY (google_id, device_token)
     );
+
+    ALTER TABLE accounts ADD COLUMN IF NOT EXISTS play_time_seconds INTEGER DEFAULT 0;
+
+    CREATE TABLE IF NOT EXISTS earnings_history (
+      id         SERIAL PRIMARY KEY,
+      google_id  TEXT NOT NULL,
+      amount     NUMERIC(18,9) NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_eh_gid ON earnings_history(google_id, created_at);
   `);
   console.log('[DB] Tables ready');
 }
@@ -98,13 +108,14 @@ async function saveAccount(googleId, updates) {
   return res.rows[0] ? dbToAccount(res.rows[0]) : null;
 }
 
-async function recordGameResult(googleId, score) {
+async function recordGameResult(googleId, score, durationSeconds) {
   await pool.query(
     `UPDATE accounts SET
-       games_played = games_played + 1,
-       high_score   = GREATEST(high_score, $2)
+       games_played      = games_played + 1,
+       high_score        = GREATEST(high_score, $2),
+       play_time_seconds = play_time_seconds + $3
      WHERE google_id = $1`,
-    [googleId, score]
+    [googleId, score, durationSeconds || 0]
   );
 }
 
@@ -144,10 +155,10 @@ async function recordWithdrawal(googleId, txSig, amount, toAddress) {
 }
 
 async function addEarnings(googleId, sol) {
-  await pool.query(
-    `UPDATE accounts SET total_earnings = total_earnings + $2 WHERE google_id = $1`,
-    [googleId, sol]
-  );
+  await Promise.all([
+    pool.query(`UPDATE accounts SET total_earnings = total_earnings + $2 WHERE google_id = $1`, [googleId, sol]),
+    pool.query(`INSERT INTO earnings_history (google_id, amount) VALUES ($1, $2)`, [googleId, sol]),
+  ]);
 }
 
 async function getTopEarners(n) {
@@ -232,6 +243,47 @@ async function getGoogleIdByDeviceToken(deviceToken) {
   return res.rows[0]?.google_id || null;
 }
 
+async function getProfile(name) {
+  const accRes = await pool.query(
+    `SELECT google_id, name, total_earnings, games_played, play_time_seconds
+     FROM accounts WHERE LOWER(name) = LOWER($1)`,
+    [name]
+  );
+  if (!accRes.rows[0]) return null;
+  const row = accRes.rows[0];
+  const gid = row.google_id;
+
+  const mapRows = rows => rows.map(r => ({ period: r.period, total: parseFloat(r.total) }));
+
+  const [week, month, sixMonth, allTime] = await Promise.all([
+    pool.query(`SELECT DATE_TRUNC('day', created_at) AS period, SUM(amount) AS total
+      FROM earnings_history WHERE google_id=$1 AND created_at >= NOW()-INTERVAL '7 days'
+      GROUP BY period ORDER BY period ASC`, [gid]),
+    pool.query(`SELECT DATE_TRUNC('day', created_at) AS period, SUM(amount) AS total
+      FROM earnings_history WHERE google_id=$1 AND created_at >= NOW()-INTERVAL '30 days'
+      GROUP BY period ORDER BY period ASC`, [gid]),
+    pool.query(`SELECT DATE_TRUNC('week', created_at) AS period, SUM(amount) AS total
+      FROM earnings_history WHERE google_id=$1 AND created_at >= NOW()-INTERVAL '6 months'
+      GROUP BY period ORDER BY period ASC`, [gid]),
+    pool.query(`SELECT DATE_TRUNC('month', created_at) AS period, SUM(amount) AS total
+      FROM earnings_history WHERE google_id=$1
+      GROUP BY period ORDER BY period ASC`, [gid]),
+  ]);
+
+  return {
+    name: row.name,
+    totalEarnings: parseFloat(row.total_earnings || 0),
+    gamesPlayed: parseInt(row.games_played || 0),
+    playTimeSeconds: parseInt(row.play_time_seconds || 0),
+    history: {
+      week: mapRows(week.rows),
+      month: mapRows(month.rows),
+      sixMonth: mapRows(sixMonth.rows),
+      allTime: mapRows(allTime.rows),
+    },
+  };
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function dbToAccount(row) {
@@ -256,4 +308,5 @@ module.exports = {
   getGoogleIdByDeviceToken,
   isNameTaken,
   saveVerificationCode, verifyCode, addTrustedDevice, isDeviceTrusted,
+  getProfile,
 };
