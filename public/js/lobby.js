@@ -1300,15 +1300,8 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   const TRAILS = [160, 220, 180, 260, 200, 240]; // varied lengths per snake
 
   function pickTarget(W, H) {
-    // Bias targets toward edges and corners so snakes spread across the whole screen
-    const margin = 60;
-    const tx = Math.random() < 0.4
-      ? (Math.random() < 0.5 ? margin + Math.random() * W * 0.2 : W - margin - Math.random() * W * 0.2)
-      : margin + Math.random() * (W - margin * 2);
-    const ty = Math.random() < 0.4
-      ? (Math.random() < 0.5 ? margin + Math.random() * H * 0.2 : H - margin - Math.random() * H * 0.2)
-      : margin + Math.random() * (H - margin * 2);
-    return { tx, ty };
+    // Pick anywhere on screen including slightly beyond edges
+    return { tx: -W * 0.1 + Math.random() * W * 1.2, ty: -H * 0.1 + Math.random() * H * 1.2 };
   }
 
   function makeSnake(color, W, H, trailLen) {
@@ -1347,7 +1340,7 @@ document.getElementById('btn-play').addEventListener('click', async () => {
       if (other === s) continue;
       const dx = s.x - other.x, dy = s.y - other.y;
       const dist = Math.hypot(dx, dy) || 1;
-      const minDist = 220;
+      const minDist = 380;
       if (dist < minDist) {
         const strength = (minDist - dist) / minDist;
         avoidX += (dx / dist) * strength;
@@ -1358,8 +1351,8 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     // Blend target direction with avoidance
     const toTargetX = s.tx - s.x, toTargetY = s.ty - s.y;
     const tLen = Math.hypot(toTargetX, toTargetY) || 1;
-    const dirX = toTargetX / tLen + avoidX * 1.8;
-    const dirY = toTargetY / tLen + avoidY * 1.8;
+    const dirX = toTargetX / tLen + avoidX * 3.0;
+    const dirY = toTargetY / tLen + avoidY * 3.0;
 
     const desired = Math.atan2(dirY, dirX);
     let delta = desired - s.angle;
