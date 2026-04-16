@@ -49,10 +49,10 @@ class Snake {
     return C.MAX_TURN_RATE * (1 - sizePenalty);
   }
 
-  setInput(targetAngle, boosting) {
+  setInput(targetAngle, boosting, speedMult) {
     this.targetAngle = targetAngle;
-    // Can only boost if there is size to burn
     this.boosting = boosting && this.boostFuel > 0;
+    this.speedMult = speedMult !== undefined ? speedMult : 1;
   }
 
   update() {
@@ -91,7 +91,7 @@ class Snake {
       this._boostTick = 0;
     }
 
-    const speed = C.SNAKE_BASE_SPEED;
+    const speed = C.SNAKE_BASE_SPEED * (this.speedMult !== undefined ? this.speedMult : 1);
     for (let step = 0; step < steps; step++) {
       // Advance head
       this.segments.unshift({
