@@ -24,7 +24,7 @@ fetch('/api/prices').then(r => r.json()).then(d => { if (d.solCadRate) solCadRat
 let myId = null;
 let isDead = false;
 let mousePos = { x: 0, y: 0 };
-let boostActive = false;
+let boostActive  = false;
 
 // --- Interpolation buffers ---
 let snapBuffer   = [];    // [{t, state}]  — t is server Date.now() ms
@@ -49,7 +49,6 @@ socket.on(CONSTANTS.EVENTS.GAME_JOINED, ({ playerId, worldRadius, snakeColor, fo
   myId = playerId;
   isDead = false;
   cashedOut = false;
-  lockedAngle = null;
   cashoutSpeedMult = 1;
   cancelQTimer();
   snapBuffer = [];
@@ -212,7 +211,6 @@ const RING_CIRC = 213.6;
 let qHoldStart   = null;
 let qHoldTimer   = null;
 let cashedOut    = false;
-let lockedAngle  = null;
 
 const qTimerEl   = document.getElementById('q-timer');
 const qRingEl    = document.getElementById('q-timer-ring');
@@ -243,7 +241,6 @@ function cancelQTimer() {
   qHoldStart = null;
   qTimerEl.classList.remove('active');
   qRingEl.style.strokeDashoffset = RING_CIRC;
-  lockedAngle = null;
 }
 
 function triggerCashOut() {
@@ -423,23 +420,17 @@ function sendInput() {
   const mySnake = displayState.snakes.find(s => s.id === myId);
   if (!mySnake) return;
 
-  // If Q timer is active, lock to the angle at the moment Q was pressed
-  if (qHoldStart !== null && lockedAngle === null) {
-    lockedAngle = mySnake.angle;
-  }
+  const angle = Math.atan2(
+    renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).y - mySnake.segs[1],
+    renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).x - mySnake.segs[0]
+  );
 
-  const angle = (lockedAngle !== null)
-    ? lockedAngle
-    : Math.atan2(
-        renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).y - mySnake.segs[1],
-        renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).x - mySnake.segs[0]
-      );
-  // Ramp speedMult down while Q held, smoothly back to 1 on release (no snap)
+  // Q held: linearly ramp speed down to 0.2x over hold duration. Released: instant full speed.
   if (qHoldStart) {
     const t = Math.min(1, (performance.now() - qHoldStart) / Q_HOLD_MS);
-    cashoutSpeedMult = Math.min(cashoutSpeedMult, 1 - 0.65 * Math.pow(t, 1.2));
+    cashoutSpeedMult = Math.max(0.2, 1 - 0.8 * t);
   } else {
-    cashoutSpeedMult = Math.min(1, cashoutSpeedMult + 0.04); // ~25 frames = ~400ms to return to full speed
+    cashoutSpeedMult = 1;
   }
   socket.emit(CONSTANTS.EVENTS.INPUT, { angle, boost: boostActive && !qHoldStart, speedMult: cashoutSpeedMult });
 }

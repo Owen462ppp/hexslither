@@ -52,7 +52,7 @@ class Snake {
   setInput(targetAngle, boosting, speedMult) {
     this.targetAngle = targetAngle;
     this.boosting = boosting && this.boostFuel > 0;
-    this.speedMult = (typeof speedMult === 'number') ? Math.max(0.3, Math.min(1, speedMult)) : 1;
+    this.speedMult = (typeof speedMult === 'number') ? Math.max(0.2, Math.min(1, speedMult)) : 1;
   }
 
   update() {
