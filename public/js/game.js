@@ -425,12 +425,12 @@ function sendInput() {
     renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).x - mySnake.segs[0]
   );
 
-  // Q held: linearly ramp speed down to 0.2x over hold duration. Released: instant full speed.
+  // Q held: ramp speed down to 0.2x. Released: ramp back to 1x over ~150ms (smooth, no jump).
   if (qHoldStart) {
     const t = Math.min(1, (performance.now() - qHoldStart) / Q_HOLD_MS);
     cashoutSpeedMult = Math.max(0.2, 1 - 0.8 * t);
-  } else {
-    cashoutSpeedMult = 1;
+  } else if (cashoutSpeedMult < 1) {
+    cashoutSpeedMult = Math.min(1, cashoutSpeedMult + 0.1); // ~8 frames to reach 1x = ~133ms
   }
   socket.emit(CONSTANTS.EVENTS.INPUT, { angle, boost: boostActive && !qHoldStart, speedMult: cashoutSpeedMult });
 }
