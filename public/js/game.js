@@ -50,6 +50,7 @@ socket.on(CONSTANTS.EVENTS.GAME_JOINED, ({ playerId, worldRadius, snakeColor, fo
   isDead = false;
   cashedOut = false;
   cashoutSpeedMult = 1;
+  lockedAngle = null;
   cancelQTimer();
   snapBuffer = [];
   clockOffset = null;
@@ -211,6 +212,7 @@ const RING_CIRC = 213.6;
 let qHoldStart   = null;
 let qHoldTimer   = null;
 let cashedOut    = false;
+let lockedAngle  = null;
 
 const qTimerEl   = document.getElementById('q-timer');
 const qRingEl    = document.getElementById('q-timer-ring');
@@ -239,6 +241,7 @@ function startQTimer() {
 function cancelQTimer() {
   if (qHoldTimer) { clearInterval(qHoldTimer); qHoldTimer = null; }
   qHoldStart = null;
+  lockedAngle = null;
   qTimerEl.classList.remove('active');
   qRingEl.style.strokeDashoffset = RING_CIRC;
 }
@@ -420,10 +423,14 @@ function sendInput() {
   const mySnake = displayState.snakes.find(s => s.id === myId);
   if (!mySnake) return;
 
-  const angle = Math.atan2(
-    renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).y - mySnake.segs[1],
-    renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).x - mySnake.segs[0]
-  );
+  if (qHoldStart !== null && lockedAngle === null) lockedAngle = mySnake.angle;
+
+  const angle = lockedAngle !== null
+    ? lockedAngle
+    : Math.atan2(
+        renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).y - mySnake.segs[1],
+        renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).x - mySnake.segs[0]
+      );
 
   // Q held: ramp speed down to 0.2x. Released: ramp back to 1x over ~150ms (smooth, no jump).
   if (qHoldStart) {
