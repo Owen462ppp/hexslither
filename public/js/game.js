@@ -367,6 +367,14 @@ document.getElementById('btn-lobby').addEventListener('click', () => {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
+  // Event delegation — works regardless of when items are rendered
+  listEl.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-player-name]');
+    if (!el) return;
+    modal.classList.add('hidden');
+    window.openProfile(el.dataset.playerName);
+  });
+
   openBtn.addEventListener('click', () => {
     modal.classList.remove('hidden');
     listEl.innerHTML = '<li style="color:#555">Loading…</li>';
@@ -378,16 +386,11 @@ document.getElementById('btn-lobby').addEventListener('click', () => {
           return;
         }
         listEl.innerHTML = data.map(p =>
-          `<li><span class="al-rank">#${p.rank}</span>` +
-          `<span class="al-name al-name-link" data-player-name="${escHtmlLocal(p.name)}">${escHtmlLocal(p.name)}</span>` +
+          `<li data-player-name="${escHtmlLocal(p.name)}">` +
+          `<span class="al-rank">#${p.rank}</span>` +
+          `<span class="al-name al-name-link">${escHtmlLocal(p.name)}</span>` +
           `<span class="al-score">${p.score}</span></li>`
         ).join('');
-        listEl.querySelectorAll('.al-name-link').forEach(el => {
-          el.addEventListener('click', () => {
-            modal.classList.add('hidden');
-            window.openProfile(el.dataset.playerName);
-          });
-        });
       })
       .catch(() => { listEl.innerHTML = '<li style="color:#c33">Failed to load</li>'; });
   });
