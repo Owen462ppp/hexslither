@@ -186,7 +186,7 @@ function update(dt) {
     cell.vy *= Math.pow(0.15, dt);
 
     // Speed inversely proportional to sqrt(mass) — bigger = slower
-    const speed = 320 / Math.sqrt(cell.mass); // world units per second
+    const speed = 550 / Math.sqrt(cell.mass); // world units per second
 
     if (dist > r * 0.5) {
       const nx = dx / dist, ny = dy / dist;
@@ -304,15 +304,21 @@ function render() {
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
 
-  // Background
-  ctx.fillStyle = '#f0f4ff';
+  // Outside-border background (slightly darker)
+  ctx.fillStyle = '#dde3f5';
   ctx.fillRect(0, 0, W, H);
 
   ctx.save();
   ctx.translate(W / 2 - camX * camScale, H / 2 - camY * camScale);
   ctx.scale(camScale, camScale);
 
+  // Inside-border fill (lighter than outer background)
+  ctx.fillStyle = '#f0f4ff';
+  ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+
+  // Grid covers full viewport including outside border
   drawGrid();
+
   drawBorder();
 
   // Food
@@ -331,15 +337,16 @@ function render() {
 }
 
 function drawGrid() {
-  const ox = W2C(0), oy = H2C(0);
-  const right  = W2C(canvas.width),  bottom = H2C(canvas.height);
+  // Cover full visible viewport (including outside world border)
+  const ox     = W2C(0),            oy     = H2C(0);
+  const right  = W2C(canvas.width), bottom = H2C(canvas.height);
 
-  const x0 = Math.max(0, Math.floor(ox / GRID_SIZE) * GRID_SIZE);
-  const y0 = Math.max(0, Math.floor(oy / GRID_SIZE) * GRID_SIZE);
-  const x1 = Math.min(WORLD_W, Math.ceil(right  / GRID_SIZE) * GRID_SIZE);
-  const y1 = Math.min(WORLD_H, Math.ceil(bottom / GRID_SIZE) * GRID_SIZE);
+  const x0 = Math.floor(ox     / GRID_SIZE) * GRID_SIZE;
+  const y0 = Math.floor(oy     / GRID_SIZE) * GRID_SIZE;
+  const x1 = Math.ceil (right  / GRID_SIZE) * GRID_SIZE;
+  const y1 = Math.ceil (bottom / GRID_SIZE) * GRID_SIZE;
 
-  ctx.strokeStyle = 'rgba(99,102,241,0.1)';
+  ctx.strokeStyle = 'rgba(99,102,241,0.13)';
   ctx.lineWidth = 1;
   ctx.beginPath();
   for (let x = x0; x <= x1; x += GRID_SIZE) { ctx.moveTo(x, y0); ctx.lineTo(x, y1); }

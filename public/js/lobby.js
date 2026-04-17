@@ -1084,8 +1084,8 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   }
 
   function drawMiniCell(canvas, color) {
-    const W = canvas.width  = canvas.offsetWidth  || 400;
-    const H = canvas.height = canvas.offsetHeight || 130;
+    const W = canvas.width  = canvas.offsetWidth  || canvas.width  || 100;
+    const H = canvas.height = canvas.offsetHeight || canvas.height || 100;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, W, H);
     const r = Math.min(W, H) * 0.38;
