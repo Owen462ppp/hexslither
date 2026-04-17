@@ -1,33 +1,30 @@
 'use strict';
 
-// ─── Constants (must match AgarRoom.js) ──────────────────────────────────────
-const MIN_SPLIT_MASS = 36;
-const MAX_CELLS      = 16;
-const SPLIT_SPEED    = 650;
-const MERGE_DELAY    = 12000;
-const SPEED_BASE     = 1000;
-const FOOD_RADIUS    = 8;
-const FOOD_MASS      = 1;
-const GRID_SIZE      = 60;
-const CAM_LERP       = 0.12;
-const SCALE_LERP     = 0.08;
+// ─── Constants ────────────────────────────────────────────────────────────────
+const FOOD_RADIUS = 8;
+const GRID_SIZE   = 60;
+const CAM_LERP    = 0.14;
+const SCALE_LERP  = 0.08;
+const POS_LERP    = 0.38; // per frame lerp toward server position
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let canvas, ctx, socket;
 let myId        = null;
 let myName      = 'Player';
 let myColor     = '#6366f1';
-let players     = new Map();   // id → { id, name, color, cells, alive, score }
-let foods       = new Map();   // id → { id, x, y, color }
+
+// serverPlayers: latest authoritative state from server
+// renderPlayers: smoothly interpolated positions used for drawing
+let serverPlayers = new Map();
+let renderPlayers = new Map();
+
+let foods       = new Map();
 let worldSize   = 6000;
 let camX        = 3000, camY = 3000, camScale = 1;
 let tgtCamX     = 3000, tgtCamY = 3000, tgtScale = 1;
 let screenMX    = 0, screenMY = 0;
-let mouseWX     = 3000, mouseWY = 3000;
 let animId      = null;
 let lastTime    = 0;
-let dead        = false;
-let finalScore  = 0;
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
@@ -53,7 +50,6 @@ window.addEventListener('DOMContentLoaded', () => {
     window.location.href = '/';
   });
   document.getElementById('btn-respawn').addEventListener('click', () => {
-    dead = false;
     document.getElementById('death-screen').classList.add('hidden');
     socket && socket.emit('cell:respawn');
   });
@@ -70,6 +66,21 @@ function resize() {
   canvas.height = window.innerHeight;
 }
 
+// ─── Mouse world coords ───────────────────────────────────────────────────────
+function mouseWorld() {
+  return {
+    x: (screenMX - canvas.width  / 2) / camScale + camX,
+    y: (screenMY - canvas.height / 2) / camScale + camY,
+  };
+}
+
+function onMouseMove(e) {
+  screenMX = e.clientX;
+  screenMY = e.clientY;
+  const mw = mouseWorld();
+  socket && socket.volatile.emit('cell:input', { mouseX: mw.x, mouseY: mw.y });
+}
+
 // ─── Socket ───────────────────────────────────────────────────────────────────
 function connectSocket() {
   socket = io();
@@ -80,96 +91,131 @@ function connectSocket() {
   });
 
   socket.on('cell:joined', ({ playerId, worldSize: ws, foods: initFoods, players: initPlayers }) => {
-    myId      = playerId;
-    worldSize = ws;
-
+    myId = playerId; worldSize = ws;
     foods.clear();
     for (const f of initFoods) foods.set(f.id, f);
 
-    players.clear();
-    for (const p of initPlayers) players.set(p.id, p);
+    serverPlayers.clear(); renderPlayers.clear();
+    for (const p of initPlayers) {
+      serverPlayers.set(p.id, p);
+      renderPlayers.set(p.id, snapRenderPlayer(p));
+    }
 
-    const me = players.get(myId);
+    const me = renderPlayers.get(myId);
     if (me && me.cells.length) {
-      camX = me.cells[0].x; camY = me.cells[0].y;
+      camX = me.cells[0].rx; camY = me.cells[0].ry;
       tgtCamX = camX; tgtCamY = camY;
-      const tm = me.cells.reduce((s, c) => s + c.mass, 0);
-      camScale = calcScale(tm); tgtScale = camScale;
+      camScale = calcScale(massSum(me.cells)); tgtScale = camScale;
     }
 
     if (!animId) { lastTime = performance.now(); animId = requestAnimationFrame(loop); }
   });
 
   socket.on('cell:state', ({ players: updates, removedFoods, addedFoods }) => {
-    for (const p of updates) players.set(p.id, p);
-    for (const fid of removedFoods) foods.delete(fid);
-    for (const f of addedFoods)    foods.set(f.id, f);
-
-    const me = players.get(myId);
-    if (me) {
-      if (me.alive && me.cells.length) {
-        const com = centerOfMass(me.cells);
-        tgtCamX = com.x; tgtCamY = com.y;
-        tgtScale = calcScale(me.cells.reduce((s, c) => s + c.mass, 0));
+    for (const p of updates) {
+      serverPlayers.set(p.id, p);
+      if (!renderPlayers.has(p.id)) {
+        renderPlayers.set(p.id, snapRenderPlayer(p));
+      } else {
+        const rp = renderPlayers.get(p.id);
+        rp.alive = p.alive; rp.score = p.score;
+        // Snap if cell count changed (split / merge)
+        if (rp.cells.length !== p.cells.length) {
+          rp.cells = p.cells.map(c => ({ rx: c.x, ry: c.y, mass: c.mass }));
+        }
       }
+    }
+    for (const fid of removedFoods) foods.delete(fid);
+    for (const f  of addedFoods)    foods.set(f.id, f);
+
+    const me = serverPlayers.get(myId);
+    if (me) {
       document.getElementById('score-val').textContent = me.score || 0;
       document.getElementById('cells-val').textContent = me.cells.length;
+      if (!me.alive) {
+        document.getElementById('death-score-val').textContent = me.score || 0;
+        document.getElementById('death-screen').classList.remove('hidden');
+      }
     }
   });
 
   socket.on('cell:died', ({ killedBy, score }) => {
-    dead = true; finalScore = score || 0;
-    document.getElementById('death-score-val').textContent = finalScore;
+    document.getElementById('death-score-val').textContent = score || 0;
     document.getElementById('death-screen').classList.remove('hidden');
   });
 
   socket.on('cell:playerJoined', ({ id, name, color, cells }) => {
-    players.set(id, { id, name, color, cells, alive: true, score: 0 });
+    const p = { id, name, color, cells, alive: true, score: 0 };
+    serverPlayers.set(id, p);
+    renderPlayers.set(id, snapRenderPlayer(p));
   });
 
-  socket.on('cell:playerLeft', ({ id }) => { players.delete(id); });
+  socket.on('cell:playerLeft', ({ id }) => {
+    serverPlayers.delete(id);
+    renderPlayers.delete(id);
+  });
 
   socket.on('cell:worldSize', ({ size }) => { worldSize = size; });
-
-  socket.on('disconnect', () => { console.log('[agar] disconnected'); });
-}
-
-// ─── Input ────────────────────────────────────────────────────────────────────
-function onMouseMove(e) {
-  screenMX = e.clientX; screenMY = e.clientY;
-  mouseWX = (screenMX - canvas.width  / 2) / camScale + camX;
-  mouseWY = (screenMY - canvas.height / 2) / camScale + camY;
-  socket && socket.volatile.emit('cell:input', { mouseX: mouseWX, mouseY: mouseWY });
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+function snapRenderPlayer(p) {
+  return {
+    id: p.id, name: p.name, color: p.color, alive: p.alive, score: p.score,
+    cells: p.cells.map(c => ({ rx: c.x, ry: c.y, mass: c.mass })),
+  };
+}
+
 function calcScale(totalMass) {
   return Math.max(0.12, Math.min(1.5, Math.sqrt(20) / Math.sqrt(totalMass) * 1.2));
 }
 
-function centerOfMass(cells) {
-  let tw = 0, cx = 0, cy = 0;
-  for (const c of cells) { cx += c.x * c.mass; cy += c.y * c.mass; tw += c.mass; }
-  return tw ? { x: cx / tw, y: cy / tw } : { x: worldSize / 2, y: worldSize / 2 };
-}
+function massSum(cells) { return cells.reduce((s, c) => s + (c.mass || c.mass || 0), 0); }
 
 function radius(mass) { return Math.sqrt(mass) * 10; }
+
+function centerOfMass(cells) {
+  let tw = 0, cx = 0, cy = 0;
+  for (const c of cells) {
+    const m = c.mass || 0;
+    cx += c.rx * m; cy += c.ry * m; tw += m;
+  }
+  return tw ? { x: cx / tw, y: cy / tw } : { x: worldSize / 2, y: worldSize / 2 };
+}
 
 // ─── Loop ─────────────────────────────────────────────────────────────────────
 function loop(now) {
   const dt = Math.min((now - lastTime) / 1000, 0.05);
   lastTime = now;
 
+  lerpPositions();
+
+  const me = renderPlayers.get(myId);
+  if (me && me.alive && me.cells.length) {
+    const com = centerOfMass(me.cells);
+    tgtCamX = com.x; tgtCamY = com.y;
+    tgtScale = calcScale(massSum(me.cells));
+  }
+
   camX     += (tgtCamX  - camX)     * CAM_LERP;
   camY     += (tgtCamY  - camY)     * CAM_LERP;
   camScale += (tgtScale - camScale) * SCALE_LERP;
 
-  // Keep mouse world position updated as camera drifts
-  mouseWX = (screenMX - canvas.width  / 2) / camScale + camX;
-  mouseWY = (screenMY - canvas.height / 2) / camScale + camY;
-
   render();
   animId = requestAnimationFrame(loop);
+}
+
+function lerpPositions() {
+  for (const [id, rp] of renderPlayers) {
+    const sp = serverPlayers.get(id);
+    if (!sp || !sp.alive || rp.cells.length !== sp.cells.length) continue;
+    for (let i = 0; i < rp.cells.length; i++) {
+      const rc = rp.cells[i], sc = sp.cells[i];
+      rc.rx   += (sc.x    - rc.rx)   * POS_LERP;
+      rc.ry   += (sc.y    - rc.ry)   * POS_LERP;
+      rc.mass += (sc.mass - rc.mass) * POS_LERP;
+    }
+  }
 }
 
 // ─── Render ───────────────────────────────────────────────────────────────────
@@ -177,7 +223,6 @@ function render() {
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
 
-  // Outside-border background
   ctx.fillStyle = '#dde3f5';
   ctx.fillRect(0, 0, W, H);
 
@@ -185,14 +230,12 @@ function render() {
   ctx.translate(W / 2 - camX * camScale, H / 2 - camY * camScale);
   ctx.scale(camScale, camScale);
 
-  // Inside-border fill
   ctx.fillStyle = '#f0f4ff';
   ctx.fillRect(0, 0, worldSize, worldSize);
 
   drawGrid();
   drawBorder();
 
-  // Food
   for (const f of foods.values()) {
     ctx.beginPath();
     ctx.arc(f.x, f.y, FOOD_RADIUS, 0, Math.PI * 2);
@@ -200,15 +243,14 @@ function render() {
     ctx.fill();
   }
 
-  // Other players first (underneath)
-  for (const [id, p] of players) {
-    if (id === myId || !p.alive) continue;
-    const sorted = [...p.cells].sort((a, b) => b.mass - a.mass);
-    for (const cell of sorted) drawCell(cell, p.color, p.name);
+  // Other players under own cells
+  for (const [id, rp] of renderPlayers) {
+    if (id === myId || !rp.alive) continue;
+    const sorted = [...rp.cells].sort((a, b) => b.mass - a.mass);
+    for (const cell of sorted) drawCell(cell, rp.color, rp.name);
   }
 
-  // My player on top
-  const me = players.get(myId);
+  const me = renderPlayers.get(myId);
   if (me && me.alive) {
     const sorted = [...me.cells].sort((a, b) => b.mass - a.mass);
     for (const cell of sorted) drawCell(cell, myColor, myName);
@@ -218,10 +260,10 @@ function render() {
 }
 
 function drawGrid() {
-  const left   = (0        - canvas.width  / 2) / camScale + camX;
-  const top    = (0        - canvas.height / 2) / camScale + camY;
-  const right  = (canvas.width  - canvas.width  / 2) / camScale + camX;
-  const bottom = (canvas.height - canvas.height / 2) / camScale + camY;
+  const left   = -canvas.width  / 2 / camScale + camX;
+  const top    = -canvas.height / 2 / camScale + camY;
+  const right  =  canvas.width  / 2 / camScale + camX;
+  const bottom =  canvas.height / 2 / camScale + camY;
 
   const x0 = Math.floor(left   / GRID_SIZE) * GRID_SIZE;
   const y0 = Math.floor(top    / GRID_SIZE) * GRID_SIZE;
@@ -250,25 +292,24 @@ function drawCell(cell, color, name) {
   ctx.shadowBlur    = r * 0.3;
   ctx.shadowOffsetY = r * 0.05;
   ctx.beginPath();
-  ctx.arc(cell.x, cell.y, r, 0, Math.PI * 2);
+  ctx.arc(cell.rx, cell.ry, r, 0, Math.PI * 2);
   ctx.fillStyle = color;
   ctx.fill();
   ctx.restore();
 
   ctx.beginPath();
-  ctx.arc(cell.x, cell.y, r, 0, Math.PI * 2);
+  ctx.arc(cell.rx, cell.ry, r, 0, Math.PI * 2);
   ctx.strokeStyle = darken(color, 0.22);
   ctx.lineWidth   = Math.max(2, r * 0.06);
   ctx.stroke();
 
-  // Glint
-  const gx = cell.x - r * 0.28, gy = cell.y - r * 0.28;
+  const gx = cell.rx - r * 0.28, gy = cell.ry - r * 0.28;
   const gl = ctx.createRadialGradient(gx, gy, 0, gx, gy, r * 0.72);
   gl.addColorStop(0,    'rgba(255,255,255,0.48)');
   gl.addColorStop(0.55, 'rgba(255,255,255,0.1)');
   gl.addColorStop(1,    'rgba(255,255,255,0)');
   ctx.beginPath();
-  ctx.arc(cell.x, cell.y, r, 0, Math.PI * 2);
+  ctx.arc(cell.rx, cell.ry, r, 0, Math.PI * 2);
   ctx.fillStyle = gl;
   ctx.fill();
 
@@ -278,7 +319,7 @@ function drawCell(cell, color, name) {
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle    = 'rgba(255,255,255,0.92)';
-    ctx.fillText(name, cell.x, cell.y);
+    ctx.fillText(name, cell.rx, cell.ry);
   }
 }
 

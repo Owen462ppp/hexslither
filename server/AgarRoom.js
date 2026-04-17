@@ -1,6 +1,6 @@
 'use strict';
 
-const TICK_RATE      = 30;
+const TICK_RATE      = 60;
 const WORLD_BASE     = 6000;
 const WORLD_PER_PLAYER = 800;
 const WORLD_MAX      = 18000;
