@@ -793,6 +793,16 @@ body {
 .lobby-nav-arrow[data-theme="light"] span { color: #6366f1; text-shadow: none; }
 .lobby-nav-arrow[data-theme="light"] svg { filter: drop-shadow(0 0 8px rgba(99,102,241,0.5)); }
 
+/* ── Name input row (pencil + input) ────────────────────────────────── */
+.name-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+.name-input-row .name-input { flex: 1; }
+.name-input-row .btn-icon { flex-shrink: 0; }
+
 /* ── Profile icon button ─────────────────────────────────────────────── */
 .btn-profile-icon {
   background: none;

@@ -453,13 +453,10 @@ function showLobby() {
   document.getElementById('lobby-screen').classList.remove('hidden');
   showArrows();
 
-  document.getElementById('account-name').textContent   = account.name || 'Player';
-  document.getElementById('account-email').textContent  = account.email || '';
   document.getElementById('stat-highscore').textContent = account.highScore  || 0;
   document.getElementById('stat-games').textContent     = account.gamesPlayed || 0;
   const savedName = account.name || localStorage.getItem('duelseries_playername') || '';
   document.getElementById('player-name').value          = savedName;
-  document.getElementById('play-username').textContent  = savedName;
   document.getElementById('topbar-name').textContent    = account.name || 'Player';
 
   // Topbar avatar
@@ -469,21 +466,20 @@ function showLobby() {
   document.getElementById('topbar-login-btn').classList.add('hidden');
   document.getElementById('topbar-username').textContent = account.name || 'Player';
 
-  // Populate lobby 2 account fields with same data
-  document.getElementById('account-name-2').textContent  = account.name || 'Player';
-  document.getElementById('account-email-2').textContent = account.email || '';
+  // Populate lobby 2 fields with same data
   const savedName2 = account.name || localStorage.getItem('duelseries_playername') || '';
-  document.getElementById('player-name-2').value         = savedName2;
-  document.getElementById('play-username-2').textContent = savedName2;
+  document.getElementById('player-name-2').value = savedName2;
 
   socket.emit('lobby:join', { googleId: account.googleId });
 }
 
-// Edit name
-document.getElementById('btn-edit-name').addEventListener('click', () => {
+// Edit name (pencil button — exists in both lobby 1 and lobby 2)
+function openEditName() {
   document.getElementById('editname-input').value = account.name || '';
   document.getElementById('modal-editname').classList.add('active');
-});
+}
+document.getElementById('btn-edit-name').addEventListener('click', openEditName);
+document.getElementById('btn-edit-name-2').addEventListener('click', openEditName);
 document.getElementById('cancel-editname').addEventListener('click', () => {
   document.getElementById('modal-editname').classList.remove('active');
 });
@@ -497,10 +493,9 @@ document.getElementById('confirm-editname').addEventListener('click', async () =
   });
   const { account: updated } = await res.json();
   account = updated;
-  document.getElementById('account-name').textContent  = account.name;
-  document.getElementById('player-name').value         = account.name;
-  document.getElementById('play-username').textContent = account.name;
-  document.getElementById('topbar-name').textContent   = account.name;
+  document.getElementById('player-name').value           = account.name;
+  document.getElementById('player-name-2').value         = account.name;
+  document.getElementById('topbar-name').textContent     = account.name;
   document.getElementById('topbar-username').textContent = account.name;
   document.getElementById('modal-editname').classList.remove('active');
 });
