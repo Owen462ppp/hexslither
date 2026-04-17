@@ -433,9 +433,8 @@ function switchLobby(direction) {
 
     setTimeout(() => {
       next.classList.remove(inClass);
-      // Tint arrows for light vs dark background
       document.querySelectorAll('.lobby-nav-arrow').forEach(a => {
-        a.dataset.theme = goingToArena ? 'light' : 'dark';
+        a.dataset.theme = 'dark';
       });
       showArrows();
     }, 340);
