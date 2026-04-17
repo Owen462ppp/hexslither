@@ -146,6 +146,7 @@ class Snake {
       length: this.length,
       boostRatio: this.boostRatio,
       worth: this.worth,
+      speedMult: this.speedMult || 1,
     };
   }
 }

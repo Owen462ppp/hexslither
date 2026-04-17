@@ -167,6 +167,62 @@ function interpolateState(now) {
   displayState.snakes = interpolatedSnakes;
 }
 
+// Per-snake smooth-position state — eliminates skip-tick vibration during cashout slowdown
+const snakeSmoothState = new Map(); // id -> { x, y, lastNow }
+
+function applySmoothPositions(snakes, now) {
+  const msPerTick = 1000 / CONSTANTS.TICK_RATE;
+  const maxDrift  = CONSTANTS.SNAKE_BASE_SPEED * 2; // 12 units — clamp runaway drift
+
+  const aliveIds = new Set();
+  for (const snake of snakes) {
+    if (!snake.segs || snake.segs.length < 2) continue;
+    aliveIds.add(snake.id);
+
+    const actualX   = snake.segs[0];
+    const actualY   = snake.segs[1];
+    const speedMult = snake.speedMult || 1;
+
+    let state = snakeSmoothState.get(snake.id);
+    if (!state) {
+      snakeSmoothState.set(snake.id, { x: actualX, y: actualY, lastNow: now });
+      continue;
+    }
+
+    // Advance smooth position at the snake's expected average speed
+    const dt   = now - state.lastNow;
+    state.lastNow = now;
+    const dist = CONSTANTS.SNAKE_BASE_SPEED * speedMult * (dt / msPerTick);
+    state.x += Math.cos(snake.angle) * dist;
+    state.y += Math.sin(snake.angle) * dist;
+
+    // Pull smooth back if it drifts too far from the actual interpolated position
+    const driftX = state.x - actualX;
+    const driftY = state.y - actualY;
+    const drift  = Math.hypot(driftX, driftY);
+    if (drift > maxDrift) {
+      const excess = (drift - maxDrift) / drift;
+      state.x -= driftX * excess;
+      state.y -= driftY * excess;
+    }
+
+    // Translate every seg by the smooth offset — same body shape, just repositioned
+    const offX = state.x - actualX;
+    const offY = state.y - actualY;
+    if (Math.abs(offX) > 0.001 || Math.abs(offY) > 0.001) {
+      for (let i = 0; i < snake.segs.length; i += 2) {
+        snake.segs[i]     += offX;
+        snake.segs[i + 1] += offY;
+      }
+    }
+  }
+
+  // Remove state for snakes that are no longer alive
+  for (const id of snakeSmoothState.keys()) {
+    if (!aliveIds.has(id)) snakeSmoothState.delete(id);
+  }
+}
+
 function lerp(a, b, t) { return a + (b - a) * t; }
 function lerpAngle(a, b, t) {
   let diff = b - a;
@@ -498,6 +554,7 @@ const fpsEl = document.getElementById('fps-counter');
 // Main render loop — runs at monitor refresh rate (60/144/240Hz)
 function gameLoop(now) {
   interpolateState(now);
+  applySmoothPositions(displayState.snakes, now);
 
   let spectateSnake = null;
   if (spectating) {
