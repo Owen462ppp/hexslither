@@ -473,32 +473,48 @@ function showLobby() {
   socket.emit('lobby:join', { googleId: account.googleId });
 }
 
-// Edit name (pencil button — exists in both lobby 1 and lobby 2)
-function openEditName() {
-  document.getElementById('editname-input').value = account.name || '';
-  document.getElementById('modal-editname').classList.add('active');
-}
-document.getElementById('btn-edit-name').addEventListener('click', openEditName);
-document.getElementById('btn-edit-name-2').addEventListener('click', openEditName);
-document.getElementById('cancel-editname').addEventListener('click', () => {
-  document.getElementById('modal-editname').classList.remove('active');
-});
-document.getElementById('confirm-editname').addEventListener('click', async () => {
-  const name = document.getElementById('editname-input').value.trim();
-  if (!name) return;
-  const res = await fetch('/auth/update-name', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name }),
+// Strip spaces as the user types
+['player-name', 'player-name-2'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', () => {
+    const pos = el.selectionStart;
+    el.value = el.value.replace(/\s/g, '');
+    el.setSelectionRange(pos, pos);
+    // Mirror both inputs
+    const other = id === 'player-name' ? 'player-name-2' : 'player-name';
+    document.getElementById(other).value = el.value;
   });
-  const { account: updated } = await res.json();
-  account = updated;
-  document.getElementById('player-name').value           = account.name;
-  document.getElementById('player-name-2').value         = account.name;
-  document.getElementById('topbar-name').textContent     = account.name;
-  document.getElementById('topbar-username').textContent = account.name;
-  document.getElementById('modal-editname').classList.remove('active');
 });
+
+async function saveName(inputId, errorId, btnId) {
+  const input = document.getElementById(inputId);
+  const errorEl = document.getElementById(errorId);
+  const btn = document.getElementById(btnId);
+  const name = input.value.replace(/\s/g, '');
+  errorEl.textContent = '';
+  if (!name) { errorEl.textContent = 'Name cannot be empty.'; return; }
+  btn.disabled = true;
+  try {
+    const res = await fetch('/auth/update-name', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    const data = await res.json();
+    if (!res.ok) { errorEl.textContent = data.error || 'Could not save name.'; return; }
+    account = data.account;
+    document.getElementById('player-name').value           = account.name;
+    document.getElementById('player-name-2').value         = account.name;
+    document.getElementById('topbar-name').textContent     = account.name;
+    document.getElementById('topbar-username').textContent = account.name;
+    document.getElementById('name-error').textContent   = '';
+    document.getElementById('name-error-2').textContent = '';
+  } catch { errorEl.textContent = 'Network error. Try again.'; }
+  finally { btn.disabled = false; }
+}
+
+document.getElementById('btn-save-name').addEventListener('click',   () => saveName('player-name',   'name-error',   'btn-save-name'));
+document.getElementById('btn-save-name-2').addEventListener('click', () => saveName('player-name-2', 'name-error-2', 'btn-save-name-2'));
 
 let _lobbyEarnings = []; // cached top earners for lobby leaderboard
 

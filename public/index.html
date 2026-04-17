@@ -91,9 +91,10 @@
       <div class="lobby-col lobby-col-center">
         <div class="card play-card">
           <div class="name-input-row">
-            <button class="btn-icon" id="btn-edit-name" title="Edit name">✏️</button>
             <input type="text" class="name-input" id="player-name" placeholder="Display name..." maxlength="20">
+            <button class="btn-save-name" id="btn-save-name">Save</button>
           </div>
+          <p id="name-error" class="name-error-msg"></p>
 
           <div class="lobby-type-row">
             <button class="btn-lobby-type active" data-type="free">Free Play</button>
@@ -208,9 +209,10 @@
       <div class="lobby-col lobby-col-center">
         <div class="card play-card">
           <div class="name-input-row">
-            <button class="btn-icon" id="btn-edit-name-2" title="Edit name">✏️</button>
             <input type="text" class="name-input" id="player-name-2" placeholder="Display name..." maxlength="20">
+            <button class="btn-save-name" id="btn-save-name-2">Save</button>
           </div>
+          <p id="name-error-2" class="name-error-msg"></p>
 
           <div class="lobby-type-row" id="lobby2-type-row">
             <button class="btn-lobby-type-2 active" data-type="free">Free Play</button>
@@ -283,17 +285,6 @@
     </div>
   </div>
 
-  <!-- Edit name -->
-  <div class="modal-overlay" id="modal-editname">
-    <div class="modal">
-      <h3>Change Display Name</h3>
-      <input type="text" id="editname-input" placeholder="New name..." maxlength="20">
-      <div class="modal-btns">
-        <button class="btn-small btn-cancel" id="cancel-editname">Cancel</button>
-        <button class="btn-small btn-confirm" id="confirm-editname">Save</button>
-      </div>
-    </div>
-  </div>
 
   <!-- Add Funds / Receive -->
   <div class="modal-overlay" id="modal-receive">

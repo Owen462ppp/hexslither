@@ -793,7 +793,7 @@ body {
 .lobby-nav-arrow[data-theme="light"] span { color: #6366f1; text-shadow: none; }
 .lobby-nav-arrow[data-theme="light"] svg { filter: drop-shadow(0 0 8px rgba(99,102,241,0.5)); }
 
-/* ── Name input row (pencil + input) ────────────────────────────────── */
+/* ── Name input row (input + save button) ───────────────────────────── */
 .name-input-row {
   display: flex;
   align-items: center;
@@ -801,7 +801,28 @@ body {
   width: 100%;
 }
 .name-input-row .name-input { flex: 1; }
-.name-input-row .btn-icon { flex-shrink: 0; }
+.btn-save-name {
+  flex-shrink: 0;
+  background: var(--green);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  padding: 0 14px;
+  height: 38px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btn-save-name:hover { opacity: 0.85; }
+.btn-save-name:disabled { opacity: 0.45; cursor: default; }
+.name-error-msg {
+  color: #ef4444;
+  font-size: 0.78rem;
+  font-weight: 600;
+  min-height: 1em;
+  margin: 2px 0 0;
+}
 
 /* ── Profile icon button ─────────────────────────────────────────────── */
 .btn-profile-icon {
