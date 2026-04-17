@@ -2,9 +2,9 @@
 
 const TICK_RATE      = 60;
 const WORLD_BASE     = 6000;
-const WORLD_PER_PLAYER = 800;
+const WORLD_PER_PLAYER = 200;
 const WORLD_MAX      = 18000;
-const FOOD_TARGET    = 1200;
+const FOOD_TARGET    = 3000;
 const FOOD_RADIUS    = 8;
 const FOOD_MASS      = 1;
 const MIN_SPLIT_MASS = 36;
@@ -380,22 +380,22 @@ class AgarRoom {
 
   _refillFood() {
     const need = FOOD_TARGET - this.foods.size;
-    if (need > 0) this._spawnFoods(Math.min(need, 8));
+    if (need > 0) this._spawnFoods(Math.min(need, 20));
   }
 
   _spawnFoods(count) {
     const ws  = this.worldSize;
-    const rim = 600; // how far outside the border food can spawn
+    const rim = 2000; // how far outside the border food can spawn
     for (let i = 0; i < count; i++) {
       const id = _foodIdSeq++;
       let x, y;
-      if (Math.random() < 0.2) {
-        // Place in the rim zone outside the border
+      if (Math.random() < 0.25) {
+        // Place in the rim zone just outside the border (min 50 units past border)
         const edge = Math.floor(Math.random() * 4);
-        if (edge === 0) { x = -rim * Math.random();          y = -rim + Math.random() * (ws + rim * 2); }
-        else if (edge === 1) { x = ws + rim * Math.random(); y = -rim + Math.random() * (ws + rim * 2); }
-        else if (edge === 2) { x = -rim + Math.random() * (ws + rim * 2); y = -rim * Math.random(); }
-        else                 { x = -rim + Math.random() * (ws + rim * 2); y = ws + rim * Math.random(); }
+        if (edge === 0) { x = -(50 + rim * Math.random());         y = -rim + Math.random() * (ws + rim * 2); }
+        else if (edge === 1) { x = ws + 50 + rim * Math.random(); y = -rim + Math.random() * (ws + rim * 2); }
+        else if (edge === 2) { x = -rim + Math.random() * (ws + rim * 2); y = -(50 + rim * Math.random()); }
+        else                 { x = -rim + Math.random() * (ws + rim * 2); y = ws + 50 + rim * Math.random(); }
       } else {
         x = Math.random() * ws;
         y = Math.random() * ws;
