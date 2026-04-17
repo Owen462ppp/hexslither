@@ -155,21 +155,9 @@ function interpolateState(now) {
       interpolatedSnakes.push(snakeAfter);
       continue;
     }
-    let bSegs = snakeBefore.segs, aSegs = snakeAfter.segs;
-    if (bSegs.length !== aSegs.length) {
-      const tLen = Math.max(bSegs.length, aSegs.length);
-      if (bSegs.length < tLen) {
-        bSegs = bSegs.slice();
-        const tx = bSegs[bSegs.length-2], ty = bSegs[bSegs.length-1];
-        while (bSegs.length < tLen) bSegs.push(tx, ty);
-      } else {
-        aSegs = aSegs.slice();
-        const tx = aSegs[aSegs.length-2], ty = aSegs[aSegs.length-1];
-        while (aSegs.length < tLen) aSegs.push(tx, ty);
-      }
-    }
     const segs = [];
-    for (let i = 0; i < aSegs.length; i++) segs.push(lerp(bSegs[i], aSegs[i], alpha));
+    const len = Math.min(snakeBefore.segs.length, snakeAfter.segs.length);
+    for (let i = 0; i < len; i++) segs.push(lerp(snakeBefore.segs[i], snakeAfter.segs[i], alpha));
     interpolatedSnakes.push({
       ...snakeAfter,
       segs,

@@ -88,10 +88,15 @@ class Snake {
       this._boostTick = 0;
     }
 
-    const mult  = this.speedMult || 1;
-    const speed = C.SNAKE_BASE_SPEED * mult;
-    if (this._trimAccum === undefined) this._trimAccum = 0;
+    // Movement accumulator: skip the entire move step (head + tail together)
+    // proportional to speedMult. Segment count and arc length never change.
+    const mult = this.speedMult || 1;
+    if (this._moveAccum === undefined) this._moveAccum = 0;
+    this._moveAccum += mult;
+    if (this._moveAccum < 1) return; // skip this tick — both ends sit still
+    this._moveAccum -= 1;
 
+    const speed = C.SNAKE_BASE_SPEED;
     for (let step = 0; step < steps; step++) {
       this.segments.unshift({
         x: this.segments[0].x + Math.cos(this.angle) * speed,
@@ -100,11 +105,7 @@ class Snake {
       if (this.pendingGrowth > 0) {
         this.pendingGrowth--;
       } else {
-        this._trimAccum += mult;
-        if (this._trimAccum >= 1) {
-          this._trimAccum -= 1;
-          this.segments.pop();
-        }
+        this.segments.pop();
       }
     }
   }
