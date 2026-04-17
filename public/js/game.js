@@ -45,6 +45,45 @@ socket.on('connect', () => {
   socket.emit(CONSTANTS.EVENTS.PLAY, { name: playerName, walletAddress, googleId, color: snakeColor, lobbyType, entrySol });
 });
 
+function playJoinSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // Three ascending notes: C5 → E5 → G5, quick staggered chime
+    const notes = [
+      { freq: 523.25, t: 0.00 },
+      { freq: 659.25, t: 0.13 },
+      { freq: 783.99, t: 0.26 },
+    ];
+    notes.forEach(({ freq, t }) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      // Add a second sine one octave up for brightness
+      const osc2  = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+
+      osc.type  = 'sine';
+      osc2.type = 'sine';
+      osc.frequency.value  = freq;
+      osc2.frequency.value = freq * 2;
+
+      osc.connect(gain);   gain.connect(ctx.destination);
+      osc2.connect(gain2); gain2.connect(ctx.destination);
+
+      const start = ctx.currentTime + t;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.28, start + 0.018);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.55);
+
+      gain2.gain.setValueAtTime(0, start);
+      gain2.gain.linearRampToValueAtTime(0.07, start + 0.018);
+      gain2.gain.exponentialRampToValueAtTime(0.0001, start + 0.35);
+
+      osc.start(start);  osc.stop(start + 0.6);
+      osc2.start(start); osc2.stop(start + 0.4);
+    });
+  } catch (e) { /* audio not supported */ }
+}
+
 socket.on(CONSTANTS.EVENTS.GAME_JOINED, ({ playerId, worldRadius, snakeColor, food }) => {
   myId = playerId;
   isDead = false;
@@ -58,6 +97,7 @@ socket.on(CONSTANTS.EVENTS.GAME_JOINED, ({ playerId, worldRadius, snakeColor, fo
   displayState = { snakes: [], food: food || [], worldRadius, leaderboard: [] };
   document.getElementById('death-screen').classList.remove('active');
   document.getElementById('cashout-screen').classList.remove('active');
+  playJoinSound();
 });
 
 socket.on(CONSTANTS.EVENTS.SNAPSHOT, (snap) => {
