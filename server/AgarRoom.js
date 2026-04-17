@@ -20,13 +20,18 @@ const FOOD_COLORS = [
   '#2dd4bf','#e879f9','#f97316','#84cc16',
 ];
 
+const BOT_NAMES  = ['Alpha','Beta','Gamma','Delta','Sigma','Omega','Nova','Apex','Blaze','Echo'];
+const BOT_COLORS = ['#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#8b5cf6','#ec4899','#14b8a6','#f43f5e','#a3e635'];
+
 let _foodIdSeq = 1;
+let _botIdSeq  = 1;
 
 class AgarRoom {
   constructor(io, roomName) {
     this.io        = io;
     this.roomName  = roomName;
     this.players   = new Map(); // socketId → player
+    this.bots      = new Map(); // botId → bot
     this.foods     = new Map(); // foodId → food
     this.worldSize = WORLD_BASE;
     this._addedFoods   = [];
@@ -118,6 +123,15 @@ class AgarRoom {
     p.cells.push(...toAdd);
   }
 
+  respawnBot(botId) {
+    const b = this.bots.get(botId);
+    if (!b) return;
+    const ws = this.worldSize;
+    b.cells = [this._makeCell(0, ws * 0.1 + Math.random() * ws * 0.8, ws * 0.1 + Math.random() * ws * 0.8, 20, 0, 0)];
+    b.nextCellId = 1; b.alive = true; b.score = 0;
+    b.wanderTimer = 0; b.wanderTarget = null;
+  }
+
   respawnPlayer(socketId) {
     const p = this.players.get(socketId);
     if (!p) return;
@@ -130,7 +144,35 @@ class AgarRoom {
     p.alive = true; p.score = 0;
   }
 
-  // ── Tick ─────────────────────────────────────────────────────────────────
+  // ── Bot spawning ──────────────────────────────────────────────────────────
+
+  addBot() {
+    const ws  = this.worldSize;
+    const x   = ws * 0.1 + Math.random() * ws * 0.8;
+    const y   = ws * 0.1 + Math.random() * ws * 0.8;
+    const id  = 'bot_' + (_botIdSeq++);
+    const bot = {
+      id,
+      name:          BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)],
+      color:         BOT_COLORS[Math.floor(Math.random() * BOT_COLORS.length)],
+      cells:         [this._makeCell(0, x, y, 20, 0, 0)],
+      nextCellId:    1,
+      mouseX:        x, mouseY: y,
+      alive:         true,
+      score:         0,
+      isBot:         true,
+      wanderTarget:  null,
+      wanderTimer:   0,
+    };
+    this.bots.set(id, bot);
+    this.io.to(this.roomName).emit('cell:playerJoined', {
+      id, name: bot.name, color: bot.color, cells: bot.cells,
+    });
+    console.log(`[AgarRoom] Bot "${bot.name}" spawned`);
+    return bot;
+  }
+
+  // ── Tick ──────────────────────────────────────────────────────────────────
 
   _tick() {
     const now = Date.now();
@@ -139,6 +181,9 @@ class AgarRoom {
 
     for (const p of this.players.values()) {
       if (p.alive) this._updatePlayer(p, dt);
+    }
+    for (const b of this.bots.values()) {
+      if (b.alive) this._tickBot(b, dt);
     }
     this._checkFoodEating();
     this._checkPlayerEating();
@@ -179,6 +224,64 @@ class AgarRoom {
     p.score = Math.floor(p.cells.reduce((s, c) => s + c.mass, 0));
   }
 
+  _tickBot(bot, dt) {
+    bot.wanderTimer -= dt;
+    const ws      = this.worldSize;
+    const anchor  = bot.cells[0]; // use first cell as reference
+    const maxMass = bot.cells.reduce((m, c) => Math.max(m, c.mass), 0);
+
+    let tx = bot.mouseX, ty = bot.mouseY;
+    let foundTarget = false;
+
+    // Flee from any larger entity cell nearby
+    for (const entity of [...this.players.values(), ...this.bots.values()]) {
+      if (entity === bot || !entity.alive) continue;
+      for (const ec of entity.cells) {
+        if (ec.mass <= maxMass * 1.1) continue;
+        const dx = ec.x - anchor.x, dy = ec.y - anchor.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 350) {
+          // Run away
+          tx = anchor.x - dx; ty = anchor.y - dy;
+          foundTarget = true; break;
+        }
+      }
+      if (foundTarget) break;
+    }
+
+    if (!foundTarget) {
+      // Chase nearest food within radius
+      let best = 600, foodTarget = null;
+      for (const food of this.foods.values()) {
+        const dx = food.x - anchor.x, dy = food.y - anchor.y;
+        const d  = Math.sqrt(dx * dx + dy * dy);
+        if (d < best) { best = d; foodTarget = food; }
+      }
+      if (foodTarget) {
+        tx = foodTarget.x; ty = foodTarget.y;
+        foundTarget = true;
+      }
+    }
+
+    if (!foundTarget || bot.wanderTimer <= 0) {
+      // Pick a new wander target
+      if (!bot.wanderTarget || bot.wanderTimer <= 0) {
+        bot.wanderTarget = {
+          x: ws * 0.1 + Math.random() * ws * 0.8,
+          y: ws * 0.1 + Math.random() * ws * 0.8,
+        };
+        bot.wanderTimer = 3 + Math.random() * 4;
+      }
+      tx = bot.wanderTarget.x; ty = bot.wanderTarget.y;
+      // Reset when close enough
+      const dx = tx - anchor.x, dy = ty - anchor.y;
+      if (Math.sqrt(dx * dx + dy * dy) < 120) bot.wanderTimer = 0;
+    }
+
+    bot.mouseX = tx; bot.mouseY = ty;
+    this._updatePlayer(bot, dt);
+  }
+
   _separateCells(cells) {
     for (let i = 0; i < cells.length; i++) {
       for (let j = i + 1; j < cells.length; j++) {
@@ -217,7 +320,7 @@ class AgarRoom {
   }
 
   _checkFoodEating() {
-    for (const p of this.players.values()) {
+    for (const p of [...this.players.values(), ...this.bots.values()]) {
       if (!p.alive) continue;
       for (const cell of p.cells) {
         const r = Math.sqrt(cell.mass) * 10;
@@ -236,7 +339,7 @@ class AgarRoom {
   }
 
   _checkPlayerEating() {
-    const list = [...this.players.values()];
+    const list = [...this.players.values(), ...this.bots.values()];
     for (const eater of list) {
       if (!eater.alive) continue;
       for (const target of list) {
@@ -252,9 +355,15 @@ class AgarRoom {
               ec.mass += tc.mass;
               target.cells.splice(k, 1);
               if (target.cells.length === 0) {
-                target.alive = false;
-                const sock = this.io.sockets.sockets.get(target.id);
-                if (sock) sock.emit('cell:died', { killedBy: eater.name, score: target.score });
+                if (target.isBot) {
+                  // Respawn bot after short delay
+                  setTimeout(() => { if (this.bots.has(target.id)) this.respawnBot(target.id); }, 3000);
+                  target.alive = false;
+                } else {
+                  target.alive = false;
+                  const sock = this.io.sockets.sockets.get(target.id);
+                  if (sock) sock.emit('cell:died', { killedBy: eater.name, score: target.score });
+                }
               }
             }
           }
@@ -293,7 +402,7 @@ class AgarRoom {
 
   _serializePlayers() {
     const arr = [];
-    for (const p of this.players.values()) {
+    for (const p of [...this.players.values(), ...this.bots.values()]) {
       arr.push({
         id: p.id, name: p.name, color: p.color, alive: p.alive, score: p.score,
         cells: p.cells.map(c => ({ x: c.x, y: c.y, mass: c.mass })),

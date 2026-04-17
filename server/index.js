@@ -504,12 +504,24 @@ io.on('connection', (socket) => {
   });
 
   // ── Agar events ──────────────────────────────────────────────────────────
-  socket.on('cell:join', ({ name, color, lobbyType } = {}) => {
+  socket.on('cell:join', ({ name, color, lobbyType, googleId } = {}) => {
+    if (googleId) {
+      socket._googleId = googleId;
+      lobbySocketsByGoogleId.set(googleId, socket);
+    }
     const room = agarRooms[lobbyType] || agarRooms.free;
     socket._agarRoom = room;
     room.addPlayer(socket, name, color);
     lobbyConnections.delete(socket);
     broadcastLobbyState();
+  });
+
+  socket.on('cell:spawnbot', () => {
+    const ownerGoogleId = process.env.OWNER_GOOGLE_ID;
+    if (!ownerGoogleId || socket._googleId !== ownerGoogleId) return;
+    const room = socket._agarRoom || agarRooms.free;
+    room.addBot();
+    socket.emit('admin:ack', { message: 'Agar bot spawned' });
   });
 
   socket.on('cell:input', ({ mouseX, mouseY } = {}) => {

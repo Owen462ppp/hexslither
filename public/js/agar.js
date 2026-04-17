@@ -43,6 +43,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }, { passive: false });
   window.addEventListener('keydown', e => {
     if (e.code === 'Space') { e.preventDefault(); socket && socket.emit('cell:split'); }
+    if (e.key === '`') { socket && socket.emit('cell:spawnbot'); }
   });
 
   document.getElementById('btn-back').addEventListener('click', () => {
@@ -87,7 +88,8 @@ function connectSocket() {
 
   socket.on('connect', () => {
     const lobbyType = sessionStorage.getItem('lobbyType') || 'free';
-    socket.emit('cell:join', { name: myName, color: myColor, lobbyType });
+    const googleId  = sessionStorage.getItem('googleId') || '';
+    socket.emit('cell:join', { name: myName, color: myColor, lobbyType, googleId });
   });
 
   socket.on('cell:joined', ({ playerId, worldSize: ws, foods: initFoods, players: initPlayers }) => {
@@ -167,7 +169,9 @@ function snapRenderPlayer(p) {
 }
 
 function calcScale(totalMass) {
-  return Math.max(0.12, Math.min(1.5, Math.sqrt(20) / Math.sqrt(totalMass) * 1.2));
+  // Exponent 0.3 zooms out much more slowly than 0.5
+  const C = Math.pow(20, 0.3) * 1.2; // starts at 1.2 for mass 20
+  return Math.max(0.12, Math.min(1.5, C / Math.pow(totalMass, 0.3)));
 }
 
 function massSum(cells) { return cells.reduce((s, c) => s + (c.mass || c.mass || 0), 0); }
