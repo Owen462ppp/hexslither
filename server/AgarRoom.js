@@ -165,6 +165,7 @@ class AgarRoom {
       wanderTimer:   0,
     };
     this.bots.set(id, bot);
+    this._updateWorldSize();
     this.io.to(this.roomName).emit('cell:playerJoined', {
       id, name: bot.name, color: bot.color, cells: bot.cells,
     });
@@ -356,9 +357,14 @@ class AgarRoom {
               target.cells.splice(k, 1);
               if (target.cells.length === 0) {
                 if (target.isBot) {
-                  // Respawn bot after short delay
-                  setTimeout(() => { if (this.bots.has(target.id)) this.respawnBot(target.id); }, 3000);
                   target.alive = false;
+                  this._updateWorldSize();
+                  setTimeout(() => {
+                    if (this.bots.has(target.id)) {
+                      this.respawnBot(target.id);
+                      this._updateWorldSize();
+                    }
+                  }, 3000);
                 } else {
                   target.alive = false;
                   const sock = this.io.sockets.sockets.get(target.id);
@@ -378,13 +384,23 @@ class AgarRoom {
   }
 
   _spawnFoods(count) {
-    const ws = this.worldSize;
+    const ws  = this.worldSize;
+    const rim = 600; // how far outside the border food can spawn
     for (let i = 0; i < count; i++) {
-      const id   = _foodIdSeq++;
-      const food = {
-        id, x: Math.random() * ws, y: Math.random() * ws,
-        color: FOOD_COLORS[Math.floor(Math.random() * FOOD_COLORS.length)],
-      };
+      const id = _foodIdSeq++;
+      let x, y;
+      if (Math.random() < 0.2) {
+        // Place in the rim zone outside the border
+        const edge = Math.floor(Math.random() * 4);
+        if (edge === 0) { x = -rim * Math.random();          y = -rim + Math.random() * (ws + rim * 2); }
+        else if (edge === 1) { x = ws + rim * Math.random(); y = -rim + Math.random() * (ws + rim * 2); }
+        else if (edge === 2) { x = -rim + Math.random() * (ws + rim * 2); y = -rim * Math.random(); }
+        else                 { x = -rim + Math.random() * (ws + rim * 2); y = ws + rim * Math.random(); }
+      } else {
+        x = Math.random() * ws;
+        y = Math.random() * ws;
+      }
+      const food = { id, x, y, color: FOOD_COLORS[Math.floor(Math.random() * FOOD_COLORS.length)] };
       this.foods.set(id, food);
       this._addedFoods.push(food);
     }
@@ -412,7 +428,7 @@ class AgarRoom {
   }
 
   _updateWorldSize() {
-    const n       = this.players.size;
+    const n       = this.players.size + this.bots.size;
     const newSize = Math.min(WORLD_MAX, Math.max(WORLD_BASE, WORLD_BASE + n * WORLD_PER_PLAYER));
     if (newSize !== this.worldSize) {
       this.worldSize = newSize;

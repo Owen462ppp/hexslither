@@ -167,7 +167,7 @@ function connectSocket() {
     if (me) {
       document.getElementById('score-val').textContent = me.score || 0;
       document.getElementById('cells-val').textContent = me.cells.length;
-      if (!me.alive) {
+      if (!me.alive && !spectating) {
         document.getElementById('death-score-val').textContent = me.score || 0;
         document.getElementById('death-screen').classList.remove('hidden');
       }
@@ -175,8 +175,10 @@ function connectSocket() {
   });
 
   socket.on('cell:died', ({ killedBy, score }) => {
-    document.getElementById('death-score-val').textContent = score || 0;
-    document.getElementById('death-screen').classList.remove('hidden');
+    if (!spectating) {
+      document.getElementById('death-score-val').textContent = score || 0;
+      document.getElementById('death-screen').classList.remove('hidden');
+    }
   });
 
   socket.on('cell:playerJoined', ({ id, name, color, cells }) => {
