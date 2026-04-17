@@ -471,6 +471,21 @@ function showLobby() {
   document.getElementById('player-name-2').value = savedName2;
 
   socket.emit('lobby:join', { googleId: account.googleId });
+  fetchGlobalWinnings();
+}
+
+function fetchGlobalWinnings() {
+  fetch('/api/stats/winnings')
+    .then(r => r.json())
+    .then(({ totalSol }) => {
+      const cad = (totalSol * (_solCadRate || 200)).toFixed(2);
+      const display = `C$${cad}`;
+      const el  = document.getElementById('stat-global-winnings');
+      const el2 = document.getElementById('stat-global-winnings-2');
+      if (el)  el.textContent  = display;
+      if (el2) el2.textContent = display;
+    })
+    .catch(() => {});
 }
 
 // Strip spaces as the user types

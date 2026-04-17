@@ -176,6 +176,13 @@ async function getTopEarners(n) {
   }));
 }
 
+async function getGlobalWinnings() {
+  const res = await pool.query(
+    `SELECT COALESCE(SUM(amount), 0) AS total FROM earnings_history WHERE amount > 0`
+  );
+  return parseFloat(res.rows[0].total);
+}
+
 async function searchPlayerNames(query, limit = 8) {
   const res = await pool.query(
     `SELECT name FROM accounts WHERE name ILIKE $1 ORDER BY name ASC LIMIT $2`,
@@ -360,5 +367,5 @@ module.exports = {
   getGoogleIdByDeviceToken,
   isNameTaken,
   saveVerificationCode, verifyCode, addTrustedDevice, isDeviceTrusted,
-  getProfile, getMyProfile, pushNameHistory, searchPlayerNames,
+  getProfile, getMyProfile, pushNameHistory, searchPlayerNames, getGlobalWinnings,
 };

@@ -341,6 +341,15 @@ app.get('/api/profile/:name', async (req, res) => {
   }
 });
 
+app.get('/api/stats/winnings', async (req, res) => {
+  try {
+    const total = await db.getGlobalWinnings();
+    res.json({ totalSol: total });
+  } catch (e) {
+    res.json({ totalSol: 0 });
+  }
+});
+
 app.get('/api/players/search', async (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.json([]);
