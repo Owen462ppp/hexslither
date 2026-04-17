@@ -1,0 +1,165 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #f0f4ff;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+  user-select: none;
+}
+
+#game-canvas {
+  display: block;
+  position: fixed;
+  inset: 0;
+  cursor: none;
+}
+
+/* ── HUD ────────────────────────────────────────────────────────────────────── */
+#hud-topleft {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 10;
+}
+
+#btn-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.85);
+  border: 1px solid rgba(99,102,241,0.25);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: background 0.15s, transform 0.1s;
+}
+#btn-back:hover { background: rgba(255,255,255,0.97); transform: scale(1.03); }
+#btn-back svg { color: #6366f1; }
+
+#hud-topright {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  display: flex;
+  gap: 10px;
+}
+
+.hud-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(255,255,255,0.85);
+  border: 1px solid rgba(99,102,241,0.18);
+  border-radius: 10px;
+  padding: 8px 18px;
+  backdrop-filter: blur(8px);
+  min-width: 72px;
+}
+.hud-lbl {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #9ca3af;
+  text-transform: uppercase;
+}
+.hud-val {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #6366f1;
+  line-height: 1.2;
+}
+
+#hud-bottomleft {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hud-tip {
+  font-size: 0.78rem;
+  color: rgba(30,27,75,0.55);
+  font-weight: 500;
+}
+kbd {
+  display: inline-block;
+  padding: 1px 7px;
+  background: rgba(255,255,255,0.8);
+  border: 1px solid rgba(99,102,241,0.3);
+  border-radius: 5px;
+  font-size: 0.72rem;
+  font-family: inherit;
+  font-weight: 700;
+  color: #6366f1;
+}
+
+/* ── Death Screen ───────────────────────────────────────────────────────────── */
+#death-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(240,244,255,0.7);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+}
+#death-screen.hidden { display: none; }
+
+.death-card {
+  background: rgba(255,255,255,0.95);
+  border: 1px solid rgba(99,102,241,0.22);
+  border-radius: 18px;
+  padding: 40px 48px;
+  text-align: center;
+  box-shadow: 0 12px 48px rgba(99,102,241,0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 280px;
+}
+.death-title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #1e1b4b;
+}
+.death-score {
+  font-size: 1rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+.death-score span { color: #6366f1; font-weight: 700; }
+
+#btn-respawn {
+  background: linear-gradient(135deg, #6366f1, #818cf8);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 13px 0;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+#btn-respawn:hover { opacity: 0.9; transform: scale(1.02); }
+
+.btn-outline {
+  background: transparent;
+  color: #6366f1;
+  border: 1.5px solid rgba(99,102,241,0.35);
+  border-radius: 10px;
+  padding: 11px 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-outline:hover { background: rgba(99,102,241,0.07); }
