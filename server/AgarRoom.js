@@ -68,6 +68,7 @@ class AgarRoom {
       mouseY:     y,
       alive:      true,
       score:      0,
+      locked:     false,
     };
     this.players.set(socket.id, player);
     socket.join(this.roomName);
@@ -121,6 +122,18 @@ class AgarRoom {
       toAdd[toAdd.length - 1].mergeTimer = MERGE_DELAY;
     }
     p.cells.push(...toAdd);
+  }
+
+  lockPlayer(socketId) {
+    const p = this.players.get(socketId);
+    if (!p || !p.alive) return;
+    p.locked = true;
+    for (const c of p.cells) { c.vx = 0; c.vy = 0; }
+  }
+
+  unlockPlayer(socketId) {
+    const p = this.players.get(socketId);
+    if (p) p.locked = false;
   }
 
   respawnBot(botId) {
@@ -181,7 +194,7 @@ class AgarRoom {
     this._lastTick = now;
 
     for (const p of this.players.values()) {
-      if (p.alive) this._updatePlayer(p, dt);
+      if (p.alive && !p.locked) this._updatePlayer(p, dt);
     }
     for (const b of this.bots.values()) {
       if (b.alive) this._tickBot(b, dt);
@@ -220,6 +233,7 @@ class AgarRoom {
       if (cell.mergeTimer > 0) cell.mergeTimer -= dt * 1000;
     }
 
+    this._attractMergeCells(p.cells, dt);
     this._separateCells(p.cells);
     this._mergeCells(p.cells);
     p.score = Math.floor(p.cells.reduce((s, c) => s + c.mass, 0));
@@ -287,6 +301,8 @@ class AgarRoom {
     for (let i = 0; i < cells.length; i++) {
       for (let j = i + 1; j < cells.length; j++) {
         const a = cells[i], b = cells[j];
+        // Don't push apart cells that are ready to merge — let them overlap
+        if (a.mergeTimer <= 0 && b.mergeTimer <= 0) continue;
         const dx = b.x - a.x, dy = b.y - a.y;
         const d  = Math.sqrt(dx * dx + dy * dy) || 0.001;
         const minD = Math.sqrt(a.mass) * 10 + Math.sqrt(b.mass) * 10;
@@ -297,6 +313,22 @@ class AgarRoom {
           b.x += nx * push; b.y += ny * push;
         }
       }
+    }
+  }
+
+  _attractMergeCells(cells, dt) {
+    if (cells.length < 2) return;
+    const ready = cells.filter(c => c.mergeTimer <= 0);
+    if (ready.length < 2) return;
+    let cx = 0, cy = 0, tm = 0;
+    for (const c of ready) { cx += c.x * c.mass; cy += c.y * c.mass; tm += c.mass; }
+    cx /= tm; cy /= tm;
+    for (const c of ready) {
+      const dx = cx - c.x, dy = cy - c.y;
+      const d  = Math.sqrt(dx * dx + dy * dy) || 0.001;
+      const force = Math.min(d * 0.12, 80);
+      c.x += (dx / d) * force * dt;
+      c.y += (dy / d) * force * dt;
     }
   }
 

@@ -31,6 +31,11 @@ let spectateIdx   = 0;
 // Admin console
 let consoleOpen   = false;
 
+// Q cashout
+let qHeld      = false;
+let qStartTime = 0;
+const Q_HOLD_MS = 3000;
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
   canvas  = document.getElementById('game-canvas');
@@ -47,15 +52,29 @@ window.addEventListener('DOMContentLoaded', () => {
     onMouseMove({ clientX: t.clientX, clientY: t.clientY });
   }, { passive: false });
   window.addEventListener('keydown', e => {
-    if (consoleOpen) return; // let console handle its own keys
+    if (consoleOpen) return;
     if (e.code === 'Space') { e.preventDefault(); socket && socket.emit('cell:split'); }
     if (e.key === '`')      { e.preventDefault(); openConsole(); }
+    if (e.code === 'KeyQ' && !e.repeat && !qHeld) {
+      e.preventDefault();
+      qHeld = true;
+      qStartTime = Date.now();
+      socket && socket.emit('cell:lock');
+    }
+  });
+  window.addEventListener('keyup', e => {
+    if (e.code === 'KeyQ' && qHeld) {
+      e.preventDefault();
+      const elapsed = Date.now() - qStartTime;
+      qHeld = false;
+      if (elapsed >= Q_HOLD_MS) {
+        doCashout();
+      } else {
+        socket && socket.emit('cell:unlock');
+      }
+    }
   });
 
-  document.getElementById('btn-back').addEventListener('click', () => {
-    socket && socket.disconnect();
-    window.location.href = '/';
-  });
   document.getElementById('btn-respawn').addEventListener('click', () => {
     document.getElementById('death-screen').classList.add('hidden');
     exitSpectate();
@@ -273,9 +292,21 @@ function submitConsole() {
 }
 
 // ─── Loop ─────────────────────────────────────────────────────────────────────
+function doCashout() {
+  socket && socket.disconnect();
+  document.getElementById('cashout-overlay').classList.remove('hidden');
+  setTimeout(() => { window.location.href = '/'; }, 1200);
+}
+
 function loop(now) {
   const dt = Math.min((now - lastTime) / 1000, 0.05);
   lastTime = now;
+
+  if (qHeld && Date.now() - qStartTime >= Q_HOLD_MS) {
+    qHeld = false;
+    doCashout();
+    return;
+  }
 
   lerpPositions();
   if (spectating) updateSpectateLabel();
@@ -356,6 +387,39 @@ function render() {
     for (const cell of sorted) drawCell(cell, myColor, myName);
   }
 
+  if (qHeld && me && me.alive && me.cells.length) {
+    drawQRing(me);
+  }
+
+  ctx.restore();
+}
+
+function drawQRing(me) {
+  const largest  = me.cells.reduce((a, b) => b.mass > a.mass ? b : a);
+  const r        = radius(largest.mass);
+  const progress = Math.min(1, (Date.now() - qStartTime) / Q_HOLD_MS);
+  const nearly   = progress > 0.75;
+  const ringColor = nearly ? '#22c55e' : '#f59e0b';
+  const lw = Math.max(5, r * 0.09);
+
+  ctx.save();
+  ctx.shadowColor = ringColor;
+  ctx.shadowBlur  = 16;
+  ctx.strokeStyle = ringColor;
+  ctx.lineWidth   = lw;
+  ctx.lineCap     = 'round';
+  ctx.beginPath();
+  ctx.arc(largest.rx, largest.ry, r + lw, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+  ctx.stroke();
+
+  // "HOLD Q" label
+  const fs = Math.max(11, Math.min(r * 0.3, 22));
+  ctx.font         = `700 ${fs}px Inter, sans-serif`;
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle    = ringColor;
+  ctx.shadowBlur   = 6;
+  ctx.fillText(nearly ? 'RELEASE!' : 'HOLD Q', largest.rx, largest.ry + r + lw + fs * 1.1);
   ctx.restore();
 }
 

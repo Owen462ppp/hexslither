@@ -535,6 +535,14 @@ io.on('connection', (socket) => {
     if (socket._agarRoom) socket._agarRoom.respawnPlayer(socket.id);
   });
 
+  socket.on('cell:lock', () => {
+    if (socket._agarRoom) socket._agarRoom.lockPlayer(socket.id);
+  });
+
+  socket.on('cell:unlock', () => {
+    if (socket._agarRoom) socket._agarRoom.unlockPlayer(socket.id);
+  });
+
   socket.on('disconnect', async () => {
     console.log(`[-] Disconnected: ${socket.id}`);
     if (socket._agarRoom) socket._agarRoom.removePlayer(socket.id);

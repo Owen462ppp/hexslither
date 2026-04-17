@@ -11,16 +11,6 @@
 <body>
   <canvas id="game-canvas"></canvas>
 
-  <!-- HUD -->
-  <div id="hud-topleft">
-    <button id="btn-back" title="Back to lobby">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="15 18 9 12 15 6"/>
-      </svg>
-      Lobby
-    </button>
-  </div>
-
   <div id="hud-topright">
     <div class="hud-stat">
       <span class="hud-lbl">SCORE</span>
@@ -53,6 +43,15 @@
     <span id="spectate-label">Spectating: —</span>
     <button id="spectate-next">&#8594;</button>
     <button id="spectate-stop">&#8592; Lobby</button>
+  </div>
+
+  <!-- Cashout overlay -->
+  <div id="cashout-overlay" class="hidden">
+    <div class="cashout-card">
+      <div class="cashout-icon">&#10003;</div>
+      <div class="cashout-title">Cashed Out!</div>
+      <div class="cashout-sub">Returning to lobby...</div>
+    </div>
   </div>
 
   <!-- Admin console -->
