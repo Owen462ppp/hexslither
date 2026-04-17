@@ -155,21 +155,9 @@ function interpolateState(now) {
       interpolatedSnakes.push(snakeAfter);
       continue;
     }
-    // Pad shorter segs array to max length so tail segments are never dropped.
-    // The trim accumulator means segs can differ by ±1 pair between ticks.
-    let bSegs = snakeBefore.segs, aSegs = snakeAfter.segs;
-    const tLen = Math.max(bSegs.length, aSegs.length);
-    if (bSegs.length < tLen) {
-      bSegs = bSegs.slice();
-      const tx = bSegs[bSegs.length-2], ty = bSegs[bSegs.length-1];
-      while (bSegs.length < tLen) bSegs.push(tx, ty);
-    } else if (aSegs.length < tLen) {
-      aSegs = aSegs.slice();
-      const tx = aSegs[aSegs.length-2], ty = aSegs[aSegs.length-1];
-      while (aSegs.length < tLen) aSegs.push(tx, ty);
-    }
     const segs = [];
-    for (let i = 0; i < tLen; i++) segs.push(lerp(bSegs[i], aSegs[i], alpha));
+    const len = Math.min(snakeBefore.segs.length, snakeAfter.segs.length);
+    for (let i = 0; i < len; i++) segs.push(lerp(snakeBefore.segs[i], snakeAfter.segs[i], alpha));
     interpolatedSnakes.push({
       ...snakeAfter,
       segs,
@@ -432,12 +420,12 @@ function sendInput() {
         renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).x - mySnake.segs[0]
       );
 
-  // Q held: ramp speed down to 0.2x. Released: ramp back to 1x over ~150ms (smooth, no jump).
+  // Q held: ramp speed down to 0.2x. Released: instant full speed (no lag to clear).
   if (qHoldStart) {
     const t = Math.min(1, (performance.now() - qHoldStart) / Q_HOLD_MS);
     cashoutSpeedMult = Math.max(0.2, 1 - 0.8 * t);
-  } else if (cashoutSpeedMult < 1) {
-    cashoutSpeedMult = Math.min(1, cashoutSpeedMult + 0.1); // ~8 frames to reach 1x = ~133ms
+  } else {
+    cashoutSpeedMult = 1;
   }
   socket.emit(CONSTANTS.EVENTS.INPUT, { angle, boost: boostActive && !qHoldStart, speedMult: cashoutSpeedMult });
 }
