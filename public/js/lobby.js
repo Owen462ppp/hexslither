@@ -453,19 +453,6 @@ function showLobby() {
   document.getElementById('lobby-screen').classList.remove('hidden');
   showArrows();
 
-  // Avatar
-  const img = document.getElementById('account-avatar-img');
-  const fallback = document.getElementById('account-avatar-fallback');
-  if (account.avatar) {
-    img.src = account.avatar;
-    img.classList.remove('hidden');
-    fallback.classList.add('hidden');
-  } else {
-    img.classList.add('hidden');
-    fallback.textContent = (account.name || '?')[0].toUpperCase();
-    fallback.classList.remove('hidden');
-  }
-
   document.getElementById('account-name').textContent   = account.name || 'Player';
   document.getElementById('account-email').textContent  = account.email || '';
   document.getElementById('stat-highscore').textContent = account.highScore  || 0;
@@ -482,26 +469,9 @@ function showLobby() {
   document.getElementById('topbar-login-btn').classList.add('hidden');
   document.getElementById('topbar-username').textContent = account.name || 'Player';
 
-  // Play card avatar
-  const pai = document.getElementById('play-avatar-img');
-  const paf = document.getElementById('play-avatar-fallback');
-  if (account.avatar) { pai.src = account.avatar; pai.classList.remove('hidden'); paf.classList.add('hidden'); }
-  else { paf.textContent = (account.name || '?')[0].toUpperCase(); }
-
   // Populate lobby 2 account fields with same data
   document.getElementById('account-name-2').textContent  = account.name || 'Player';
   document.getElementById('account-email-2').textContent = account.email || '';
-  const img2 = document.getElementById('account-avatar-img-2');
-  const fb2  = document.getElementById('account-avatar-fallback-2');
-  if (account.avatar) {
-    img2.src = account.avatar; img2.classList.remove('hidden'); fb2.classList.add('hidden');
-  } else {
-    fb2.textContent = (account.name || '?')[0].toUpperCase();
-  }
-  const pai2 = document.getElementById('play-avatar-img-2');
-  const paf2 = document.getElementById('play-avatar-fallback-2');
-  if (account.avatar) { pai2.src = account.avatar; pai2.classList.remove('hidden'); paf2.classList.add('hidden'); }
-  else { paf2.textContent = (account.name || '?')[0].toUpperCase(); }
   const savedName2 = account.name || localStorage.getItem('duelseries_playername') || '';
   document.getElementById('player-name-2').value         = savedName2;
   document.getElementById('play-username-2').textContent = savedName2;
