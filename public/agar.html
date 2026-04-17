@@ -42,7 +42,24 @@
       <div class="death-title">You were eaten!</div>
       <div class="death-score">Score: <span id="death-score-val">0</span></div>
       <button id="btn-respawn">Play Again</button>
+      <button id="btn-spectate" class="btn-spectate-death">&#128065; Spectate</button>
       <button id="btn-death-lobby" class="btn-outline">Back to Lobby</button>
+    </div>
+  </div>
+
+  <!-- Spectate bar -->
+  <div id="spectate-bar">
+    <button id="spectate-prev">&#8592;</button>
+    <span id="spectate-label">Spectating: —</span>
+    <button id="spectate-next">&#8594;</button>
+    <button id="spectate-stop">&#8592; Lobby</button>
+  </div>
+
+  <!-- Admin console -->
+  <div id="admin-console" class="hidden">
+    <div id="admin-console-inner">
+      <span id="admin-console-prompt">&#62;</span>
+      <input id="admin-input" type="text" autocomplete="off" spellcheck="false" placeholder="bot 3" maxlength="40" />
     </div>
   </div>
 

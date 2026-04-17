@@ -521,7 +521,6 @@ io.on('connection', (socket) => {
     if (!ownerGoogleId || socket._googleId !== ownerGoogleId) return;
     const room = socket._agarRoom || agarRooms.free;
     room.addBot();
-    socket.emit('admin:ack', { message: 'Agar bot spawned' });
   });
 
   socket.on('cell:input', ({ mouseX, mouseY } = {}) => {

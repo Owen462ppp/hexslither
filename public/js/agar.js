@@ -13,8 +13,6 @@ let myId        = null;
 let myName      = 'Player';
 let myColor     = '#6366f1';
 
-// serverPlayers: latest authoritative state from server
-// renderPlayers: smoothly interpolated positions used for drawing
 let serverPlayers = new Map();
 let renderPlayers = new Map();
 
@@ -25,6 +23,13 @@ let tgtCamX     = 3000, tgtCamY = 3000, tgtScale = 1;
 let screenMX    = 0, screenMY = 0;
 let animId      = null;
 let lastTime    = 0;
+
+// Spectate
+let spectating    = false;
+let spectateIdx   = 0;
+
+// Admin console
+let consoleOpen   = false;
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
@@ -42,8 +47,9 @@ window.addEventListener('DOMContentLoaded', () => {
     onMouseMove({ clientX: t.clientX, clientY: t.clientY });
   }, { passive: false });
   window.addEventListener('keydown', e => {
+    if (consoleOpen) return; // let console handle its own keys
     if (e.code === 'Space') { e.preventDefault(); socket && socket.emit('cell:split'); }
-    if (e.key === '`') { socket && socket.emit('cell:spawnbot'); }
+    if (e.key === '`')      { e.preventDefault(); openConsole(); }
   });
 
   document.getElementById('btn-back').addEventListener('click', () => {
@@ -52,11 +58,38 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('btn-respawn').addEventListener('click', () => {
     document.getElementById('death-screen').classList.add('hidden');
+    exitSpectate();
     socket && socket.emit('cell:respawn');
   });
   document.getElementById('btn-death-lobby').addEventListener('click', () => {
     socket && socket.disconnect();
     window.location.href = '/';
+  });
+
+  // Spectate buttons
+  document.getElementById('btn-spectate').addEventListener('click', enterSpectate);
+  document.getElementById('spectate-prev').addEventListener('click', () => {
+    const n = getSpectateTargets().length;
+    if (!n) return;
+    spectateIdx = (spectateIdx - 1 + n) % n;
+    updateSpectateLabel();
+  });
+  document.getElementById('spectate-next').addEventListener('click', () => {
+    const n = getSpectateTargets().length;
+    if (!n) return;
+    spectateIdx = (spectateIdx + 1) % n;
+    updateSpectateLabel();
+  });
+  document.getElementById('spectate-stop').addEventListener('click', () => {
+    window.location.href = '/';
+  });
+
+  // Admin console input
+  const adminInput = document.getElementById('admin-input');
+  adminInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); submitConsole(); }
+    if (e.key === 'Escape') { e.preventDefault(); closeConsole(); }
+    e.stopPropagation(); // prevent space/` from leaking to game
   });
 
   connectSocket();
@@ -187,18 +220,79 @@ function centerOfMass(cells) {
   return tw ? { x: cx / tw, y: cy / tw } : { x: worldSize / 2, y: worldSize / 2 };
 }
 
+// ─── Spectate ─────────────────────────────────────────────────────────────────
+function getSpectateTargets() {
+  return [...renderPlayers.values()].filter(p => p.id !== myId && p.alive && p.cells.length);
+}
+
+function enterSpectate() {
+  spectating  = true;
+  spectateIdx = 0;
+  document.getElementById('death-screen').classList.add('hidden');
+  document.getElementById('spectate-bar').classList.add('active');
+  updateSpectateLabel();
+}
+
+function exitSpectate() {
+  spectating = false;
+  document.getElementById('spectate-bar').classList.remove('active');
+}
+
+function updateSpectateLabel() {
+  const targets = getSpectateTargets();
+  const label   = document.getElementById('spectate-label');
+  if (!targets.length) { label.textContent = 'No players to spectate'; return; }
+  label.textContent = 'Spectating: ' + (targets[spectateIdx % targets.length].name || 'Player');
+}
+
+// ─── Admin console ────────────────────────────────────────────────────────────
+function openConsole() {
+  consoleOpen = true;
+  document.getElementById('admin-console').classList.remove('hidden');
+  document.getElementById('admin-input').value = '';
+  document.getElementById('admin-input').focus();
+}
+
+function closeConsole() {
+  consoleOpen = false;
+  document.getElementById('admin-console').classList.add('hidden');
+}
+
+function submitConsole() {
+  const raw   = document.getElementById('admin-input').value.trim();
+  closeConsole();
+  if (!raw) return;
+  const parts = raw.split(/\s+/);
+  const cmd   = parts[0].toLowerCase();
+  if (cmd === 'bot') {
+    const count = Math.min(20, Math.max(1, parseInt(parts[1]) || 1));
+    for (let i = 0; i < count; i++) socket && socket.emit('cell:spawnbot');
+  }
+}
+
 // ─── Loop ─────────────────────────────────────────────────────────────────────
 function loop(now) {
   const dt = Math.min((now - lastTime) / 1000, 0.05);
   lastTime = now;
 
   lerpPositions();
+  if (spectating) updateSpectateLabel();
 
-  const me = renderPlayers.get(myId);
-  if (me && me.alive && me.cells.length) {
-    const com = centerOfMass(me.cells);
-    tgtCamX = com.x; tgtCamY = com.y;
-    tgtScale = calcScale(massSum(me.cells));
+  if (spectating) {
+    const targets = getSpectateTargets();
+    if (targets.length) {
+      const t = targets[spectateIdx % targets.length];
+      tgtCamX = centerOfMass(t.cells).x;
+      tgtCamY = centerOfMass(t.cells).y;
+      tgtScale = calcScale(massSum(t.cells));
+    }
+  } else {
+    const me = renderPlayers.get(myId);
+    if (me && me.alive && me.cells.length) {
+      const com = centerOfMass(me.cells);
+      tgtCamX = com.x; tgtCamY = com.y;
+      tgtScale = calcScale(massSum(me.cells));
+    }
   }
 
   camX     += (tgtCamX  - camX)     * CAM_LERP;
