@@ -361,6 +361,8 @@
   <!-- My Profile Modal -->
   <div class="modal-overlay" id="modal-my-profile" style="display:none">
     <div class="modal modal-profile">
+
+      <!-- Header -->
       <div class="profile-modal-header">
         <div class="profile-modal-avatar-wrap">
           <img id="pm-avatar-img" class="pm-avatar-img hidden" src="" alt="">
@@ -373,26 +375,60 @@
         <button class="btn-cust-close" id="close-my-profile">✕</button>
       </div>
 
-      <div class="pm-stats-row">
-        <div class="pm-stat">
-          <div class="pm-stat-val" id="pm-earnings">$0.00</div>
-          <div class="pm-stat-lbl">Total Earnings</div>
+      <!-- Tab bar -->
+      <div class="pm-tab-bar">
+        <button class="pm-nav-tab active" data-tab="profile">Profile</button>
+        <button class="pm-nav-tab" data-tab="leaderboard">Leaderboard</button>
+        <button class="pm-nav-tab" data-tab="search">Search</button>
+        <button class="pm-nav-tab" data-tab="friends">Friends</button>
+      </div>
+
+      <!-- Tab: Profile -->
+      <div class="pm-tab-panel" id="pm-panel-profile">
+        <div class="pm-stats-row">
+          <div class="pm-stat">
+            <div class="pm-stat-val" id="pm-earnings">C$0.00</div>
+            <div class="pm-stat-lbl">Total Earnings</div>
+          </div>
+          <div class="pm-stat">
+            <div class="pm-stat-val" id="pm-games">0</div>
+            <div class="pm-stat-lbl">Games Played</div>
+          </div>
+          <div class="pm-stat">
+            <div class="pm-stat-val" id="pm-playtime">0h 0m</div>
+            <div class="pm-stat-lbl">Time Played</div>
+          </div>
         </div>
-        <div class="pm-stat">
-          <div class="pm-stat-val" id="pm-games">0</div>
-          <div class="pm-stat-lbl">Games Played</div>
+        <div class="pm-section-label">EARNINGS PER CASHOUT</div>
+        <canvas id="pm-chart" class="pm-chart"></canvas>
+        <div class="pm-section-label">RECENT NAMES</div>
+        <div class="pm-names-row" id="pm-names-row"></div>
+      </div>
+
+      <!-- Tab: Leaderboard -->
+      <div class="pm-tab-panel hidden" id="pm-panel-leaderboard">
+        <div class="pm-section-label" style="padding-top:16px">TOP EARNERS</div>
+        <ul class="pm-lb-list" id="pm-lb-list"></ul>
+      </div>
+
+      <!-- Tab: Search -->
+      <div class="pm-tab-panel hidden" id="pm-panel-search">
+        <div class="pm-search-wrap">
+          <input class="pm-search-input" id="pm-search-input" type="text" placeholder="Search player name…" maxlength="20">
+          <button class="btn-save-name" id="pm-search-btn">Go</button>
         </div>
-        <div class="pm-stat">
-          <div class="pm-stat-val" id="pm-playtime">0h 0m</div>
-          <div class="pm-stat-lbl">Time Played</div>
+        <div id="pm-search-result"></div>
+      </div>
+
+      <!-- Tab: Friends -->
+      <div class="pm-tab-panel hidden" id="pm-panel-friends">
+        <div class="pm-coming-soon">
+          <div class="pm-cs-icon">🤝</div>
+          <div class="pm-cs-text">Friends — Coming Soon</div>
+          <div class="pm-cs-sub">Add friends, challenge them to duels, and track their stats.</div>
         </div>
       </div>
 
-      <div class="pm-section-label">EARNINGS PER CASHOUT</div>
-      <canvas id="pm-chart" class="pm-chart"></canvas>
-
-      <div class="pm-section-label">RECENT NAMES</div>
-      <div class="pm-names-row" id="pm-names-row"></div>
     </div>
   </div>
 

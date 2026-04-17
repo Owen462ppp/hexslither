@@ -899,6 +899,31 @@ body {
   padding: 14px 20px 6px;
 }
 
+/* Tab bar */
+.pm-tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--card-border);
+}
+.pm-nav-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 10px 4px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  letter-spacing: 0.02em;
+}
+.pm-nav-tab:hover { color: #ccc; }
+.pm-nav-tab.active { color: var(--green); border-bottom-color: var(--green); }
+
+/* Tab panels */
+.pm-tab-panel { padding-bottom: 4px; }
+
+/* Chart */
 .pm-chart {
   display: block;
   width: calc(100% - 40px);
@@ -906,6 +931,74 @@ body {
   margin: 0 20px 4px;
   border-radius: 8px;
 }
+
+/* Leaderboard panel */
+.pm-lb-list {
+  list-style: none;
+  padding: 0 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pm-lb-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+.pm-lb-rank { color: var(--muted); font-size: 0.75rem; width: 22px; flex-shrink: 0; }
+.pm-lb-name { flex: 1; font-weight: 600; color: #e5e7eb; }
+.pm-lb-val  { color: var(--green); font-weight: 700; font-size: 0.83rem; }
+
+/* Search panel */
+.pm-search-wrap {
+  display: flex;
+  gap: 8px;
+  padding: 16px 20px 10px;
+}
+.pm-search-input {
+  flex: 1;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.9rem;
+  padding: 8px 12px;
+  outline: none;
+}
+.pm-search-input:focus { border-color: var(--green); }
+#pm-search-result { padding: 0 20px 16px; }
+
+/* Search result card */
+.pm-search-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.pm-search-card .pm-sc-name { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 10px; }
+.pm-search-card .pm-sc-row  { display: flex; justify-content: space-between; font-size: 0.82rem; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.pm-search-card .pm-sc-row:last-child { border-bottom: none; }
+.pm-search-card .pm-sc-lbl  { color: var(--muted); }
+.pm-search-card .pm-sc-val  { color: #e5e7eb; font-weight: 600; }
+
+/* Friends / coming soon */
+.pm-coming-soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 10px;
+  text-align: center;
+}
+.pm-cs-icon { font-size: 2.4rem; }
+.pm-cs-text { font-size: 1rem; font-weight: 700; color: #ccc; }
+.pm-cs-sub  { font-size: 0.82rem; color: var(--muted); max-width: 260px; line-height: 1.5; }
 
 .pm-names-row {
   display: flex;

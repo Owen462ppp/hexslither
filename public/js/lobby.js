@@ -1508,17 +1508,77 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   const closeBtn    = document.getElementById('close-my-profile');
   const openBtn     = document.getElementById('btn-profile');
   const chartCanvas = document.getElementById('pm-chart');
+  const navTabs     = document.querySelectorAll('.pm-nav-tab');
 
   let profileData = null;
+  let activeTab   = 'profile';
 
+  // ── Tab switching ──────────────────────────────────────────────────────
+  function showTab(tab) {
+    activeTab = tab;
+    navTabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    document.querySelectorAll('.pm-tab-panel').forEach(p => p.classList.add('hidden'));
+    document.getElementById('pm-panel-' + tab).classList.remove('hidden');
+    if (tab === 'leaderboard') loadLeaderboard();
+    if (tab === 'profile' && profileData) drawChart();
+  }
+  navTabs.forEach(t => t.addEventListener('click', () => showTab(t.dataset.tab)));
+
+  // ── Leaderboard ────────────────────────────────────────────────────────
+  function loadLeaderboard() {
+    const listEl = document.getElementById('pm-lb-list');
+    listEl.innerHTML = '<li style="color:#555;padding:10px 0">Loading…</li>';
+    fetch('/api/earningsboard')
+      .then(r => r.json())
+      .then(data => {
+        if (!data.length) { listEl.innerHTML = '<li style="color:#555;padding:10px 0">No earnings recorded yet</li>'; return; }
+        listEl.innerHTML = data.map((p, i) =>
+          `<li>
+            <span class="pm-lb-rank">#${i + 1}</span>
+            <span class="pm-lb-name">${escHtmlLobby(p.name)}</span>
+            <span class="pm-lb-val">C$${(p.earnings * (_solCadRate || 200)).toFixed(2)}</span>
+          </li>`
+        ).join('');
+      })
+      .catch(() => { listEl.innerHTML = '<li style="color:#c33">Failed to load</li>'; });
+  }
+
+  // ── Search ─────────────────────────────────────────────────────────────
+  document.getElementById('pm-search-btn').addEventListener('click', doSearch);
+  document.getElementById('pm-search-input').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+  function doSearch() {
+    const name = document.getElementById('pm-search-input').value.trim();
+    const resultEl = document.getElementById('pm-search-result');
+    if (!name) return;
+    resultEl.innerHTML = '<p style="color:#555;font-size:0.85rem;padding:8px 0">Searching…</p>';
+    fetch('/api/profile/' + encodeURIComponent(name))
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { resultEl.innerHTML = `<p style="color:#ef4444;font-size:0.85rem;padding:8px 0">Player not found.</p>`; return; }
+        const cad     = (data.totalEarnings * (_solCadRate || 200)).toFixed(2);
+        const time    = fmtTime(data.playTimeSeconds || 0);
+        resultEl.innerHTML = `
+          <div class="pm-search-card">
+            <div class="pm-sc-name">${escHtmlLobby(data.name)}</div>
+            <div class="pm-sc-row"><span class="pm-sc-lbl">Total Earnings</span><span class="pm-sc-val">C$${cad}</span></div>
+            <div class="pm-sc-row"><span class="pm-sc-lbl">Games Played</span><span class="pm-sc-val">${data.gamesPlayed || 0}</span></div>
+            <div class="pm-sc-row"><span class="pm-sc-lbl">Time Played</span><span class="pm-sc-val">${time}</span></div>
+          </div>`;
+      })
+      .catch(() => { resultEl.innerHTML = '<p style="color:#c33;font-size:0.85rem;padding:8px 0">Network error.</p>'; });
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────
   function fmtTime(secs) {
     const h = Math.floor(secs / 3600);
     const m = Math.floor((secs % 3600) / 60);
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
   }
 
-  function fmtSol(val) {
-    return val !== 0 ? `${val.toFixed(4)} SOL` : '0 SOL';
+  function fmtCad(sol) {
+    const cad = sol * (_solCadRate || 200);
+    return `C$${cad.toFixed(2)}`;
   }
 
   function drawChart() {
@@ -1668,35 +1728,30 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   function openModal() {
     if (!account) return;
     modal.style.display = 'flex';
+    showTab('profile');
 
-    const pmName  = document.getElementById('pm-name');
     const pmAvImg = document.getElementById('pm-avatar-img');
     const pmAvFb  = document.getElementById('pm-avatar-fallback');
-    pmName.textContent = account.name || 'Player';
+    document.getElementById('pm-name').textContent = account.name || 'Player';
     if (account.avatar) {
-      pmAvImg.src = account.avatar;
-      pmAvImg.classList.remove('hidden');
-      pmAvFb.classList.add('hidden');
+      pmAvImg.src = account.avatar; pmAvImg.classList.remove('hidden'); pmAvFb.classList.add('hidden');
     } else {
       pmAvFb.textContent = (account.name || '?')[0].toUpperCase();
-      pmAvFb.classList.remove('hidden');
-      pmAvImg.classList.add('hidden');
+      pmAvFb.classList.remove('hidden'); pmAvImg.classList.add('hidden');
     }
 
     fetch('/api/my-profile')
       .then(r => r.json())
       .then(data => {
         profileData = data;
-        document.getElementById('pm-earnings').textContent  = fmtSol(data.totalEarnings);
+        document.getElementById('pm-earnings').textContent  = fmtCad(data.totalEarnings);
         document.getElementById('pm-games').textContent     = data.gamesPlayed;
         document.getElementById('pm-playtime').textContent  = fmtTime(data.playTimeSeconds);
-
         const namesRow = document.getElementById('pm-names-row');
         const names = (data.nameHistory || []).filter(Boolean);
         namesRow.innerHTML = names.length
           ? names.map(n => `<span class="pm-name-tag">${escHtmlLobby(n)}</span>`).join('')
           : '<span style="color:#555;font-size:0.82rem">No name history yet</span>';
-
         drawChart();
       })
       .catch(() => {});
@@ -1711,6 +1766,6 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
 
   window.addEventListener('resize', () => {
-    if (modal.style.display !== 'none' && profileData) drawChart();
+    if (modal.style.display !== 'none' && activeTab === 'profile' && profileData) drawChart();
   });
 })();
