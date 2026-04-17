@@ -755,23 +755,73 @@ body {
 .slide-out-right { animation: slideOutRight 0.32s cubic-bezier(0.4,0,0.6,1) forwards; }
 .slide-in-left   { animation: slideInLeft   0.32s cubic-bezier(0.4,0,0.6,1) forwards; }
 
-/* ── Lobby 2 (DuelCell) — same dark theme as lobby 1 ────────────────────── */
-/* btn-lobby-type-2 mirrors btn-lobby-type */
-.btn-lobby-type-2 {
-  flex: 1; padding: 11px 6px;
-  background: transparent;
-  border: 2px solid var(--gold);
-  border-radius: 8px;
-  color: var(--gold);
-  font-size: 0.78rem;
-  font-weight: 700;
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  transition: background 0.15s, color 0.15s;
+/* ── Lobby 2 (Arena) — clean light theme matching agar.io world ────────── */
+#lobby-screen-2 { --accent: #6366f1; }
+
+/* Cards: white, crisp, light shadow */
+#lobby-screen-2 .card {
+  background: rgba(255,255,255,0.93);
+  border: 1px solid rgba(99,102,241,0.18);
+  box-shadow: 0 4px 28px rgba(0,0,0,0.10);
+  backdrop-filter: blur(4px);
+  color: #1e1b4b;
 }
-.btn-lobby-type-2:hover  { background: rgba(240,180,41,0.12); }
-.btn-lobby-type-2.active { background: var(--gold); color: #000; }
+#lobby-screen-2 .card h4,
+#lobby-screen-2 .card-title,
+#lobby-screen-2 .account-name,
+#lobby-screen-2 .stat-lbl,
+#lobby-screen-2 .server-stat-lbl { color: #374151; }
+#lobby-screen-2 .account-email   { color: #6b7280; }
+#lobby-screen-2 .stat-val,
+#lobby-screen-2 .server-stat-val { color: #6366f1; }
+#lobby-screen-2 .account-avatar  { background: #6366f1; color: #fff; border-color: #a5b4fc; }
+#lobby-screen-2 .leaderboard-list li { color: #374151; }
+#lobby-screen-2 .lb-score        { color: #6366f1; }
+#lobby-screen-2 .rank            { color: #9ca3af; }
+
+/* Title on light bg */
+#lobby-screen-2 .game-title      { color: #1e1b4b; text-shadow: none; }
+#lobby-screen-2 .game-title span { color: #6366f1; }
+#lobby-screen-2 .game-subtitle   { color: #6b7280; }
+#lobby-screen-2 .lobby-title-block { text-align: center; }
+
+/* Play username / name input */
+#lobby-screen-2 .play-username   { color: #1e1b4b; }
+#lobby-screen-2 .name-input      { background: #f3f4f6; color: #111; border-color: rgba(99,102,241,0.3); }
+#lobby-screen-2 .name-input::placeholder { color: #9ca3af; }
+
+/* Lobby type buttons — same size as lobby 1 */
+#lobby-screen-2 .btn-lobby-type-2 {
+  flex: 1; padding: 11px 6px;
+  background: #f3f4f6; color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.78rem; font-weight: 700;
+  cursor: pointer; text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.15s;
+}
+#lobby-screen-2 .btn-lobby-type-2:hover { background: rgba(99,102,241,0.08); }
+#lobby-screen-2 .btn-lobby-type-2.active { background: rgba(99,102,241,0.15); border-color: #6366f1; color: #6366f1; }
+
+/* Play button */
+#lobby-screen-2 .btn-play { background: linear-gradient(135deg,#6366f1,#818cf8); color: #fff; box-shadow: 0 4px 20px rgba(99,102,241,0.35); }
+#lobby-screen-2 .btn-play:hover { box-shadow: 0 6px 28px rgba(99,102,241,0.55); }
+
+/* Wallet */
+#lobby-screen-2 .wallet-balance-usd { color: #1e1b4b; }
+#lobby-screen-2 .wallet-balance-sol  { color: #6b7280; }
+#lobby-screen-2 .btn-add-funds       { background: linear-gradient(135deg,#6366f1,#818cf8); color: #fff; }
+#lobby-screen-2 .btn-cash-out        { background: #f3f4f6; color: #6366f1; border-color: rgba(99,102,241,0.3); }
+#lobby-screen-2 .btn-text-sm         { color: #6366f1; }
+#lobby-screen-2 .btn-leaderboard-open { color: #6366f1; border-color: rgba(99,102,241,0.3); background: rgba(99,102,241,0.08); }
+#lobby-screen-2 .btn-change-appearance { background: rgba(99,102,241,0.1); color: #6366f1; border-color: rgba(99,102,241,0.25); }
+#lobby-screen-2 .server-stat-divider  { background: #d1d5db; }
+
+/* Arrows on light background */
+.lobby-nav-arrow[data-theme="light"] svg polyline { stroke: #6366f1; }
+.lobby-nav-arrow[data-theme="light"] span { color: #6366f1; text-shadow: none; }
+.lobby-nav-arrow[data-theme="light"] svg { filter: drop-shadow(0 0 8px rgba(99,102,241,0.5)); }
 
 /* ── Name input row (input + save button) ───────────────────────────── */
 .name-input-row {
