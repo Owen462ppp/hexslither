@@ -83,6 +83,7 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('btn-death-lobby').addEventListener('click', () => {
     socket && socket.disconnect();
+    sessionStorage.setItem('returnToAgarLobby', '1');
     window.location.href = '/';
   });
 
@@ -118,6 +119,8 @@ window.addEventListener('DOMContentLoaded', () => {
     updateSpectateLabel();
   });
   document.getElementById('spectate-stop').addEventListener('click', () => {
+    socket && socket.disconnect();
+    sessionStorage.setItem('returnToAgarLobby', '1');
     window.location.href = '/';
   });
 
