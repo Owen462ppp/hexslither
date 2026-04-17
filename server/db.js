@@ -198,18 +198,15 @@ async function getMyProfile(googleId) {
   if (!accRes.rows[0]) return null;
   const row = accRes.rows[0];
 
-  const mapRows = rows => rows.map(r => ({ period: r.period, total: parseFloat(r.total) }));
-  const [week, month, allTime] = await Promise.all([
-    pool.query(`SELECT DATE_TRUNC('day', created_at) AS period, SUM(amount) AS total
-      FROM earnings_history WHERE google_id=$1 AND created_at >= NOW()-INTERVAL '7 days'
-      GROUP BY period ORDER BY period ASC`, [googleId]),
-    pool.query(`SELECT DATE_TRUNC('day', created_at) AS period, SUM(amount) AS total
-      FROM earnings_history WHERE google_id=$1 AND created_at >= NOW()-INTERVAL '30 days'
-      GROUP BY period ORDER BY period ASC`, [googleId]),
-    pool.query(`SELECT DATE_TRUNC('month', created_at) AS period, SUM(amount) AS total
-      FROM earnings_history WHERE google_id=$1
-      GROUP BY period ORDER BY period ASC`, [googleId]),
-  ]);
+  const gamesRes = await pool.query(
+    `SELECT amount, created_at FROM earnings_history
+     WHERE google_id=$1 ORDER BY created_at ASC`,
+    [googleId]
+  );
+  const games = gamesRes.rows.map(r => ({
+    amount: parseFloat(r.amount),
+    at: r.created_at,
+  }));
 
   return {
     name: row.name,
@@ -217,11 +214,7 @@ async function getMyProfile(googleId) {
     gamesPlayed: parseInt(row.games_played || 0),
     playTimeSeconds: parseInt(row.play_time_seconds || 0),
     nameHistory: row.name_history || [],
-    history: {
-      week: mapRows(week.rows),
-      month: mapRows(month.rows),
-      allTime: mapRows(allTime.rows),
-    },
+    games,
   };
 }
 

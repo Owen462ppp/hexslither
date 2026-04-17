@@ -1508,10 +1508,8 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   const closeBtn    = document.getElementById('close-my-profile');
   const openBtn     = document.getElementById('btn-profile');
   const chartCanvas = document.getElementById('pm-chart');
-  const tabs        = document.querySelectorAll('.pm-tab');
 
-  let profileData   = null;
-  let activeRange   = 'week';
+  let profileData = null;
 
   function fmtTime(secs) {
     const h = Math.floor(secs / 3600);
@@ -1520,87 +1518,158 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   }
 
   function fmtSol(val) {
-    return val > 0 ? `${val.toFixed(4)} SOL` : '0 SOL';
+    return val !== 0 ? `${val.toFixed(4)} SOL` : '0 SOL';
   }
 
-  function drawChart(range) {
+  function drawChart() {
     if (!profileData) return;
-    const data = profileData.history[range] || [];
-    const ctx  = chartCanvas.getContext('2d');
-    const W = chartCanvas.offsetWidth || 440;
-    const H = chartCanvas.offsetHeight || 130;
+    const games = profileData.games || [];
+    const ctx   = chartCanvas.getContext('2d');
+    const W = chartCanvas.offsetWidth  || 440;
+    const H = chartCanvas.offsetHeight || 160;
     chartCanvas.width  = W * devicePixelRatio;
     chartCanvas.height = H * devicePixelRatio;
     ctx.scale(devicePixelRatio, devicePixelRatio);
     ctx.clearRect(0, 0, W, H);
 
-    if (data.length === 0) {
-      ctx.fillStyle = '#444';
+    if (games.length === 0) {
+      ctx.fillStyle = '#555';
       ctx.font = '13px Segoe UI';
       ctx.textAlign = 'center';
-      ctx.fillText('No earnings data yet', W / 2, H / 2 + 5);
+      ctx.fillText('No game earnings yet', W / 2, H / 2 + 5);
       return;
     }
 
-    const pad = { top: 10, right: 14, bottom: 28, left: 14 };
-    const cW  = W - pad.left - pad.right;
-    const cH  = H - pad.top  - pad.bottom;
-    const maxVal = Math.max(...data.map(d => d.total), 0.0001);
-    const n    = data.length;
+    const pad  = { top: 16, right: 20, bottom: 32, left: 52 };
+    const cW   = W - pad.left - pad.right;
+    const cH   = H - pad.top  - pad.bottom;
+    const n    = games.length;
+    const vals = games.map(g => g.amount);
 
-    // Gradient fill
-    const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + cH);
-    grad.addColorStop(0,   'rgba(20,241,149,0.28)');
-    grad.addColorStop(1,   'rgba(20,241,149,0.02)');
+    const rawMax = Math.max(...vals, 0);
+    const rawMin = Math.min(...vals, 0);
+    // Add 15% headroom above and below so dots don't sit on the edge
+    const span   = rawMax - rawMin || 0.001;
+    const maxV   = rawMax + span * 0.15;
+    const minV   = rawMin - span * 0.15;
+    const range  = maxV - minV;
 
     const xOf = i => pad.left + (n === 1 ? cW / 2 : (i / (n - 1)) * cW);
-    const yOf = v => pad.top + cH - (v / maxVal) * cH;
+    const yOf = v => pad.top + cH - ((v - minV) / range) * cH;
+    const zeroY = yOf(0);
 
-    // Fill area
-    ctx.beginPath();
-    ctx.moveTo(xOf(0), yOf(data[0].total));
-    for (let i = 1; i < n; i++) ctx.lineTo(xOf(i), yOf(data[i].total));
-    ctx.lineTo(xOf(n - 1), pad.top + cH);
-    ctx.lineTo(xOf(0),     pad.top + cH);
-    ctx.closePath();
-    ctx.fillStyle = grad;
-    ctx.fill();
-
-    // Line
-    ctx.beginPath();
-    ctx.moveTo(xOf(0), yOf(data[0].total));
-    for (let i = 1; i < n; i++) ctx.lineTo(xOf(i), yOf(data[i].total));
-    ctx.strokeStyle = '#14F195';
-    ctx.lineWidth   = 2;
-    ctx.lineJoin    = 'round';
-    ctx.stroke();
-
-    // Dots
-    ctx.fillStyle = '#14F195';
-    for (let i = 0; i < n; i++) {
-      ctx.beginPath();
-      ctx.arc(xOf(i), yOf(data[i].total), 3, 0, Math.PI * 2);
-      ctx.fill();
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth   = 1;
+    for (let t = 0; t <= 4; t++) {
+      const y = pad.top + (t / 4) * cH;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
     }
 
-    // X-axis labels (first + last)
+    // Zero baseline
+    if (zeroY >= pad.top && zeroY <= pad.top + cH) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+      ctx.lineWidth   = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(pad.left, zeroY); ctx.lineTo(W - pad.right, zeroY); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Gradient fill above zero
+    const gradUp = ctx.createLinearGradient(0, pad.top, 0, zeroY);
+    gradUp.addColorStop(0,   'rgba(20,241,149,0.22)');
+    gradUp.addColorStop(1,   'rgba(20,241,149,0.03)');
+
+    // Gradient fill below zero (red tint)
+    const gradDown = ctx.createLinearGradient(0, zeroY, 0, pad.top + cH);
+    gradDown.addColorStop(0,   'rgba(239,68,68,0.04)');
+    gradDown.addColorStop(1,   'rgba(239,68,68,0.20)');
+
+    // Fill above zero
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(pad.left, pad.top, cW, Math.max(0, zeroY - pad.top));
+    ctx.clip();
+    ctx.beginPath();
+    ctx.moveTo(xOf(0), yOf(vals[0]));
+    for (let i = 1; i < n; i++) ctx.lineTo(xOf(i), yOf(vals[i]));
+    ctx.lineTo(xOf(n - 1), zeroY);
+    ctx.lineTo(xOf(0), zeroY);
+    ctx.closePath();
+    ctx.fillStyle = gradUp;
+    ctx.fill();
+    ctx.restore();
+
+    // Fill below zero
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(pad.left, zeroY, cW, Math.max(0, pad.top + cH - zeroY));
+    ctx.clip();
+    ctx.beginPath();
+    ctx.moveTo(xOf(0), yOf(vals[0]));
+    for (let i = 1; i < n; i++) ctx.lineTo(xOf(i), yOf(vals[i]));
+    ctx.lineTo(xOf(n - 1), zeroY);
+    ctx.lineTo(xOf(0), zeroY);
+    ctx.closePath();
+    ctx.fillStyle = gradDown;
+    ctx.fill();
+    ctx.restore();
+
+    // Main line — colour each segment by direction
+    for (let i = 1; i < n; i++) {
+      const rising = vals[i] >= vals[i - 1];
+      ctx.beginPath();
+      ctx.moveTo(xOf(i - 1), yOf(vals[i - 1]));
+      ctx.lineTo(xOf(i),     yOf(vals[i]));
+      ctx.strokeStyle = rising ? '#14F195' : '#ef4444';
+      ctx.lineWidth   = 2;
+      ctx.lineJoin    = 'round';
+      ctx.stroke();
+    }
+
+    // Dots — green if positive, red if negative
+    for (let i = 0; i < n; i++) {
+      const pos = vals[i] >= 0;
+      ctx.beginPath();
+      ctx.arc(xOf(i), yOf(vals[i]), 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = pos ? '#14F195' : '#ef4444';
+      ctx.fill();
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth   = 1;
+      ctx.stroke();
+    }
+
+    // Y-axis labels
     ctx.fillStyle = '#6b7280';
     ctx.font      = '10px Segoe UI';
+    ctx.textAlign = 'right';
+    for (let t = 0; t <= 4; t++) {
+      const v = minV + (1 - t / 4) * range;
+      const y = pad.top + (t / 4) * cH;
+      ctx.fillText(v.toFixed(3), pad.left - 6, y + 3.5);
+    }
+
+    // X-axis: first and last date
     ctx.textAlign = 'left';
-    const fmt = d => new Date(d.period).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
-    ctx.fillText(fmt(data[0]), pad.left, H - 6);
+    ctx.fillStyle = '#6b7280';
+    const fmtDate = d => new Date(d).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+    ctx.fillText(fmtDate(games[0].at), pad.left, H - 8);
     if (n > 1) {
       ctx.textAlign = 'right';
-      ctx.fillText(fmt(data[n - 1]), W - pad.right, H - 6);
+      ctx.fillText(fmtDate(games[n - 1].at), W - pad.right, H - 8);
     }
+
+    // Game count label
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#4b5563';
+    ctx.fillText(`${n} cashout${n === 1 ? '' : 's'}`, W / 2, H - 8);
   }
 
   function openModal() {
     if (!account) return;
     modal.style.display = 'flex';
 
-    // Fill static fields from account
-    const pmName = document.getElementById('pm-name');
+    const pmName  = document.getElementById('pm-name');
     const pmAvImg = document.getElementById('pm-avatar-img');
     const pmAvFb  = document.getElementById('pm-avatar-fallback');
     pmName.textContent = account.name || 'Player';
@@ -1614,7 +1683,6 @@ document.getElementById('btn-play').addEventListener('click', async () => {
       pmAvImg.classList.add('hidden');
     }
 
-    // Fetch full profile data
     fetch('/api/my-profile')
       .then(r => r.json())
       .then(data => {
@@ -1629,7 +1697,7 @@ document.getElementById('btn-play').addEventListener('click', async () => {
           ? names.map(n => `<span class="pm-name-tag">${escHtmlLobby(n)}</span>`).join('')
           : '<span style="color:#555;font-size:0.82rem">No name history yet</span>';
 
-        drawChart(activeRange);
+        drawChart();
       })
       .catch(() => {});
   }
@@ -1638,21 +1706,11 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      tabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      activeRange = tab.dataset.range;
-      drawChart(activeRange);
-    });
-  });
-
   if (openBtn)  openBtn.addEventListener('click', openModal);
   if (closeBtn) closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
   modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
 
-  // Re-draw chart when modal resizes (font-size change etc)
   window.addEventListener('resize', () => {
-    if (modal.style.display !== 'none' && profileData) drawChart(activeRange);
+    if (modal.style.display !== 'none' && profileData) drawChart();
   });
 })();

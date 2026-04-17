@@ -70,14 +70,13 @@ body {
   top: 0; left: 0; right: 0;
   height: 52px;
   z-index: 200;
-  background: rgba(8,9,13,0.92);
-  border-bottom: 1px solid var(--card-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 20px;
-  backdrop-filter: blur(10px);
+  pointer-events: none;
 }
+.topbar > * { pointer-events: auto; }
 .topbar-left { display: flex; align-items: center; gap: 10px; }
 .topbar-snake-icon { font-size: 1.3rem; }
 .topbar-welcome { font-size: 0.9rem; color: #aaa; }
@@ -900,32 +899,10 @@ body {
   padding: 14px 20px 6px;
 }
 
-.pm-chart-tabs {
-  display: flex;
-  gap: 6px;
-  padding: 0 20px 10px;
-}
-.pm-tab {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid var(--card-border);
-  border-radius: 6px;
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 600;
-  padding: 4px 12px;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-.pm-tab.active {
-  background: rgba(20,241,149,0.12);
-  border-color: var(--green);
-  color: var(--green);
-}
-
 .pm-chart {
   display: block;
   width: calc(100% - 40px);
-  height: 130px;
+  height: 160px;
   margin: 0 20px 4px;
   border-radius: 8px;
 }
