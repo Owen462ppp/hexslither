@@ -188,6 +188,8 @@ function connectSocket() {
 
   socket.on('cell:state', ({ players: updates, removedFoods, addedFoods }) => {
     for (const p of updates) {
+      // Once cashed out, ignore server state for own player so cells stay gone
+      if (p.id === myId && cashedOut) continue;
       serverPlayers.set(p.id, p);
       if (!renderPlayers.has(p.id)) {
         renderPlayers.set(p.id, snapRenderPlayer(p));
@@ -315,9 +317,14 @@ function submitConsole() {
 // ─── Loop ─────────────────────────────────────────────────────────────────────
 function doCashout() {
   cashedOut = true;
-  const me = serverPlayers.get(myId);
-  document.getElementById('cashout-score-val').textContent = (me && me.score) || 0;
-  socket && socket.emit('cell:cashout'); // kills player on server → cells disappear for everyone
+  // Wipe own cells immediately client-side — don't wait for server round-trip
+  const rp = renderPlayers.get(myId);
+  if (rp) { rp.alive = false; rp.cells = []; }
+  const sp = serverPlayers.get(myId);
+  const score = sp ? sp.score : 0;
+  if (sp) { sp.alive = false; sp.cells = []; }
+  document.getElementById('cashout-score-val').textContent = score || 0;
+  socket && socket.emit('cell:cashout'); // also kills on server so others can't see the circle
   document.getElementById('cashout-overlay').classList.remove('hidden');
 }
 
