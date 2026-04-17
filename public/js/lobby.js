@@ -1544,21 +1544,73 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   }
 
   // ── Search ─────────────────────────────────────────────────────────────
-  document.getElementById('pm-search-btn').addEventListener('click', doSearch);
-  document.getElementById('pm-search-input').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+  const searchInput    = document.getElementById('pm-search-input');
+  const searchDropdown = document.getElementById('pm-search-dropdown');
+  const searchResult   = document.getElementById('pm-search-result');
+  let searchDebounce   = null;
 
-  function doSearch() {
-    const name = document.getElementById('pm-search-input').value.trim();
-    const resultEl = document.getElementById('pm-search-result');
-    if (!name) return;
-    resultEl.innerHTML = '<p style="color:#555;font-size:0.85rem;padding:8px 0">Searching…</p>';
+  searchInput.addEventListener('input', () => {
+    clearTimeout(searchDebounce);
+    const q = searchInput.value.trim();
+    if (!q) { hideDropdown(); return; }
+    searchDebounce = setTimeout(() => fetchSuggestions(q), 180);
+  });
+
+  searchInput.addEventListener('keydown', e => {
+    const items = searchDropdown.querySelectorAll('li');
+    const active = searchDropdown.querySelector('li.active');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const next = active ? active.nextElementSibling : items[0];
+      if (active) active.classList.remove('active');
+      if (next) next.classList.add('active');
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prev = active ? active.previousElementSibling : items[items.length - 1];
+      if (active) active.classList.remove('active');
+      if (prev) prev.classList.add('active');
+    } else if (e.key === 'Enter') {
+      const sel = searchDropdown.querySelector('li.active');
+      if (sel) selectName(sel.textContent);
+      else if (searchInput.value.trim()) selectName(searchInput.value.trim());
+    } else if (e.key === 'Escape') {
+      hideDropdown();
+    }
+  });
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.pm-search-field')) hideDropdown();
+  });
+
+  function fetchSuggestions(q) {
+    fetch('/api/players/search?q=' + encodeURIComponent(q))
+      .then(r => r.json())
+      .then(names => {
+        if (!names.length) { hideDropdown(); return; }
+        searchDropdown.innerHTML = names
+          .map(n => `<li>${escHtmlLobby(n)}</li>`)
+          .join('');
+        searchDropdown.querySelectorAll('li').forEach(li => {
+          li.addEventListener('click', () => selectName(li.textContent));
+        });
+        searchDropdown.classList.remove('hidden');
+      })
+      .catch(() => hideDropdown());
+  }
+
+  function hideDropdown() { searchDropdown.classList.add('hidden'); }
+
+  function selectName(name) {
+    searchInput.value = name;
+    hideDropdown();
+    searchResult.innerHTML = '<p style="color:#555;font-size:0.85rem;padding:8px 0">Loading…</p>';
     fetch('/api/profile/' + encodeURIComponent(name))
       .then(r => r.json())
       .then(data => {
-        if (data.error) { resultEl.innerHTML = `<p style="color:#ef4444;font-size:0.85rem;padding:8px 0">Player not found.</p>`; return; }
-        const cad     = (data.totalEarnings * (_solCadRate || 200)).toFixed(2);
-        const time    = fmtTime(data.playTimeSeconds || 0);
-        resultEl.innerHTML = `
+        if (data.error) { searchResult.innerHTML = `<p style="color:#ef4444;font-size:0.85rem;padding:8px 0">Player not found.</p>`; return; }
+        const cad  = (data.totalEarnings * (_solCadRate || 200)).toFixed(2);
+        const time = fmtTime(data.playTimeSeconds || 0);
+        searchResult.innerHTML = `
           <div class="pm-search-card">
             <div class="pm-sc-name">${escHtmlLobby(data.name)}</div>
             <div class="pm-sc-row"><span class="pm-sc-lbl">Total Earnings</span><span class="pm-sc-val">C$${cad}</span></div>
@@ -1566,7 +1618,7 @@ document.getElementById('btn-play').addEventListener('click', async () => {
             <div class="pm-sc-row"><span class="pm-sc-lbl">Time Played</span><span class="pm-sc-val">${time}</span></div>
           </div>`;
       })
-      .catch(() => { resultEl.innerHTML = '<p style="color:#c33;font-size:0.85rem;padding:8px 0">Network error.</p>'; });
+      .catch(() => { searchResult.innerHTML = '<p style="color:#c33;font-size:0.85rem;padding:8px 0">Network error.</p>'; });
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────

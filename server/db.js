@@ -176,6 +176,14 @@ async function getTopEarners(n) {
   }));
 }
 
+async function searchPlayerNames(query, limit = 8) {
+  const res = await pool.query(
+    `SELECT name FROM accounts WHERE name ILIKE $1 ORDER BY name ASC LIMIT $2`,
+    [`${query}%`, limit]
+  );
+  return res.rows.map(r => r.name);
+}
+
 async function pushNameHistory(googleId, name) {
   // Prepend name, deduplicate, keep last 3
   await pool.query(
@@ -352,5 +360,5 @@ module.exports = {
   getGoogleIdByDeviceToken,
   isNameTaken,
   saveVerificationCode, verifyCode, addTrustedDevice, isDeviceTrusted,
-  getProfile, getMyProfile, pushNameHistory,
+  getProfile, getMyProfile, pushNameHistory, searchPlayerNames,
 };

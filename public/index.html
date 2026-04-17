@@ -414,8 +414,10 @@
       <!-- Tab: Search -->
       <div class="pm-tab-panel hidden" id="pm-panel-search">
         <div class="pm-search-wrap">
-          <input class="pm-search-input" id="pm-search-input" type="text" placeholder="Search player name…" maxlength="20">
-          <button class="btn-save-name" id="pm-search-btn">Go</button>
+          <div class="pm-search-field">
+            <input class="pm-search-input" id="pm-search-input" type="text" placeholder="Type a player name…" maxlength="20" autocomplete="off">
+            <ul class="pm-search-dropdown hidden" id="pm-search-dropdown"></ul>
+          </div>
         </div>
         <div id="pm-search-result"></div>
       </div>

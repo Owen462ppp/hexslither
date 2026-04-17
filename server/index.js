@@ -341,6 +341,17 @@ app.get('/api/profile/:name', async (req, res) => {
   }
 });
 
+app.get('/api/players/search', async (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (!q) return res.json([]);
+  try {
+    const names = await db.searchPlayerNames(q);
+    res.json(names);
+  } catch (e) {
+    res.json([]);
+  }
+});
+
 app.get('/api/my-profile', async (req, res) => {
   if (!req.isAuthenticated()) return res.status(401).json({ error: 'Not logged in' });
   try {
