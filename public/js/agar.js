@@ -85,6 +85,23 @@ window.addEventListener('DOMContentLoaded', () => {
     window.location.href = '/';
   });
 
+  // Cashout screen buttons
+  document.getElementById('btn-cashout-respawn').addEventListener('click', () => {
+    document.getElementById('cashout-overlay').classList.add('hidden');
+    exitSpectate();
+    socket && socket.emit('cell:unlock');
+    socket && socket.emit('cell:respawn');
+  });
+  document.getElementById('btn-cashout-spectate').addEventListener('click', () => {
+    document.getElementById('cashout-overlay').classList.add('hidden');
+    socket && socket.emit('cell:unlock');
+    enterSpectate();
+  });
+  document.getElementById('btn-cashout-lobby').addEventListener('click', () => {
+    socket && socket.disconnect();
+    window.location.href = '/';
+  });
+
   // Spectate buttons
   document.getElementById('btn-spectate').addEventListener('click', enterSpectate);
   document.getElementById('spectate-prev').addEventListener('click', () => {
@@ -293,9 +310,10 @@ function submitConsole() {
 
 // ─── Loop ─────────────────────────────────────────────────────────────────────
 function doCashout() {
-  socket && socket.disconnect();
+  const me = serverPlayers.get(myId);
+  document.getElementById('cashout-score-val').textContent = (me && me.score) || 0;
   document.getElementById('cashout-overlay').classList.remove('hidden');
-  setTimeout(() => { window.location.href = '/'; }, 1200);
+  // Don't disconnect — player can play again or spectate
 }
 
 function loop(now) {
@@ -395,32 +413,21 @@ function render() {
 }
 
 function drawQRing(me) {
-  const largest  = me.cells.reduce((a, b) => b.mass > a.mass ? b : a);
-  const r        = radius(largest.mass);
   const progress = Math.min(1, (Date.now() - qStartTime) / Q_HOLD_MS);
-  const nearly   = progress > 0.75;
-  const ringColor = nearly ? '#22c55e' : '#f59e0b';
-  const lw = Math.max(5, r * 0.09);
-
-  ctx.save();
-  ctx.shadowColor = ringColor;
-  ctx.shadowBlur  = 16;
-  ctx.strokeStyle = ringColor;
-  ctx.lineWidth   = lw;
-  ctx.lineCap     = 'round';
-  ctx.beginPath();
-  ctx.arc(largest.rx, largest.ry, r + lw, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
-  ctx.stroke();
-
-  // "HOLD Q" label
-  const fs = Math.max(11, Math.min(r * 0.3, 22));
-  ctx.font         = `700 ${fs}px Inter, sans-serif`;
-  ctx.textAlign    = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle    = ringColor;
-  ctx.shadowBlur   = 6;
-  ctx.fillText(nearly ? 'RELEASE!' : 'HOLD Q', largest.rx, largest.ry + r + lw + fs * 1.1);
-  ctx.restore();
+  for (const cell of me.cells) {
+    const r  = radius(cell.mass);
+    const lw = Math.max(4, r * 0.09);
+    ctx.save();
+    ctx.strokeStyle = '#22c55e';
+    ctx.shadowColor = '#22c55e';
+    ctx.shadowBlur  = 14;
+    ctx.lineWidth   = lw;
+    ctx.lineCap     = 'round';
+    ctx.beginPath();
+    ctx.arc(cell.rx, cell.ry, r + lw, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+    ctx.stroke();
+    ctx.restore();
+  }
 }
 
 function drawGrid() {

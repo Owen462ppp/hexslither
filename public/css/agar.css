@@ -228,48 +228,52 @@ kbd {
 }
 #admin-input::placeholder { color: rgba(129,140,248,0.5); }
 
-/* ── Cashout overlay ────────────────────────────────────────────────────────── */
+/* ── Cashout screen ─────────────────────────────────────────────────────────── */
 #cashout-overlay {
   position: fixed;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(240,244,255,0.75);
-  backdrop-filter: blur(12px);
+  background: rgba(240,244,255,0.7);
+  backdrop-filter: blur(8px);
   z-index: 300;
 }
 #cashout-overlay.hidden { display: none; }
 
 .cashout-card {
-  background: rgba(255,255,255,0.97);
-  border: 2px solid rgba(34,197,94,0.4);
-  border-radius: 20px;
-  padding: 44px 56px;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid rgba(34,197,94,0.3);
+  border-radius: 18px;
+  padding: 40px 48px;
   text-align: center;
-  box-shadow: 0 16px 56px rgba(34,197,94,0.22);
+  box-shadow: 0 12px 48px rgba(34,197,94,0.18);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  animation: cashout-pop 0.35s cubic-bezier(0.34,1.56,0.64,1);
-}
-@keyframes cashout-pop {
-  from { transform: scale(0.7); opacity: 0; }
-  to   { transform: scale(1);   opacity: 1; }
-}
-.cashout-icon {
-  font-size: 2.8rem;
-  color: #22c55e;
-  line-height: 1;
+  gap: 16px;
+  min-width: 280px;
 }
 .cashout-title {
-  font-size: 1.9rem;
+  font-size: 1.6rem;
   font-weight: 800;
   color: #14532d;
 }
-.cashout-sub {
+.cashout-score {
   font-size: 1rem;
   color: #6b7280;
   font-weight: 500;
 }
+.cashout-score span { color: #22c55e; font-weight: 700; }
+
+#btn-cashout-respawn {
+  background: linear-gradient(135deg, #22c55e, #4ade80);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 13px 0;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+#btn-cashout-respawn:hover { opacity: 0.9; transform: scale(1.02); }
