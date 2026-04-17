@@ -486,31 +486,47 @@ function showLobby() {
   });
 });
 
+function setNameMsg(el, text, type) {
+  el.textContent = text;
+  el.classList.toggle('is-error',   type === 'error');
+  el.classList.toggle('is-success', type === 'success');
+}
+
 async function saveName(inputId, errorId, btnId) {
-  const input = document.getElementById(inputId);
-  const errorEl = document.getElementById(errorId);
-  const btn = document.getElementById(btnId);
-  const name = input.value.replace(/\s/g, '');
-  errorEl.textContent = '';
-  if (!name) { errorEl.textContent = 'Name cannot be empty.'; return; }
+  const input   = document.getElementById(inputId);
+  const msgEl   = document.getElementById(errorId);
+  const btn     = document.getElementById(btnId);
+  const name    = input.value.replace(/\s/g, '');
+  setNameMsg(msgEl, '', '');
+  if (!name) { setNameMsg(msgEl, 'Name cannot be empty.', 'error'); return; }
   btn.disabled = true;
   try {
-    const res = await fetch('/auth/update-name', {
+    const res  = await fetch('/auth/update-name', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),
     });
     const data = await res.json();
-    if (!res.ok) { errorEl.textContent = data.error || 'Could not save name.'; return; }
+    if (!res.ok) {
+      const msg = (data.error || '').toLowerCase().includes('taken')
+        ? 'This name is already taken.'
+        : (data.error || 'Could not save name.');
+      setNameMsg(msgEl, msg, 'error');
+      return;
+    }
     account = data.account;
     document.getElementById('player-name').value           = account.name;
     document.getElementById('player-name-2').value         = account.name;
     document.getElementById('topbar-name').textContent     = account.name;
     document.getElementById('topbar-username').textContent = account.name;
-    document.getElementById('name-error').textContent   = '';
-    document.getElementById('name-error-2').textContent = '';
-  } catch { errorEl.textContent = 'Network error. Try again.'; }
-  finally { btn.disabled = false; }
+    setNameMsg(document.getElementById('name-error'),   'Successfully saved!', 'success');
+    setNameMsg(document.getElementById('name-error-2'), 'Successfully saved!', 'success');
+    setTimeout(() => {
+      setNameMsg(document.getElementById('name-error'),   '', '');
+      setNameMsg(document.getElementById('name-error-2'), '', '');
+    }, 3000);
+  } catch { setNameMsg(msgEl, 'Network error. Try again.', 'error'); }
+  finally  { btn.disabled = false; }
 }
 
 document.getElementById('btn-save-name').addEventListener('click',   () => saveName('player-name',   'name-error',   'btn-save-name'));

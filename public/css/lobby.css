@@ -817,12 +817,14 @@ body {
 .btn-save-name:hover { opacity: 0.85; }
 .btn-save-name:disabled { opacity: 0.45; cursor: default; }
 .name-error-msg {
-  color: #ef4444;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  min-height: 1em;
-  margin: 2px 0 0;
+  min-height: 1.1em;
+  margin: 4px 0 0;
+  text-align: center;
 }
+.name-error-msg.is-error   { color: #ef4444; }
+.name-error-msg.is-success { color: var(--green); }
 
 /* ── Profile icon button ─────────────────────────────────────────────── */
 .btn-profile-icon {
