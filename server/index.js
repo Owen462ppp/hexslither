@@ -7,8 +7,9 @@ const passport   = require('passport');
 const cookieParser = require('cookie-parser');
 const pgSession = require('connect-pg-simple')(session);
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const C      = require('../shared/constants');
+const C        = require('../shared/constants');
 const GameRoom = require('./GameRoom');
+const AgarRoom = require('./AgarRoom');
 const db     = require('./db');
 const Wallet = require('./Wallet');
 const allTimeLb = require('./leaderboard');
@@ -385,6 +386,14 @@ const gameRooms = {
 };
 Object.values(gameRooms).forEach(r => r.start());
 
+// ─── Agar rooms ───────────────────────────────────────────────────────────────
+const agarRooms = {
+  free:   new AgarRoom(io, 'agar_free'),
+  dime:   new AgarRoom(io, 'agar_dime'),
+  dollar: new AgarRoom(io, 'agar_dollar'),
+};
+Object.values(agarRooms).forEach(r => r.start());
+
 function getRoomForType(t) {
   return gameRooms[t] || gameRooms.free;
 }
@@ -494,8 +503,30 @@ io.on('connection', (socket) => {
     socket.emit('admin:ack', { message: `Spawned ${n} bot(s)` });
   });
 
+  // ── Agar events ──────────────────────────────────────────────────────────
+  socket.on('cell:join', ({ name, color, lobbyType } = {}) => {
+    const room = agarRooms[lobbyType] || agarRooms.free;
+    socket._agarRoom = room;
+    room.addPlayer(socket, name, color);
+    lobbyConnections.delete(socket);
+    broadcastLobbyState();
+  });
+
+  socket.on('cell:input', ({ mouseX, mouseY } = {}) => {
+    if (socket._agarRoom) socket._agarRoom.handleInput(socket.id, mouseX, mouseY);
+  });
+
+  socket.on('cell:split', () => {
+    if (socket._agarRoom) socket._agarRoom.handleSplit(socket.id);
+  });
+
+  socket.on('cell:respawn', () => {
+    if (socket._agarRoom) socket._agarRoom.respawnPlayer(socket.id);
+  });
+
   socket.on('disconnect', async () => {
     console.log(`[-] Disconnected: ${socket.id}`);
+    if (socket._agarRoom) socket._agarRoom.removePlayer(socket.id);
     const room = socket._room;
     if (room) {
       const snake = room.snakes && room.snakes.get(socket.id);
