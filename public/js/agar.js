@@ -34,6 +34,7 @@ let consoleOpen   = false;
 // Q cashout
 let qHeld      = false;
 let qStartTime = 0;
+let cashedOut  = false;
 const Q_HOLD_MS = 3000;
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -87,19 +88,19 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Cashout screen buttons
   document.getElementById('btn-cashout-respawn').addEventListener('click', () => {
+    cashedOut = false;
     document.getElementById('cashout-overlay').classList.add('hidden');
     exitSpectate();
-    socket && socket.emit('cell:unlock');
     socket && socket.emit('cell:respawn');
   });
   document.getElementById('btn-cashout-spectate').addEventListener('click', () => {
     document.getElementById('cashout-overlay').classList.add('hidden');
-    socket && socket.emit('cell:unlock');
     enterSpectate();
   });
   document.getElementById('btn-cashout-lobby').addEventListener('click', () => {
     socket && socket.disconnect();
-    window.location.href = '/?lobby=2';
+    sessionStorage.setItem('returnToAgarLobby', '1');
+    window.location.href = '/';
   });
 
   // Spectate buttons
@@ -203,7 +204,7 @@ function connectSocket() {
     if (me) {
       document.getElementById('score-val').textContent = me.score || 0;
       document.getElementById('cells-val').textContent = me.cells.length;
-      if (!me.alive && !spectating) {
+      if (!me.alive && !spectating && !cashedOut) {
         document.getElementById('death-score-val').textContent = me.score || 0;
         document.getElementById('death-screen').classList.remove('hidden');
       }
@@ -211,7 +212,7 @@ function connectSocket() {
   });
 
   socket.on('cell:died', ({ killedBy, score }) => {
-    if (!spectating) {
+    if (!spectating && !cashedOut) {
       document.getElementById('death-score-val').textContent = score || 0;
       document.getElementById('death-screen').classList.remove('hidden');
     }
@@ -310,11 +311,10 @@ function submitConsole() {
 
 // ─── Loop ─────────────────────────────────────────────────────────────────────
 function doCashout() {
+  cashedOut = true;
   const me = serverPlayers.get(myId);
   document.getElementById('cashout-score-val').textContent = (me && me.score) || 0;
-  // Hide the player's cells visually
-  const rp = renderPlayers.get(myId);
-  if (rp) rp.alive = false;
+  socket && socket.emit('cell:cashout'); // kills player on server → cells disappear for everyone
   document.getElementById('cashout-overlay').classList.remove('hidden');
 }
 

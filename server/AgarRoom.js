@@ -136,6 +136,14 @@ class AgarRoom {
     if (p) p.locked = false;
   }
 
+  cashoutPlayer(socketId) {
+    const p = this.players.get(socketId);
+    if (!p) return;
+    p.alive  = false;
+    p.locked = false;
+    p.cells  = [];
+  }
+
   respawnBot(botId) {
     const b = this.bots.get(botId);
     if (!b) return;

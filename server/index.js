@@ -543,6 +543,10 @@ io.on('connection', (socket) => {
     if (socket._agarRoom) socket._agarRoom.unlockPlayer(socket.id);
   });
 
+  socket.on('cell:cashout', () => {
+    if (socket._agarRoom) socket._agarRoom.cashoutPlayer(socket.id);
+  });
+
   socket.on('disconnect', async () => {
     console.log(`[-] Disconnected: ${socket.id}`);
     if (socket._agarRoom) socket._agarRoom.removePlayer(socket.id);
