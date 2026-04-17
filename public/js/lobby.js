@@ -472,6 +472,12 @@ function showLobby() {
 
   socket.emit('lobby:join', { googleId: account.googleId });
   fetchGlobalWinnings();
+
+  // Jump straight to lobby 2 if directed from the agar game
+  if (new URLSearchParams(location.search).get('lobby') === '2') {
+    history.replaceState(null, '', '/');
+    setTimeout(() => switchLobby(1), 80);
+  }
 }
 
 function fetchGlobalWinnings() {

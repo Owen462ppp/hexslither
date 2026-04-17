@@ -99,7 +99,7 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('btn-cashout-lobby').addEventListener('click', () => {
     socket && socket.disconnect();
-    window.location.href = '/';
+    window.location.href = '/?lobby=2';
   });
 
   // Spectate buttons
@@ -312,8 +312,10 @@ function submitConsole() {
 function doCashout() {
   const me = serverPlayers.get(myId);
   document.getElementById('cashout-score-val').textContent = (me && me.score) || 0;
+  // Hide the player's cells visually
+  const rp = renderPlayers.get(myId);
+  if (rp) rp.alive = false;
   document.getElementById('cashout-overlay').classList.remove('hidden');
-  // Don't disconnect — player can play again or spectate
 }
 
 function loop(now) {
