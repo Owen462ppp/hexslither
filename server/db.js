@@ -63,6 +63,8 @@ async function init() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
     CREATE INDEX IF NOT EXISTS idx_eh_gid ON earnings_history(google_id, created_at);
+
+    ALTER TABLE accounts ADD COLUMN IF NOT EXISTS name_history TEXT[] DEFAULT '{}';
   `);
   console.log('[DB] Tables ready');
 }
@@ -172,6 +174,55 @@ async function getTopEarners(n) {
     name: r.name,
     earnings: parseFloat(r.earnings),
   }));
+}
+
+async function pushNameHistory(googleId, name) {
+  // Prepend name, deduplicate, keep last 3
+  await pool.query(
+    `UPDATE accounts
+     SET name_history = ARRAY(
+       SELECT DISTINCT ON (n) n FROM UNNEST(ARRAY[$2::text] || name_history) AS n
+       LIMIT 3
+     )
+     WHERE google_id = $1`,
+    [googleId, name]
+  );
+}
+
+async function getMyProfile(googleId) {
+  const accRes = await pool.query(
+    `SELECT name, total_earnings, games_played, play_time_seconds, name_history
+     FROM accounts WHERE google_id = $1`,
+    [googleId]
+  );
+  if (!accRes.rows[0]) return null;
+  const row = accRes.rows[0];
+
+  const mapRows = rows => rows.map(r => ({ period: r.period, total: parseFloat(r.total) }));
+  const [week, month, allTime] = await Promise.all([
+    pool.query(`SELECT DATE_TRUNC('day', created_at) AS period, SUM(amount) AS total
+      FROM earnings_history WHERE google_id=$1 AND created_at >= NOW()-INTERVAL '7 days'
+      GROUP BY period ORDER BY period ASC`, [googleId]),
+    pool.query(`SELECT DATE_TRUNC('day', created_at) AS period, SUM(amount) AS total
+      FROM earnings_history WHERE google_id=$1 AND created_at >= NOW()-INTERVAL '30 days'
+      GROUP BY period ORDER BY period ASC`, [googleId]),
+    pool.query(`SELECT DATE_TRUNC('month', created_at) AS period, SUM(amount) AS total
+      FROM earnings_history WHERE google_id=$1
+      GROUP BY period ORDER BY period ASC`, [googleId]),
+  ]);
+
+  return {
+    name: row.name,
+    totalEarnings: parseFloat(row.total_earnings || 0),
+    gamesPlayed: parseInt(row.games_played || 0),
+    playTimeSeconds: parseInt(row.play_time_seconds || 0),
+    nameHistory: row.name_history || [],
+    history: {
+      week: mapRows(week.rows),
+      month: mapRows(month.rows),
+      allTime: mapRows(allTime.rows),
+    },
+  };
 }
 
 async function isNameTaken(name, excludeGoogleId) {
@@ -308,5 +359,5 @@ module.exports = {
   getGoogleIdByDeviceToken,
   isNameTaken,
   saveVerificationCode, verifyCode, addTrustedDevice, isDeviceTrusted,
-  getProfile,
+  getProfile, getMyProfile, pushNameHistory,
 };

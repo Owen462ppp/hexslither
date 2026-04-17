@@ -1504,3 +1504,158 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   }
   loop();
 })();
+
+// ─── My Profile Modal ─────────────────────────────────────────────────────────
+(function () {
+  const modal       = document.getElementById('modal-my-profile');
+  const closeBtn    = document.getElementById('close-my-profile');
+  const openBtn     = document.getElementById('btn-profile');
+  const chartCanvas = document.getElementById('pm-chart');
+  const tabs        = document.querySelectorAll('.pm-tab');
+
+  let profileData   = null;
+  let activeRange   = 'week';
+
+  function fmtTime(secs) {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  }
+
+  function fmtSol(val) {
+    return val > 0 ? `${val.toFixed(4)} SOL` : '0 SOL';
+  }
+
+  function drawChart(range) {
+    if (!profileData) return;
+    const data = profileData.history[range] || [];
+    const ctx  = chartCanvas.getContext('2d');
+    const W = chartCanvas.offsetWidth || 440;
+    const H = chartCanvas.offsetHeight || 130;
+    chartCanvas.width  = W * devicePixelRatio;
+    chartCanvas.height = H * devicePixelRatio;
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+    ctx.clearRect(0, 0, W, H);
+
+    if (data.length === 0) {
+      ctx.fillStyle = '#444';
+      ctx.font = '13px Segoe UI';
+      ctx.textAlign = 'center';
+      ctx.fillText('No earnings data yet', W / 2, H / 2 + 5);
+      return;
+    }
+
+    const pad = { top: 10, right: 14, bottom: 28, left: 14 };
+    const cW  = W - pad.left - pad.right;
+    const cH  = H - pad.top  - pad.bottom;
+    const maxVal = Math.max(...data.map(d => d.total), 0.0001);
+    const n    = data.length;
+
+    // Gradient fill
+    const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + cH);
+    grad.addColorStop(0,   'rgba(20,241,149,0.28)');
+    grad.addColorStop(1,   'rgba(20,241,149,0.02)');
+
+    const xOf = i => pad.left + (n === 1 ? cW / 2 : (i / (n - 1)) * cW);
+    const yOf = v => pad.top + cH - (v / maxVal) * cH;
+
+    // Fill area
+    ctx.beginPath();
+    ctx.moveTo(xOf(0), yOf(data[0].total));
+    for (let i = 1; i < n; i++) ctx.lineTo(xOf(i), yOf(data[i].total));
+    ctx.lineTo(xOf(n - 1), pad.top + cH);
+    ctx.lineTo(xOf(0),     pad.top + cH);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Line
+    ctx.beginPath();
+    ctx.moveTo(xOf(0), yOf(data[0].total));
+    for (let i = 1; i < n; i++) ctx.lineTo(xOf(i), yOf(data[i].total));
+    ctx.strokeStyle = '#14F195';
+    ctx.lineWidth   = 2;
+    ctx.lineJoin    = 'round';
+    ctx.stroke();
+
+    // Dots
+    ctx.fillStyle = '#14F195';
+    for (let i = 0; i < n; i++) {
+      ctx.beginPath();
+      ctx.arc(xOf(i), yOf(data[i].total), 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // X-axis labels (first + last)
+    ctx.fillStyle = '#6b7280';
+    ctx.font      = '10px Segoe UI';
+    ctx.textAlign = 'left';
+    const fmt = d => new Date(d.period).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+    ctx.fillText(fmt(data[0]), pad.left, H - 6);
+    if (n > 1) {
+      ctx.textAlign = 'right';
+      ctx.fillText(fmt(data[n - 1]), W - pad.right, H - 6);
+    }
+  }
+
+  function openModal() {
+    if (!account) return;
+    modal.style.display = 'flex';
+
+    // Fill static fields from account
+    const pmName = document.getElementById('pm-name');
+    const pmAvImg = document.getElementById('pm-avatar-img');
+    const pmAvFb  = document.getElementById('pm-avatar-fallback');
+    pmName.textContent = account.name || 'Player';
+    if (account.avatar) {
+      pmAvImg.src = account.avatar;
+      pmAvImg.classList.remove('hidden');
+      pmAvFb.classList.add('hidden');
+    } else {
+      pmAvFb.textContent = (account.name || '?')[0].toUpperCase();
+      pmAvFb.classList.remove('hidden');
+      pmAvImg.classList.add('hidden');
+    }
+
+    // Fetch full profile data
+    fetch('/api/my-profile')
+      .then(r => r.json())
+      .then(data => {
+        profileData = data;
+        document.getElementById('pm-earnings').textContent  = fmtSol(data.totalEarnings);
+        document.getElementById('pm-games').textContent     = data.gamesPlayed;
+        document.getElementById('pm-playtime').textContent  = fmtTime(data.playTimeSeconds);
+
+        const namesRow = document.getElementById('pm-names-row');
+        const names = (data.nameHistory || []).filter(Boolean);
+        namesRow.innerHTML = names.length
+          ? names.map(n => `<span class="pm-name-tag">${escHtmlLobby(n)}</span>`).join('')
+          : '<span style="color:#555;font-size:0.82rem">No name history yet</span>';
+
+        drawChart(activeRange);
+      })
+      .catch(() => {});
+  }
+
+  function escHtmlLobby(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      activeRange = tab.dataset.range;
+      drawChart(activeRange);
+    });
+  });
+
+  if (openBtn)  openBtn.addEventListener('click', openModal);
+  if (closeBtn) closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
+  modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+
+  // Re-draw chart when modal resizes (font-size change etc)
+  window.addEventListener('resize', () => {
+    if (modal.style.display !== 'none' && profileData) drawChart(activeRange);
+  });
+})();

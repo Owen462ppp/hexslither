@@ -28,6 +28,12 @@
       <div id="topbar-user" class="hidden">
         <img id="topbar-avatar" src="" alt="">
         <span id="topbar-username"></span>
+        <button id="btn-profile" class="btn-profile-icon" title="My Profile" aria-label="My Profile">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="14" cy="10" r="5" fill="currentColor"/>
+            <path d="M4 24c0-5.523 4.477-10 10-10s10 4.477 10 10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+          </svg>
+        </button>
       </div>
     </div>
   </div>
@@ -385,6 +391,49 @@
           <button class="btn-equip hidden" id="btn-equip">Equip</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- My Profile Modal -->
+  <div class="modal-overlay" id="modal-my-profile" style="display:none">
+    <div class="modal modal-profile">
+      <div class="profile-modal-header">
+        <div class="profile-modal-avatar-wrap">
+          <img id="pm-avatar-img" class="pm-avatar-img hidden" src="" alt="">
+          <div id="pm-avatar-fallback" class="pm-avatar-fallback">?</div>
+        </div>
+        <div class="profile-modal-info">
+          <div class="pm-name" id="pm-name">Player</div>
+          <div class="pm-sub">My Profile</div>
+        </div>
+        <button class="btn-cust-close" id="close-my-profile">✕</button>
+      </div>
+
+      <div class="pm-stats-row">
+        <div class="pm-stat">
+          <div class="pm-stat-val" id="pm-earnings">$0.00</div>
+          <div class="pm-stat-lbl">Total Earnings</div>
+        </div>
+        <div class="pm-stat">
+          <div class="pm-stat-val" id="pm-games">0</div>
+          <div class="pm-stat-lbl">Games Played</div>
+        </div>
+        <div class="pm-stat">
+          <div class="pm-stat-val" id="pm-playtime">0h 0m</div>
+          <div class="pm-stat-lbl">Time Played</div>
+        </div>
+      </div>
+
+      <div class="pm-section-label">EARNINGS HISTORY</div>
+      <div class="pm-chart-tabs">
+        <button class="pm-tab active" data-range="week">7D</button>
+        <button class="pm-tab" data-range="month">30D</button>
+        <button class="pm-tab" data-range="allTime">All</button>
+      </div>
+      <canvas id="pm-chart" class="pm-chart"></canvas>
+
+      <div class="pm-section-label">RECENT NAMES</div>
+      <div class="pm-names-row" id="pm-names-row"></div>
     </div>
   </div>
 

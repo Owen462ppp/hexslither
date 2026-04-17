@@ -229,6 +229,7 @@ app.post('/auth/update-name', async (req, res) => {
   const acc = await db.saveAccount(req.user.googleId, { name });
   req.user.name = acc.name;
   allTimeLb.rename(req.user.googleId, acc.name);
+  db.pushNameHistory(req.user.googleId, name).catch(() => {});
   res.json({ account: acc });
 });
 
@@ -336,6 +337,18 @@ app.get('/api/profile/:name', async (req, res) => {
     res.json(profile);
   } catch (e) {
     console.error('[PROFILE]', e.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/api/my-profile', async (req, res) => {
+  if (!req.isAuthenticated()) return res.status(401).json({ error: 'Not logged in' });
+  try {
+    const profile = await db.getMyProfile(req.user.googleId);
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+    res.json(profile);
+  } catch (e) {
+    console.error('[MY-PROFILE]', e.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
