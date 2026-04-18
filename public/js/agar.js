@@ -90,12 +90,12 @@ window.addEventListener('DOMContentLoaded', () => {
   // Cashout screen buttons
   document.getElementById('btn-cashout-respawn').addEventListener('click', () => {
     cashedOut = false;
-    document.getElementById('cashout-overlay').classList.add('hidden');
+    document.getElementById('cashout-overlay').classList.remove('active');
     exitSpectate();
     socket && socket.emit('cell:respawn');
   });
   document.getElementById('btn-cashout-spectate').addEventListener('click', () => {
-    document.getElementById('cashout-overlay').classList.add('hidden');
+    document.getElementById('cashout-overlay').classList.remove('active');
     enterSpectate();
   });
   document.getElementById('btn-cashout-lobby').addEventListener('click', () => {
@@ -317,15 +317,14 @@ function submitConsole() {
 // ─── Loop ─────────────────────────────────────────────────────────────────────
 function doCashout() {
   cashedOut = true;
-  // Wipe own cells immediately client-side — don't wait for server round-trip
-  const rp = renderPlayers.get(myId);
-  if (rp) { rp.alive = false; rp.cells = []; }
+  // Remove from render map immediately so the circle cannot be drawn
   const sp = serverPlayers.get(myId);
   const score = sp ? sp.score : 0;
+  renderPlayers.delete(myId);
   if (sp) { sp.alive = false; sp.cells = []; }
   document.getElementById('cashout-score-val').textContent = score || 0;
   socket && socket.emit('cell:cashout'); // also kills on server so others can't see the circle
-  document.getElementById('cashout-overlay').classList.remove('hidden');
+  document.getElementById('cashout-overlay').classList.add('active');
 }
 
 function loop(now) {

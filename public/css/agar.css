@@ -228,67 +228,59 @@ kbd {
 }
 #admin-input::placeholder { color: rgba(129,140,248,0.5); }
 
-/* ── Cashout screen ─────────────────────────────────────────────────────────── */
+/* ── Cashout screen (matches slither.io style) ──────────────────────────────── */
 #cashout-overlay {
+  display: none;
   position: fixed;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(240,244,255,0.7);
-  backdrop-filter: blur(8px);
+  background: rgba(0,0,0,0.78);
   z-index: 300;
-}
-#cashout-overlay.hidden { display: none; }
-
-.cashout-card {
-  background: rgba(255,255,255,0.95);
-  border: 1px solid rgba(34,197,94,0.3);
-  border-radius: 18px;
-  padding: 44px 52px;
-  text-align: center;
-  box-shadow: 0 12px 48px rgba(34,197,94,0.18);
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 18px;
-  min-width: 340px;
-}
-.cashout-title {
-  font-size: 2rem;
-  font-weight: 800;
-  color: #14532d;
-  line-height: 1.15;
-  letter-spacing: -0.5px;
-}
-.cashout-score {
-  font-size: 1rem;
-  color: #6b7280;
-  font-weight: 500;
-}
-.cashout-score span { color: #22c55e; font-weight: 700; }
-
-.cashout-btn-row {
-  display: flex;
-  flex-direction: row;
-  gap: 10px;
-  flex-wrap: wrap;
   justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
 }
-.cashout-btn-row button {
-  flex: 1;
-  min-width: 110px;
+#cashout-overlay.active { display: flex; }
+#cashout-overlay h2 {
+  font-size: 2.4rem;
+  color: #14F195;
+  letter-spacing: 3px;
+  text-shadow: 0 0 24px rgba(20,241,149,0.6);
+  margin: 0;
 }
+#cashout-overlay p {
+  color: #aaa;
+  font-size: 1rem;
+  margin: 0;
+}
+#cashout-overlay p span { color: #14F195; font-weight: 700; }
 
-#btn-cashout-respawn {
-  background: linear-gradient(135deg, #22c55e, #4ade80);
-  color: #fff;
-  border: none;
+.cashout-btn-row { display: flex; gap: 16px; margin-top: 8px; }
+
+.co-btn {
+  padding: 12px 28px;
   border-radius: 10px;
-  padding: 13px 16px;
-  font-size: 0.92rem;
+  font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.15s, transform 0.1s;
+  letter-spacing: 1px;
+  transition: transform 0.1s;
+  border: none;
 }
-#btn-cashout-respawn:hover { opacity: 0.9; transform: scale(1.02); }
+.co-btn:hover { transform: scale(1.04); }
+.co-btn-play {
+  background: linear-gradient(135deg, #14F195, #0ea5e9);
+  color: #0f172a;
+  border: none;
+}
+.co-btn-spectate {
+  background: rgba(100,180,255,0.15);
+  color: #7dd3fc;
+  border: 1px solid rgba(100,180,255,0.35);
+}
+.co-btn-lobby {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.2);
+}
