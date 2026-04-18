@@ -32,9 +32,10 @@ let spectateIdx   = 0;
 let consoleOpen   = false;
 
 // Q cashout
-let qHeld      = false;
-let qStartTime = 0;
-let cashedOut  = false;
+let qHeld             = false;
+let qStartTime        = 0;
+let cashedOut         = false;
+let waitingToRespawn  = false;
 const Q_HOLD_MS = 3000;
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -77,6 +78,7 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('btn-respawn').addEventListener('click', () => {
+    waitingToRespawn = true;
     document.getElementById('death-screen').classList.remove('active');
     exitSpectate();
     socket && socket.emit('cell:respawn');
@@ -90,6 +92,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // Cashout screen buttons
   document.getElementById('btn-cashout-respawn').addEventListener('click', () => {
     cashedOut = false;
+    waitingToRespawn = true;
     document.getElementById('cashout-overlay').classList.remove('active');
     exitSpectate();
     socket && socket.emit('cell:respawn');
@@ -207,17 +210,20 @@ function connectSocket() {
 
     const me = serverPlayers.get(myId);
     if (me) {
+      if (me.alive) {
+        waitingToRespawn = false; // respawn confirmed — safe to show death screen again
+        if (!renderPlayers.has(myId)) renderPlayers.set(myId, snapRenderPlayer(me));
+      } else if (!cashedOut) {
+        renderPlayers.delete(myId); // hide own circle immediately when dead
+      }
       document.getElementById('score-val').textContent = me.score || 0;
       document.getElementById('cells-val').textContent = me.cells.length;
-      if (!me.alive && !spectating && !cashedOut) {
-        document.getElementById('death-score-val').textContent = me.score || 0;
-        document.getElementById('death-screen').classList.add('active');
-      }
     }
   });
 
   socket.on('cell:died', ({ killedBy, score }) => {
-    if (!spectating && !cashedOut) {
+    renderPlayers.delete(myId); // hide own circle immediately
+    if (!spectating && !cashedOut && !waitingToRespawn) {
       document.getElementById('death-score-val').textContent = score || 0;
       document.getElementById('death-screen').classList.add('active');
     }
