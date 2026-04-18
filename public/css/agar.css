@@ -77,80 +77,31 @@ kbd {
 
 /* ── Death Screen ───────────────────────────────────────────────────────────── */
 #death-screen {
+  display: none;
   position: fixed;
   inset: 0;
-  display: flex;
+  background: rgba(0,0,0,0.78);
+  z-index: 100;
   align-items: center;
   justify-content: center;
-  background: rgba(240,244,255,0.7);
-  backdrop-filter: blur(8px);
-  z-index: 100;
-}
-#death-screen.hidden { display: none; }
-
-.death-card {
-  background: rgba(255,255,255,0.95);
-  border: 1px solid rgba(99,102,241,0.22);
-  border-radius: 18px;
-  padding: 40px 48px;
-  text-align: center;
-  box-shadow: 0 12px 48px rgba(99,102,241,0.18);
-  display: flex;
   flex-direction: column;
-  gap: 16px;
-  min-width: 280px;
+  gap: 12px;
+  text-align: center;
 }
-.death-title {
-  font-size: 1.6rem;
-  font-weight: 800;
-  color: #1e1b4b;
+#death-screen.active { display: flex; }
+#death-screen h2 {
+  font-size: 2.4rem;
+  color: #f87171;
+  letter-spacing: 3px;
+  text-shadow: 0 0 24px rgba(248,113,113,0.6);
+  margin: 0;
 }
-.death-score {
+#death-screen p {
+  color: #aaa;
   font-size: 1rem;
-  color: #6b7280;
-  font-weight: 500;
+  margin: 0;
 }
-.death-score span { color: #6366f1; font-weight: 700; }
-
-#btn-respawn {
-  background: linear-gradient(135deg, #6366f1, #818cf8);
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  padding: 13px 0;
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: opacity 0.15s, transform 0.1s;
-}
-#btn-respawn:hover { opacity: 0.9; transform: scale(1.02); }
-
-.btn-outline {
-  background: transparent;
-  color: #6366f1;
-  border: 1.5px solid rgba(99,102,241,0.35);
-  border-radius: 10px;
-  padding: 11px 0;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.btn-outline:hover { background: rgba(99,102,241,0.07); }
-
-/* ── Spectate button in death card ─────────────────────────────────────────── */
-.btn-spectate-death {
-  background: rgba(99,102,241,0.1);
-  color: #6366f1;
-  border: 1.5px solid rgba(99,102,241,0.3);
-  border-radius: 10px;
-  padding: 11px 0;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.btn-spectate-death:hover { background: rgba(99,102,241,0.18); }
+#death-screen p span { color: #f87171; font-weight: 700; }
 
 /* ── Spectate bar ───────────────────────────────────────────────────────────── */
 #spectate-bar {

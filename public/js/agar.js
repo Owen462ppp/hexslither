@@ -77,7 +77,7 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('btn-respawn').addEventListener('click', () => {
-    document.getElementById('death-screen').classList.add('hidden');
+    document.getElementById('death-screen').classList.remove('active');
     exitSpectate();
     socket && socket.emit('cell:respawn');
   });
@@ -211,7 +211,7 @@ function connectSocket() {
       document.getElementById('cells-val').textContent = me.cells.length;
       if (!me.alive && !spectating && !cashedOut) {
         document.getElementById('death-score-val').textContent = me.score || 0;
-        document.getElementById('death-screen').classList.remove('hidden');
+        document.getElementById('death-screen').classList.add('active');
       }
     }
   });
@@ -219,7 +219,7 @@ function connectSocket() {
   socket.on('cell:died', ({ killedBy, score }) => {
     if (!spectating && !cashedOut) {
       document.getElementById('death-score-val').textContent = score || 0;
-      document.getElementById('death-screen').classList.remove('hidden');
+      document.getElementById('death-screen').classList.add('active');
     }
   });
 
@@ -272,7 +272,7 @@ function getSpectateTargets() {
 function enterSpectate() {
   spectating  = true;
   spectateIdx = 0;
-  document.getElementById('death-screen').classList.add('hidden');
+  document.getElementById('death-screen').classList.remove('active');
   document.getElementById('spectate-bar').classList.add('active');
   updateSpectateLabel();
 }
