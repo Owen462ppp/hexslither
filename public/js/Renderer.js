@@ -147,18 +147,14 @@ class Renderer {
         ctx.stroke();
       }
 
-      // Additive glow for death orbs — overlapping orbs naturally compound and light up
+      // Additive fill clipped to the orb's own circle — only the intersection with
+      // another orb's circle gets doubled light, the rest stays normal
       if (isDeath) {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        const glowR = r * 2.5;
-        const glow = ctx.createRadialGradient(wx, wy, 0, wx, wy, glowR);
-        glow.addColorStop(0, f.color + 'aa'); // semi-opaque centre
-        glow.addColorStop(0.4, f.color + '44');
-        glow.addColorStop(1, f.color + '00');
         ctx.beginPath();
-        ctx.arc(wx, wy, glowR, 0, Math.PI * 2);
-        ctx.fillStyle = glow;
+        ctx.arc(wx, wy, r, 0, Math.PI * 2);
+        ctx.fillStyle = f.color + '55'; // low-opacity so a single orb barely changes
         ctx.fill();
         ctx.restore();
       }
