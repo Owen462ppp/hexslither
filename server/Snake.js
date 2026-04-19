@@ -136,6 +136,7 @@ class Snake {
         y: seg.y + (Math.random() - 0.5) * 20,
         value: 2,
         color: this.color,
+        size: 3,
       });
     }
     return drops;
