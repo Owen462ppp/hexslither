@@ -89,8 +89,6 @@ class Renderer {
       const wx = f.x + Math.sin(t * 1.4 + phase) * amp;
       const wy = f.y + Math.cos(t * 1.1 + phase * 1.3) * amp;
 
-      const isDeath = f.size >= 3;
-
       if (f.isGolden) {
         // Outer glow
         const glow = ctx.createRadialGradient(wx, wy, r * 0.4, wx, wy, r * 2.2);
@@ -147,17 +145,6 @@ class Renderer {
         ctx.stroke();
       }
 
-      // Additive fill clipped to the orb's own circle — only the intersection with
-      // another orb's circle gets doubled light, the rest stays normal
-      if (isDeath) {
-        ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.beginPath();
-        ctx.arc(wx, wy, r, 0, Math.PI * 2);
-        ctx.fillStyle = f.color + '55'; // low-opacity so a single orb barely changes
-        ctx.fill();
-        ctx.restore();
-      }
     }
   }
 
