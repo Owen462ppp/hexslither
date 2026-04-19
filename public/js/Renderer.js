@@ -89,6 +89,8 @@ class Renderer {
       const wx = f.x + Math.sin(t * 1.4 + phase) * amp;
       const wy = f.y + Math.cos(t * 1.1 + phase * 1.3) * amp;
 
+      const isDeath = f.size >= 3;
+
       if (f.isGolden) {
         // Outer glow
         const glow = ctx.createRadialGradient(wx, wy, r * 0.4, wx, wy, r * 2.2);
@@ -143,6 +145,22 @@ class Renderer {
         ctx.strokeStyle = 'rgba(0,0,0,0.8)';
         ctx.lineWidth = 0.6;
         ctx.stroke();
+      }
+
+      // Additive glow for death orbs — overlapping orbs naturally compound and light up
+      if (isDeath) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        const glowR = r * 2.5;
+        const glow = ctx.createRadialGradient(wx, wy, 0, wx, wy, glowR);
+        glow.addColorStop(0, f.color + 'aa'); // semi-opaque centre
+        glow.addColorStop(0.4, f.color + '44');
+        glow.addColorStop(1, f.color + '00');
+        ctx.beginPath();
+        ctx.arc(wx, wy, glowR, 0, Math.PI * 2);
+        ctx.fillStyle = glow;
+        ctx.fill();
+        ctx.restore();
       }
     }
   }
