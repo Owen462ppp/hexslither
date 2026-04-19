@@ -75,62 +75,70 @@ class Renderer {
     const halfW = W / (2 * scale) + margin;
     const halfH = H / (2 * scale) + margin;
 
+    const t = Date.now() / 1000;
     for (const f of food) {
       if (Math.abs(f.x - worldCX) > halfW || Math.abs(f.y - worldCY) > halfH) continue;
 
       const r = BASE_R * (f.size || 1);
+      // Hash string ID to a stable float so each orb floats at a unique phase
+      const idStr = String(f.id);
+      let hash = 0;
+      for (let i = 0; i < idStr.length; i++) hash = (hash * 31 + idStr.charCodeAt(i)) & 0xffff;
+      const phase = hash * 0.00038; // maps 0-65535 → 0-~25 radians
+      const wx = f.x + Math.sin(t * 1.4 + phase) * 3;
+      const wy = f.y + Math.cos(t * 1.1 + phase * 1.3) * 3;
 
       if (f.isGolden) {
         // Outer glow
-        const glow = ctx.createRadialGradient(f.x, f.y, r * 0.4, f.x, f.y, r * 2.2);
+        const glow = ctx.createRadialGradient(wx, wy, r * 0.4, wx, wy, r * 2.2);
         glow.addColorStop(0, 'rgba(255,215,0,0.35)');
         glow.addColorStop(1, 'rgba(255,215,0,0)');
         ctx.beginPath();
-        ctx.arc(f.x, f.y, r * 2.2, 0, Math.PI * 2);
+        ctx.arc(wx, wy, r * 2.2, 0, Math.PI * 2);
         ctx.fillStyle = glow;
         ctx.fill();
 
         // Core golden orb
-        const grad = ctx.createRadialGradient(f.x - r * 0.3, f.y - r * 0.3, r * 0.1, f.x, f.y, r);
+        const grad = ctx.createRadialGradient(wx - r * 0.3, wy - r * 0.3, r * 0.1, wx, wy, r);
         grad.addColorStop(0, '#FFFACD');
         grad.addColorStop(0.4, '#FFD700');
         grad.addColorStop(1, '#B8860B');
         ctx.beginPath();
-        ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
+        ctx.arc(wx, wy, r, 0, Math.PI * 2);
         ctx.fillStyle = grad;
         ctx.fill();
 
         // Gold outline
         ctx.beginPath();
-        ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
+        ctx.arc(wx, wy, r, 0, Math.PI * 2);
         ctx.strokeStyle = 'rgba(255,165,0,0.9)';
         ctx.lineWidth = 1.2;
         ctx.stroke();
 
         // Glint
         ctx.beginPath();
-        ctx.arc(f.x - r * 0.28, f.y - r * 0.28, r * 0.22, 0, Math.PI * 2);
+        ctx.arc(wx - r * 0.28, wy - r * 0.28, r * 0.22, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(255,255,255,0.75)';
         ctx.fill();
       } else {
         // Core orb — solid base color
         ctx.beginPath();
-        ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
+        ctx.arc(wx, wy, r, 0, Math.PI * 2);
         ctx.fillStyle = f.color;
         ctx.fill();
 
         // Dark radial overlay: transparent center → dark edge
-        const darkOverlay = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, r);
+        const darkOverlay = ctx.createRadialGradient(wx, wy, 0, wx, wy, r);
         darkOverlay.addColorStop(0, 'rgba(0,0,0,0)');
         darkOverlay.addColorStop(1, 'rgba(0,0,0,0.55)');
         ctx.beginPath();
-        ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
+        ctx.arc(wx, wy, r, 0, Math.PI * 2);
         ctx.fillStyle = darkOverlay;
         ctx.fill();
 
         // Thin black outline
         ctx.beginPath();
-        ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
+        ctx.arc(wx, wy, r, 0, Math.PI * 2);
         ctx.strokeStyle = 'rgba(0,0,0,0.8)';
         ctx.lineWidth = 0.6;
         ctx.stroke();
