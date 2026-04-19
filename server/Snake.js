@@ -78,13 +78,13 @@ class Snake {
       // Phase 1 (ticks 1-5): 1 step — feels like wind-up
       // Phase 2 (ticks 6-10): 2 steps — mid acceleration
       // Phase 3 (tick 11+):   3 steps — full boost
-      if      (this._boostAge <= 5)  steps = 1;
-      else if (this._boostAge <= 10) steps = 2;
-      else                           steps = 3;
+      if      (this._boostAge <= 2) steps = 1;
+      else if (this._boostAge <= 4) steps = 2;
+      else                          steps = 3;
 
       // boostRamp drives client-side rendering (0 → 0.5 → 1)
-      this.boostRamp = this._boostAge <= 5  ? this._boostAge / 5 * 0.5
-                     : this._boostAge <= 10 ? 0.5 + (this._boostAge - 5) / 5 * 0.5
+      this.boostRamp = this._boostAge <= 2 ? this._boostAge / 2 * 0.5
+                     : this._boostAge <= 4 ? 0.5 + (this._boostAge - 2) / 2 * 0.5
                      : 1;
 
       if (this._boostTick >= 12) {
