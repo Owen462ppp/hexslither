@@ -1169,8 +1169,8 @@ document.getElementById('btn-play').addEventListener('click', async () => {
 
     const N  = 80;
     const R  = Math.min(W * 0.068, H * 0.13);
-    const cx = W / 2, cy = H / 2;
-    const spanX = W * 0.42; // half-width the snake occupies
+    const cx = W * 0.60, cy = H / 2; // shifted right to leave room for tail trail
+    const spanX = W * 0.35;
     const amp   = H * 0.22; // wave amplitude
 
     // Horizontal snake: head (pts[0]) on right, tail (pts[N-1]) on left
@@ -1332,45 +1332,195 @@ document.getElementById('btn-play').addEventListener('click', async () => {
       ctx.restore();
     }
 
-    // Boost trail — drawn last so it's always visible, extending past the tail
+    // Boost trail — drawn last, extending ghost points past the tail tip
     if (boostId && boostId !== 'default') {
-      const BOOST_RGBA = {
-        fire:      [[255,102,0],[255,51,0],[255,170,0]],
-        ice:       [[136,221,255],[170,238,255],[255,255,255]],
-        lightning: [[255,255,68],[255,255,255],[255,238,136]],
-        smoke:     [[136,136,136],[170,170,170],[102,102,102]],
-        stars:     [[255,255,255],[255,255,153],[255,255,204]],
-        galaxy:    [[170,68,255],[102,34,204],[221,136,255]],
-      };
-      // Direction the tail is pointing — extend ghost points beyond pts[N-1]
       const tdx = pts[N-1].x - pts[N-2].x, tdy = pts[N-1].y - pts[N-2].y;
       const tlen = Math.sqrt(tdx*tdx + tdy*tdy) || 1;
-      const stepX = tdx / tlen, stepY = tdy / tlen;
+      const stepX = tdx/tlen, stepY = tdy/tlen;
+      const perpX = -stepY, perpY = stepX;
       const spacing = tlen;
       const GHOST = 22;
-      const trailPts = [];
-      for (let i = 0; i < GHOST; i++) {
-        trailPts.push({ x: pts[N-1].x + stepX * i * spacing, y: pts[N-1].y + stepY * i * spacing });
-      }
+      const tp = [];
+      for (let i = 0; i < GHOST; i++)
+        tp.push({ x: pts[N-1].x + stepX*i*spacing, y: pts[N-1].y + stepY*i*spacing });
 
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      for (let i = 0; i < trailPts.length; i++) {
-        const fade = 1 - i / trailPts.length;
-        let fc;
-        if (boostId === 'rainbow') {
-          fc = `hsla(${((t * 80 + i * 10) % 360 + 360) % 360},100%,65%,${(fade * 0.9).toFixed(2)})`;
-        } else {
-          const cols = BOOST_RGBA[boostId] || [[255,255,255]];
-          const [r,g,b] = cols[i % cols.length];
-          fc = `rgba(${r},${g},${b},${(fade * 0.9).toFixed(2)})`;
+      if (boostId === 'fire') {
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < tp.length; i++) {
+          const fade = 1 - i/tp.length;
+          const flk = 0.75 + 0.25*Math.sin(t*14+i*1.3);
+          ctx.fillStyle = `rgba(200,15,0,${(fade*0.35).toFixed(2)})`;
+          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*1.3*fade*flk, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = `rgba(255,80,0,${(fade*0.55).toFixed(2)})`;
+          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*0.75*fade*flk, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = `rgba(255,220,0,${(fade*0.75).toFixed(2)})`;
+          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*0.35*fade, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = `rgba(255,255,200,${(fade*0.6).toFixed(2)})`;
+          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*0.14*fade, 0, Math.PI*2); ctx.fill();
         }
-        ctx.beginPath();
-        ctx.arc(trailPts[i].x, trailPts[i].y, R * (0.75 * fade + 0.1), 0, Math.PI * 2);
-        ctx.fillStyle = fc;
-        ctx.fill();
+        // floating embers
+        for (let i = 0; i < tp.length; i += 2) {
+          const fade = 1 - i/tp.length;
+          const ex = tp[i].x + perpX*Math.sin(t*5+i*2.3)*R*1.1 + stepX*Math.sin(t*3+i)*R*0.3;
+          const ey = tp[i].y + perpY*Math.sin(t*5+i*2.3)*R*1.1 + stepY*Math.sin(t*3+i)*R*0.3;
+          ctx.fillStyle = `rgba(255,160,0,${(fade*0.95).toFixed(2)})`;
+          ctx.beginPath(); ctx.arc(ex, ey, R*0.13*fade, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.restore();
+
+      } else if (boostId === 'ice') {
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < tp.length; i++) {
+          const fade = 1 - i/tp.length;
+          ctx.fillStyle = `rgba(80,180,255,${(fade*0.35).toFixed(2)})`;
+          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*1.2*fade, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = `rgba(180,235,255,${(fade*0.55).toFixed(2)})`;
+          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*0.55*fade, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = `rgba(255,255,255,${(fade*0.7).toFixed(2)})`;
+          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*0.2*fade, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.restore();
+        // snowflake crystals
+        ctx.save();
+        for (let i = 0; i < tp.length; i += 3) {
+          const fade = 1 - i/tp.length; if (fade < 0.1) continue;
+          const cr = R*0.32*fade, ang = t*1.2 + i*0.9;
+          ctx.strokeStyle = `rgba(210,245,255,${(fade*0.9).toFixed(2)})`;
+          ctx.lineWidth = R*0.08;
+          for (let arm = 0; arm < 6; arm++) {
+            const a = ang + arm*Math.PI/3;
+            ctx.beginPath(); ctx.moveTo(tp[i].x, tp[i].y);
+            ctx.lineTo(tp[i].x+Math.cos(a)*cr, tp[i].y+Math.sin(a)*cr); ctx.stroke();
+            // branch nubs
+            const mx = tp[i].x+Math.cos(a)*cr*0.55, my = tp[i].y+Math.sin(a)*cr*0.55;
+            ctx.beginPath(); ctx.moveTo(mx, my);
+            ctx.lineTo(mx+Math.cos(a+Math.PI/3)*cr*0.25, my+Math.sin(a+Math.PI/3)*cr*0.25); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(mx, my);
+            ctx.lineTo(mx+Math.cos(a-Math.PI/3)*cr*0.25, my+Math.sin(a-Math.PI/3)*cr*0.25); ctx.stroke();
+          }
+        }
+        ctx.restore();
+
+      } else if (boostId === 'rainbow') {
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < tp.length; i++) {
+          const fade = 1 - i/tp.length;
+          const h1 = ((t*150 - i*16) % 360 + 360) % 360;
+          const h2 = (h1 + 120) % 360;
+          ctx.fillStyle = `hsla(${h1},100%,60%,${(fade*0.55).toFixed(2)})`;
+          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*1.0*fade, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = `hsla(${h2},100%,80%,${(fade*0.4).toFixed(2)})`;
+          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*0.5*fade, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = `rgba(255,255,255,${(fade*0.3).toFixed(2)})`;
+          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*0.18*fade, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.restore();
+
+      } else if (boostId === 'lightning') {
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < tp.length; i++) {
+          const fade = 1 - i/tp.length;
+          ctx.fillStyle = `rgba(80,80,255,${(fade*0.3).toFixed(2)})`;
+          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*1.1*fade, 0, Math.PI*2); ctx.fill();
+        }
+        // two animated zigzag bolts
+        for (let bolt = 0; bolt < 2; bolt++) {
+          const boff = bolt*Math.PI + t*0.5;
+          ctx.beginPath();
+          ctx.moveTo(tp[0].x, tp[0].y);
+          for (let i = 1; i < tp.length; i++) {
+            const zz = perpX*Math.sin(t*18+i*3.5+boff)*R*0.6;
+            const zzy = perpY*Math.sin(t*18+i*3.5+boff)*R*0.6;
+            ctx.lineTo(tp[i].x+zz, tp[i].y+zzy);
+          }
+          ctx.strokeStyle = `rgba(255,255,255,${bolt===0?0.95:0.5})`;
+          ctx.lineWidth = R*(bolt===0?0.12:0.06); ctx.lineCap='round'; ctx.stroke();
+          // glow around bolt
+          ctx.strokeStyle = `rgba(160,160,255,0.25)`;
+          ctx.lineWidth = R*0.5; ctx.stroke();
+        }
+        // arc sparks
+        for (let i = 0; i < tp.length; i += 3) {
+          const fade = 1 - i/tp.length; if (fade<0.1) continue;
+          const sx = tp[i].x + perpX*Math.sin(t*12+i*2)*R*0.8;
+          const sy = tp[i].y + perpY*Math.sin(t*12+i*2)*R*0.8;
+          ctx.fillStyle = `rgba(255,255,160,${(fade*0.9).toFixed(2)})`;
+          ctx.beginPath(); ctx.arc(sx, sy, R*0.1*fade, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.restore();
+
+      } else if (boostId === 'smoke') {
+        ctx.save();
+        for (let i = 0; i < tp.length; i++) {
+          const fade = 1 - i/tp.length;
+          const grow = 1 + i*0.10;
+          const ox = perpX*Math.sin(i*0.6+t*0.8)*R*0.45;
+          const oy = perpY*Math.sin(i*0.6+t*0.8)*R*0.45;
+          const grey = Math.floor(130 + fade*60);
+          ctx.fillStyle = `rgba(${grey},${grey},${grey},${(fade*0.22).toFixed(2)})`;
+          ctx.beginPath(); ctx.arc(tp[i].x+ox, tp[i].y+oy, R*grow*0.7, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = `rgba(200,200,200,${(fade*0.10).toFixed(2)})`;
+          ctx.beginPath(); ctx.arc(tp[i].x-ox*0.5, tp[i].y-oy*0.5, R*grow*0.45, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.restore();
+
+      } else if (boostId === 'stars') {
+        function drawStar(cx2, cy2, r, pts2, rot) {
+          ctx.beginPath();
+          for (let i = 0; i < pts2*2; i++) {
+            const a = i*Math.PI/pts2 + rot;
+            const rad = i%2===0 ? r : r*0.38;
+            i===0 ? ctx.moveTo(cx2+Math.cos(a)*rad, cy2+Math.sin(a)*rad)
+                  : ctx.lineTo(cx2+Math.cos(a)*rad, cy2+Math.sin(a)*rad);
+          }
+          ctx.closePath();
+        }
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < tp.length; i++) {
+          const fade = 1 - i/tp.length;
+          const twinkle = 0.55 + 0.45*Math.sin(t*9+i*1.8);
+          ctx.fillStyle = `rgba(255,240,100,${(fade*0.75*twinkle).toFixed(2)})`;
+          drawStar(tp[i].x, tp[i].y, R*0.6*fade, 5, t*2.5+i*0.55);
+          ctx.fill();
+          // sparkle cross
+          if (i%2===0) {
+            ctx.strokeStyle = `rgba(255,255,200,${(fade*0.8*twinkle).toFixed(2)})`;
+            ctx.lineWidth = R*0.07;
+            for (const a of [0, Math.PI/2]) {
+              ctx.beginPath();
+              ctx.moveTo(tp[i].x+Math.cos(a+t)*R*0.7*fade, tp[i].y+Math.sin(a+t)*R*0.7*fade);
+              ctx.lineTo(tp[i].x-Math.cos(a+t)*R*0.7*fade, tp[i].y-Math.sin(a+t)*R*0.7*fade);
+              ctx.stroke();
+            }
+          }
+          ctx.fillStyle = `rgba(255,255,255,${(fade*0.9).toFixed(2)})`;
+          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*0.11*fade, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.restore();
+
+      } else if (boostId === 'galaxy') {
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < tp.length; i++) {
+          const fade = 1 - i/tp.length;
+          ctx.fillStyle = `rgba(100,0,200,${(fade*0.4).toFixed(2)})`;
+          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*1.1*fade, 0, Math.PI*2); ctx.fill();
+          // spiral arms
+          for (let arm = 0; arm < 3; arm++) {
+            const sa = t*4 + i*0.5 + arm*Math.PI*2/3;
+            const sr = R*0.55*fade;
+            const sx = tp[i].x + Math.cos(sa)*sr*0.6, sy = tp[i].y + Math.sin(sa)*sr*0.6;
+            const hue = 260 + arm*50;
+            ctx.fillStyle = `hsla(${hue},100%,70%,${(fade*0.65).toFixed(2)})`;
+            ctx.beginPath(); ctx.arc(sx, sy, R*0.28*fade, 0, Math.PI*2); ctx.fill();
+          }
+          // star sparkles every few points
+          if (i%3===0) {
+            ctx.fillStyle = `rgba(220,180,255,${(fade*0.9).toFixed(2)})`;
+            ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*0.11*fade, 0, Math.PI*2); ctx.fill();
+          }
+        }
+        ctx.restore();
       }
-      ctx.restore();
     }
 
     ctx.restore();
