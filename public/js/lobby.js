@@ -1343,10 +1343,7 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     localStorage.setItem('duelseries_skin_id',    skin.id);
     localStorage.setItem('duelseries_skin_color', skin.color);
     refreshMiniCanvas();
-    updateApSelector();
-    const msg = document.getElementById('ap-saved-msg');
-    msg.textContent = '✓ Saved!';
-    setTimeout(() => { msg.textContent = ''; }, 1800);
+    closeAppearanceScreen();
   });
 
   // Draw mini canvas on load
