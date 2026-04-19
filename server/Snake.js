@@ -58,7 +58,7 @@ class Snake {
   update() {
     if (!this.alive) return;
 
-    // Turn toward target — rate gets worse as snake grows
+    // Turn toward target
     let delta = this.targetAngle - this.angle;
     while (delta >  Math.PI) delta -= Math.PI * 2;
     while (delta < -Math.PI) delta += Math.PI * 2;
@@ -69,32 +69,34 @@ class Snake {
       this.angle = this.targetAngle;
     }
 
-    let steps = 1;
-    if (this.boosting) {
-      if (this.boostFuel > 0) {
-        steps = 3;
-        if (this._boostTick === undefined) this._boostTick = 0;
-        this._boostTick++;
-        if (this._boostTick >= 12) {
-          this._boostTick = 0;
-          const dropped = this.segments.pop();
-          if (dropped) this.boostDrops.push({ x: dropped.x, y: dropped.y, value: 0.15 });
-        }
-      } else {
-        this.boosting = false;
+    // Boost ramp: gradually accelerates to full speed over ~15 ticks (0.25s)
+    if (this.boosting && this.boostFuel > 0) {
+      this.boostRamp = Math.min(1, (this.boostRamp || 0) + 1 / 15);
+      this._boostTick = (this._boostTick || 0) + 1;
+      if (this._boostTick >= 12) {
         this._boostTick = 0;
+        const dropped = this.segments.pop();
+        if (dropped) this.boostDrops.push({ x: dropped.x, y: dropped.y, value: 0.15 });
       }
     } else {
+      if (this.boosting) { this.boosting = false; }
       this._boostTick = 0;
+      this.boostRamp = 0;
     }
 
-    // Movement accumulator: skip the entire move step (head + tail together)
-    // proportional to speedMult. Segment count and arc length never change.
+    // Movement accumulator (handles speedMult < 1)
     const mult = this.speedMult || 1;
     if (this._moveAccum === undefined) this._moveAccum = 0;
     this._moveAccum += mult;
-    if (this._moveAccum < 1) return; // skip this tick — both ends sit still
+    if (this._moveAccum < 1) return;
     this._moveAccum -= 1;
+
+    // Step accumulator: boostRamp smoothly scales steps from 1 → 3
+    const effectiveSteps = 1 + (this.boostRamp || 0) * 2;
+    if (this._stepAccum === undefined) this._stepAccum = 0;
+    this._stepAccum += effectiveSteps;
+    const steps = Math.floor(this._stepAccum);
+    this._stepAccum -= steps;
 
     const speed = C.SNAKE_BASE_SPEED;
     for (let step = 0; step < steps; step++) {
@@ -142,6 +144,7 @@ class Snake {
       segs,
       angle: this.angle,
       boosting: this.boosting,
+      boostRamp: this.boostRamp || 0,
       score: Math.floor(this.score),
       length: this.length,
       boostRatio: this.boostRatio,

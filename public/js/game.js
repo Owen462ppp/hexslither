@@ -164,7 +164,7 @@ function interpolateState(now) {
       const msPerTick = 1000 / CONSTANTS.TICK_RATE;
       const extSnakes = latest.state.snakes.map(s => {
         if (!s.segs || s.segs.length < 2) return s;
-        const speed = s.boosting ? CONSTANTS.SNAKE_BOOST_SPEED : CONSTANTS.SNAKE_BASE_SPEED;
+        const speed = CONSTANTS.SNAKE_BASE_SPEED * (1 + (s.boostRamp || 0) * 2);
         const dist = speed * extMs / msPerTick;
         const dx = Math.cos(s.angle) * dist;
         const dy = Math.sin(s.angle) * dist;
@@ -277,8 +277,8 @@ canvas.addEventListener('mousemove', (e) => {
   mousePos.y = e.clientY;
 });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
-canvas.addEventListener('mousedown', (e) => { if (e.button === 2) boostActive = true; });
-canvas.addEventListener('mouseup',   (e) => { if (e.button === 2) boostActive = false; });
+canvas.addEventListener('mousedown', (e) => { if (e.button === 0 || e.button === 2) boostActive = true; });
+canvas.addEventListener('mouseup',   (e) => { if (e.button === 0 || e.button === 2) boostActive = false; });
 window.addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); boostActive = true; } });
 window.addEventListener('keyup',   (e) => { if (e.code === 'Space') boostActive = false; });
 canvas.addEventListener('touchmove', (e) => {
