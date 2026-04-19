@@ -955,35 +955,38 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   window.location.href = '/game.html';
 });
 
-// ─── Customize ────────────────────────────────────────────────────────────────
+// ─── Customize / Appearance Screen ───────────────────────────────────────────
 (function() {
   const SKINS = [
-    { id: 'coral',   name: 'Coral Red Snake',  color: '#E8756A', locked: false },
-    { id: 'teal',    name: 'Teal Snake',        color: '#4FC3C3', locked: false },
-    { id: 'gold',    name: 'Gold Snake',        color: '#F5C842', locked: false },
-    { id: 'pink',    name: 'Pink Snake',        color: '#E87FD4', locked: false },
-    { id: 'purple',  name: 'Purple Snake',      color: '#8B5CF6', locked: false },
-    { id: 'cyan',    name: 'Cyan Snake',        color: '#22D3EE', locked: false },
-    { id: 'green',   name: 'Emerald Snake',     color: '#10B981', locked: false },
-    { id: 'orange',  name: 'Orange Snake',      color: '#F97316', locked: false },
-    { id: 'blue',    name: 'Blue Snake',        color: '#3B82F6', locked: false },
-    { id: 'crimson', name: 'Crimson Snake',     color: '#EF4444', locked: true  },
-    { id: 'mint',    name: 'Mint Snake',        color: '#6EE7B7', locked: true  },
-    { id: 'indigo',  name: 'Indigo Snake',      color: '#6366F1', locked: true  },
-    { id: 'rose',    name: 'Rose Snake',        color: '#FB7185', locked: true  },
-    { id: 'amber',   name: 'Amber Snake',       color: '#F59E0B', locked: true  },
-    { id: 'sky',     name: 'Sky Snake',         color: '#38BDF8', locked: true  },
-    { id: 'lime',    name: 'Lime Snake',        color: '#84CC16', locked: true  },
-    { id: 'galaxy',  name: 'Galaxy Snake',      color: '#7C3AED', locked: true  },
-    { id: 'shadow',  name: 'Shadow Snake',      color: '#374151', locked: true  },
+    { id: 'coral',   name: 'Coral Red',  color: '#E8756A', locked: false },
+    { id: 'teal',    name: 'Teal',       color: '#4FC3C3', locked: false },
+    { id: 'gold',    name: 'Gold',       color: '#F5C842', locked: false },
+    { id: 'pink',    name: 'Pink',       color: '#E87FD4', locked: false },
+    { id: 'purple',  name: 'Purple',     color: '#8B5CF6', locked: false },
+    { id: 'cyan',    name: 'Cyan',       color: '#22D3EE', locked: false },
+    { id: 'green',   name: 'Emerald',    color: '#10B981', locked: false },
+    { id: 'orange',  name: 'Orange',     color: '#F97316', locked: false },
+    { id: 'blue',    name: 'Blue',       color: '#3B82F6', locked: false },
+    { id: 'crimson', name: 'Crimson',    color: '#EF4444', locked: true  },
+    { id: 'mint',    name: 'Mint',       color: '#6EE7B7', locked: true  },
+    { id: 'indigo',  name: 'Indigo',     color: '#6366F1', locked: true  },
+    { id: 'rose',    name: 'Rose',       color: '#FB7185', locked: true  },
+    { id: 'amber',   name: 'Amber',      color: '#F59E0B', locked: true  },
+    { id: 'sky',     name: 'Sky',        color: '#38BDF8', locked: true  },
+    { id: 'lime',    name: 'Lime',       color: '#84CC16', locked: true  },
+    { id: 'galaxy',  name: 'Galaxy',     color: '#7C3AED', locked: true  },
+    { id: 'shadow',  name: 'Shadow',     color: '#374151', locked: true  },
   ];
 
-  let equippedId  = localStorage.getItem('duelseries_skin_id')    || 'coral';
-  let selectedId  = equippedId;
-  let currentCat  = 'skins';
-  let previewAnim = null;
+  let equippedId = localStorage.getItem('duelseries_skin_id') || 'coral';
+  let previewIdx = Math.max(0, SKINS.findIndex(s => s.id === equippedId));
+  let apCat      = 'skins';
+  let apMode     = 'inventory';
+  let apAnimT    = 0;
+  let apAnimRaf  = null;
+  let apSrcLobby = 1;
 
-  // ── Snake preview drawing ────────────────────────────────────────────────────
+  // ── Shared drawing helpers ───────────────────────────────────────────────────
   function drawMiniSnake(canvas, color) {
     const W = canvas.width  = canvas.offsetWidth  || 400;
     const H = canvas.height = canvas.offsetHeight || 130;
@@ -1081,9 +1084,6 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     ctx.restore();
   }
 
-  // Which lobby opened the customize modal (1=snake preview, 2=circle preview)
-  let custLobby = 1;
-
   function darkenHex(hex) {
     const n = parseInt(hex.replace('#',''), 16);
     return `rgb(${Math.max(0,(n>>16)-60)},${Math.max(0,((n>>8)&0xff)-60)},${Math.max(0,(n&0xff)-60)})`;
@@ -1126,178 +1126,223 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     if (c2) drawMiniCell(c2, skin.color);
   }
 
-  // ── Modal preview ───────────────────────────────────────────────────────────
-  function drawModalPreview(color) {
-    const canvas = document.getElementById('cust-snake-canvas');
-    if (!canvas) return;
-    canvas.width  = canvas.offsetWidth  || 820;
-    canvas.height = canvas.offsetHeight || 130;
-    if (custLobby === 2) drawMiniCell(canvas, color);
-    else drawMiniSnake(canvas, color);
-  }
+  // ── Animated snake for the appearance screen ─────────────────────────────────
+  function drawAnimSnake(canvas, color, t) {
+    const W = canvas.width  = canvas.offsetWidth  || 520;
+    const H = canvas.height = canvas.offsetHeight || 260;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, W, H);
 
-  function drawModalSnake(color) { drawModalPreview(color); }
+    const N  = 80;
+    const R  = Math.min(W * 0.068, H * 0.13);
+    const cx = W / 2, cy = H / 2;
 
-  // ── Grid rendering ──────────────────────────────────────────────────────────
-  function renderGrid() {
-    const grid = document.getElementById('cust-grid');
-    grid.innerHTML = '';
-
-    if (currentCat === 'hats' || currentCat === 'boosts') {
-      grid.innerHTML = `<div class="cust-placeholder">Coming soon...</div>`;
-      document.getElementById('cust-det-swatch').style.background = '#222';
-      document.getElementById('cust-det-name').textContent = '—';
-      document.getElementById('cust-det-badge').classList.add('hidden');
-      document.getElementById('cust-det-type').textContent = '—';
-      document.getElementById('btn-equip').classList.add('hidden');
-      return;
+    // Lissajous spine: freq ratio 1:0.5 — head sweeps a figure-8 while body undulates
+    const pts = [];
+    for (let i = 0; i < N; i++) {
+      const phase = t * 1.5 - i * 0.175;
+      pts.push({
+        x: cx + Math.sin(phase)          * (W * 0.31),
+        y: cy + Math.sin(phase * 0.5 + 0.9) * (H * 0.28),
+      });
     }
 
-    SKINS.forEach(skin => {
-      const div = document.createElement('div');
-      div.className = 'cust-swatch' + (skin.locked ? ' cs-lock' : '') + (skin.id === selectedId ? ' cs-sel' : '');
-      div.style.background = skin.color;
-      div.dataset.id = skin.id;
-      if (!skin.locked) {
-        div.addEventListener('click', () => selectSkin(skin.id));
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // Body
+    ctx.beginPath();
+    ctx.moveTo(pts[N-1].x, pts[N-1].y);
+    for (let i = N-2; i >= 1; i--) {
+      const mx = (pts[i].x + pts[i-1].x) / 2, my = (pts[i].y + pts[i-1].y) / 2;
+      ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+    }
+    ctx.lineTo(pts[0].x, pts[0].y);
+    ctx.lineWidth = R * 2;
+    ctx.strokeStyle = color;
+    ctx.stroke();
+
+    // Creases
+    const CREASE_SPACING = R * 1.76;
+    const PASSES = 15, SEGS = 8;
+    function taperedArc(ox, oy, fa, r, ba, lw) {
+      for (let s = 0; s < SEGS; s++) {
+        const t0 = s/SEGS, t1 = (s+1)/SEGS;
+        const taper = Math.sin((t0+t1)/2*Math.PI);
+        ctx.beginPath();
+        ctx.arc(ox, oy, r, fa+Math.PI*0.5+t0*Math.PI, fa+Math.PI*0.5+t1*Math.PI, false);
+        ctx.strokeStyle = `rgba(0,0,0,${ba*taper})`;
+        ctx.lineWidth = lw; ctx.lineCap = 'butt'; ctx.stroke();
       }
-      grid.appendChild(div);
-    });
-    updateDetails();
+    }
+    let dist = -R * 0.35;
+    for (let i = 1; i < N-1; i++) {
+      const dx = pts[i].x-pts[i-1].x, dy = pts[i].y-pts[i-1].y;
+      dist += Math.sqrt(dx*dx+dy*dy);
+      if (dist < CREASE_SPACING) continue;
+      dist -= CREASE_SPACING;
+      const pi = Math.max(0,i-2), ni = Math.min(N-1,i+2);
+      const fa = Math.atan2(pts[pi].y-pts[ni].y, pts[pi].x-pts[ni].x);
+      for (let p = 0; p < PASSES; p++) {
+        const tt = p/(PASSES-1);
+        taperedArc(pts[i].x, pts[i].y, fa, R*(0.88+tt*0.12), R*(0.50*Math.pow(1-tt,1.5)+0.035), 0.001+Math.pow(tt,2.5)*0.042);
+      }
+    }
+
+    // Head
+    const hx = pts[0].x, hy = pts[0].y;
+    const ang = Math.atan2(pts[0].y-pts[1].y, pts[0].x-pts[1].x);
+    ctx.beginPath(); ctx.arc(hx, hy, R, 0, Math.PI*2);
+    ctx.fillStyle = color; ctx.fill();
+    for (let p = 0; p < PASSES; p++) {
+      const tt = p/(PASSES-1);
+      taperedArc(hx, hy, ang, R*(0.88+tt*0.12), R*(0.50*Math.pow(1-tt,1.5)+0.035), 0.001+Math.pow(tt,2.5)*0.042);
+    }
+    const fwdX = Math.cos(ang), fwdY = Math.sin(ang);
+    const perpX = -Math.sin(ang), perpY = Math.cos(ang);
+    const eyeR = R*0.40, pupilR = eyeR*0.54, eyeSide = R*0.46, eyeFwd = R*0.38;
+    for (const ss of [-1,1]) {
+      const ex = hx + fwdX*eyeFwd + perpX*eyeSide*ss;
+      const ey = hy + fwdY*eyeFwd + perpY*eyeSide*ss;
+      ctx.beginPath(); ctx.arc(ex, ey, eyeR, 0, Math.PI*2); ctx.fillStyle='#FFF'; ctx.fill();
+      const ps = eyeR - pupilR;
+      ctx.beginPath(); ctx.arc(ex+fwdX*ps, ey+fwdY*ps, pupilR, 0, Math.PI*2); ctx.fillStyle='#060606'; ctx.fill();
+    }
+    ctx.restore();
   }
 
-  function selectSkin(id) {
-    selectedId = id;
-    document.querySelectorAll('.cust-swatch').forEach(el => el.classList.toggle('cs-sel', el.dataset.id === id));
-    updateDetails();
-    const skin = SKINS.find(s => s.id === id);
-    if (skin) drawModalPreview(skin.color);
+  function startApAnim() {
+    const canvas = document.getElementById('ap-canvas');
+    if (!canvas) return;
+    if (apAnimRaf) cancelAnimationFrame(apAnimRaf);
+    function loop() {
+      const skin = SKINS[previewIdx] || SKINS[0];
+      drawAnimSnake(canvas, skin.color, apAnimT);
+      apAnimT += 0.022;
+      apAnimRaf = requestAnimationFrame(loop);
+    }
+    loop();
   }
 
-  function updateDetails() {
-    const skin = SKINS.find(s => s.id === selectedId);
-    if (!skin) return;
-    const swatch = document.getElementById('cust-det-swatch');
-    swatch.style.background = skin.color;
-    document.getElementById('cust-det-name').textContent = skin.name;
-    document.getElementById('cust-det-type').textContent = 'Color';
-    const badge  = document.getElementById('cust-det-badge');
-    const equip  = document.getElementById('btn-equip');
-    if (skin.id === equippedId) {
-      badge.classList.remove('hidden');
-      equip.classList.add('hidden');
+  function stopApAnim() {
+    if (apAnimRaf) { cancelAnimationFrame(apAnimRaf); apAnimRaf = null; }
+  }
+
+  // ── Selector UI ──────────────────────────────────────────────────────────────
+  function updateApSelector() {
+    const skin = apCat === 'skins' ? SKINS[previewIdx] : null;
+    const nameEl = document.getElementById('ap-sel-name');
+    const lockEl = document.getElementById('ap-sel-lock');
+    const saveBtn = document.getElementById('ap-save');
+
+    if (skin) {
+      nameEl.textContent = skin.name;
+      const locked = skin.locked;
+      lockEl.classList.toggle('hidden', !locked);
+      saveBtn.disabled = locked;
     } else {
-      badge.classList.add('hidden');
-      equip.classList.remove('hidden');
+      nameEl.textContent = 'Coming Soon';
+      lockEl.classList.add('hidden');
+      saveBtn.disabled = true;
     }
   }
 
-  // ── Equip ───────────────────────────────────────────────────────────────────
-  document.getElementById('btn-equip').addEventListener('click', () => {
-    const skin = SKINS.find(s => s.id === selectedId);
+  function setApCat(cat) {
+    apCat = cat;
+    document.querySelectorAll('.ap-cat').forEach(b => b.classList.toggle('ap-cat-active', b.dataset.apcat === cat));
+    const notSkins = cat !== 'skins';
+    document.getElementById('ap-prev').disabled = notSkins;
+    document.getElementById('ap-next').disabled = notSkins;
+    updateApSelector();
+  }
+
+  function setApMode(mode) {
+    apMode = mode;
+    document.getElementById('ap-tab-inv').classList.toggle('ap-htab-active', mode === 'inventory');
+    document.getElementById('ap-tab-shop').classList.toggle('ap-htab-active', mode === 'shop');
+    const isShop = mode === 'shop';
+    document.getElementById('ap-selector').classList.toggle('hidden', isShop);
+    document.getElementById('ap-save-row').classList.toggle('hidden', isShop);
+    document.getElementById('ap-shop-wrap').classList.toggle('hidden', !isShop);
+  }
+
+  // ── Open / close ─────────────────────────────────────────────────────────────
+  function openAppearanceScreen(lobbyNum) {
+    apSrcLobby = lobbyNum || 1;
+    previewIdx = Math.max(0, SKINS.findIndex(s => s.id === equippedId));
+    apCat = 'skins';
+    apMode = 'inventory';
+
+    document.getElementById('appearance-screen').classList.remove('hidden');
+    document.getElementById('lobby-screen').classList.add('hidden');
+    document.getElementById('lobby-screen-2').classList.add('hidden');
+    document.querySelectorAll('.lobby-nav-arrow').forEach(el => el.classList.add('hidden'));
+
+    document.querySelectorAll('.ap-cat').forEach(b => b.classList.toggle('ap-cat-active', b.dataset.apcat === 'skins'));
+    document.getElementById('ap-tab-inv').classList.add('ap-htab-active');
+    document.getElementById('ap-tab-shop').classList.remove('ap-htab-active');
+    document.getElementById('ap-selector').classList.remove('hidden');
+    document.getElementById('ap-save-row').classList.remove('hidden');
+    document.getElementById('ap-shop-wrap').classList.add('hidden');
+    document.getElementById('ap-prev').disabled = false;
+    document.getElementById('ap-next').disabled = false;
+    document.getElementById('ap-saved-msg').textContent = '';
+
+    updateApSelector();
+    startApAnim();
+  }
+
+  function closeAppearanceScreen() {
+    stopApAnim();
+    document.getElementById('appearance-screen').classList.add('hidden');
+    document.querySelectorAll('.lobby-nav-arrow').forEach(el => el.classList.remove('hidden'));
+    if (apSrcLobby === 2) {
+      document.getElementById('lobby-screen-2').classList.remove('hidden');
+    } else {
+      document.getElementById('lobby-screen').classList.remove('hidden');
+    }
+  }
+
+  // ── Event listeners ──────────────────────────────────────────────────────────
+  document.getElementById('btn-change-appearance').addEventListener('click',   () => openAppearanceScreen(1));
+  document.getElementById('btn-change-appearance-2').addEventListener('click', () => openAppearanceScreen(2));
+  document.getElementById('ap-back').addEventListener('click', closeAppearanceScreen);
+
+  document.getElementById('ap-tab-inv').addEventListener('click',  () => setApMode('inventory'));
+  document.getElementById('ap-tab-shop').addEventListener('click', () => setApMode('shop'));
+
+  document.querySelectorAll('.ap-cat').forEach(b => {
+    b.addEventListener('click', () => setApCat(b.dataset.apcat));
+  });
+
+  document.getElementById('ap-prev').addEventListener('click', () => {
+    if (apCat !== 'skins') return;
+    previewIdx = (previewIdx - 1 + SKINS.length) % SKINS.length;
+    updateApSelector();
+  });
+
+  document.getElementById('ap-next').addEventListener('click', () => {
+    if (apCat !== 'skins') return;
+    previewIdx = (previewIdx + 1) % SKINS.length;
+    updateApSelector();
+  });
+
+  document.getElementById('ap-save').addEventListener('click', () => {
+    if (apCat !== 'skins') return;
+    const skin = SKINS[previewIdx];
     if (!skin || skin.locked) return;
     equippedId = skin.id;
     localStorage.setItem('duelseries_skin_id',    skin.id);
     localStorage.setItem('duelseries_skin_color', skin.color);
-    updateDetails();
     refreshMiniCanvas();
+    updateApSelector();
+    const msg = document.getElementById('ap-saved-msg');
+    msg.textContent = '✓ Saved!';
+    setTimeout(() => { msg.textContent = ''; }, 1800);
   });
 
-  // ── Shop tab content ─────────────────────────────────────────────────────────
-  function showShop() {
-    const body = document.querySelector('.cust-body');
-    body.innerHTML = `
-      <div class="cust-shop-panel">
-        <div class="cust-shop-badge">⭐ DuelSeries Premium</div>
-        <div class="cust-shop-price">$6.49 <span>USD / Month</span></div>
-        <ul class="cust-shop-perks">
-          <li><span class="perk-icon">⚪</span> Circle Scripts</li>
-          <li><span class="perk-icon">🌐</span> Infinite Viewing Range</li>
-          <li><span class="perk-icon">🎨</span> Access to All Skins &amp; Hats</li>
-          <li><span class="perk-icon">👑</span> Legendary Crown</li>
-        </ul>
-        <button class="btn-subscribe">Subscribe Now</button>
-        <div class="cust-shop-note">Cancel anytime &nbsp;·&nbsp; Billed monthly</div>
-      </div>
-    `;
-  }
-
-  function showInventory() {
-    const body = document.querySelector('.cust-body');
-    body.innerHTML = `
-      <div class="cust-grid-wrap">
-        <div class="cust-grid" id="cust-grid"></div>
-      </div>
-      <div class="cust-details">
-        <div class="cust-det-swatch" id="cust-det-swatch"></div>
-        <div class="cust-det-name"   id="cust-det-name">Select a skin</div>
-        <div class="cust-det-badge hidden" id="cust-det-badge">● Equipped</div>
-        <div class="cust-det-divider">DETAILS</div>
-        <div class="cust-det-row"><span>Type</span><strong id="cust-det-type">—</strong></div>
-        <button class="btn-equip hidden" id="btn-equip">Equip</button>
-      </div>
-    `;
-    document.getElementById('btn-equip').addEventListener('click', () => {
-      const skin = SKINS.find(s => s.id === selectedId);
-      if (!skin || skin.locked) return;
-      equippedId = skin.id;
-      localStorage.setItem('duelseries_skin_id',    skin.id);
-      localStorage.setItem('duelseries_skin_color', skin.color);
-      updateDetails();
-      refreshMiniCanvas();
-    });
-    renderGrid();
-  }
-
-  // ── Tabs ─────────────────────────────────────────────────────────────────────
-  document.querySelectorAll('.cust-top-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.cust-top-tab').forEach(b => b.classList.remove('ctt-active'));
-      btn.classList.add('ctt-active');
-      if (btn.dataset.top === 'shop') {
-        showShop();
-      } else {
-        showInventory();
-      }
-    });
-  });
-
-  document.querySelectorAll('.cust-cat').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.cust-cat').forEach(b => b.classList.remove('cc-active'));
-      btn.classList.add('cc-active');
-      currentCat = btn.dataset.cat;
-      renderGrid();
-    });
-  });
-
-  // ── Open / close ─────────────────────────────────────────────────────────────
-  function openCustomize(lobbyNum) {
-    custLobby = lobbyNum;
-    selectedId = equippedId;
-    currentCat = 'skins';
-    document.querySelectorAll('.cust-cat').forEach(b => b.classList.toggle('cc-active', b.dataset.cat === 'skins'));
-    document.querySelectorAll('.cust-top-tab').forEach(b => b.classList.toggle('ctt-active', b.dataset.top === 'inventory'));
-    document.getElementById('modal-customize').classList.add('active');
-    renderGrid();
-    requestAnimationFrame(() => {
-      const skin = SKINS.find(s => s.id === equippedId) || SKINS[0];
-      drawModalPreview(skin.color);
-    });
-  }
-
-  document.getElementById('btn-change-appearance').addEventListener('click', () => openCustomize(1));
-  document.getElementById('btn-change-appearance-2').addEventListener('click', () => openCustomize(2));
-
-  document.getElementById('close-customize').addEventListener('click', () => {
-    document.getElementById('modal-customize').classList.remove('active');
-  });
-
-  document.getElementById('modal-customize').addEventListener('click', function(e) {
-    if (e.target === this) this.classList.remove('active');
-  });
-
-  // Draw mini canvas on load (after a tick so layout is done)
+  // Draw mini canvas on load
   setTimeout(refreshMiniCanvas, 100);
 })();
 

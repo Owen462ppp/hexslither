@@ -164,6 +164,57 @@
   <!-- Hidden balance sidebar (kept for JS compatibility) -->
   <div style="display:none" id="balance-sidebar"><span id="sidebar-balance">0.0000</span></div>
 
+  <!-- ── Appearance / Customize Screen ───────────────────────────────────── -->
+  <div id="appearance-screen" class="hidden">
+
+    <div class="ap-header">
+      <button class="ap-back-btn" id="ap-back">&#8592; Back</button>
+      <span class="ap-title">CUSTOMIZE</span>
+      <div class="ap-htabs">
+        <button class="ap-htab ap-htab-active" id="ap-tab-inv">&#128230; Inventory</button>
+        <button class="ap-htab" id="ap-tab-shop">&#128722; Shop</button>
+      </div>
+    </div>
+
+    <div class="ap-catbar">
+      <button class="ap-cat ap-cat-active" data-apcat="skins">&#128085; Skins</button>
+      <button class="ap-cat" data-apcat="hats">&#128081; Hats</button>
+      <button class="ap-cat" data-apcat="boots">&#128099; Boots</button>
+    </div>
+
+    <div class="ap-preview-wrap">
+      <canvas id="ap-canvas" class="ap-canvas"></canvas>
+    </div>
+
+    <div class="ap-selector" id="ap-selector">
+      <button class="ap-arrow" id="ap-prev">&#8249;</button>
+      <div class="ap-sel-info">
+        <div class="ap-sel-name" id="ap-sel-name">Coral Red</div>
+        <div class="ap-sel-lock hidden" id="ap-sel-lock">&#128274; Premium Only</div>
+      </div>
+      <button class="ap-arrow" id="ap-next">&#8250;</button>
+    </div>
+
+    <div class="ap-save-row" id="ap-save-row">
+      <button class="ap-save-btn" id="ap-save">Save</button>
+      <div class="ap-saved-msg" id="ap-saved-msg"></div>
+    </div>
+
+    <div class="ap-shop-wrap hidden" id="ap-shop-wrap">
+      <div class="cust-shop-badge">&#11088; DuelSeries Premium</div>
+      <div class="cust-shop-price">$6.49 <span>USD / Month</span></div>
+      <ul class="cust-shop-perks">
+        <li><span class="perk-icon">&#127912;</span> All Skins Unlocked</li>
+        <li><span class="perk-icon">&#128081;</span> Hats &amp; Accessories</li>
+        <li><span class="perk-icon">&#128099;</span> Custom Boots</li>
+        <li><span class="perk-icon">&#9889;</span> Special Boost Effects</li>
+      </ul>
+      <button class="btn-subscribe">Subscribe Now</button>
+      <div class="cust-shop-note">Cancel anytime &nbsp;&#183;&nbsp; Billed monthly</div>
+    </div>
+
+  </div>
+
   <!-- ── Lobby nav arrows ───────────────────────────────────────────────── -->
   <button class="lobby-nav-arrow lobby-nav-arrow-left" id="lobby-arrow-left" aria-label="Previous lobby">
     <svg viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
