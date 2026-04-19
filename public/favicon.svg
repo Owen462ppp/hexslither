@@ -1,34 +1,30 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <defs>
-    <radialGradient id="coin" cx="42%" cy="35%" r="60%">
-      <stop offset="0%"   stop-color="#ffe566"/>
-      <stop offset="45%"  stop-color="#f5c518"/>
-      <stop offset="100%" stop-color="#b8860b"/>
+    <radialGradient id="coin" cx="40%" cy="35%" r="65%">
+      <stop offset="0%"   stop-color="#ffe14d"/>
+      <stop offset="100%" stop-color="#c8930a"/>
     </radialGradient>
-    <radialGradient id="shine" cx="38%" cy="28%" r="45%">
-      <stop offset="0%"   stop-color="#fff" stop-opacity="0.55"/>
-      <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
-    </radialGradient>
-    <clipPath id="coinClip">
-      <circle cx="32" cy="32" r="25"/>
-    </clipPath>
+    <clipPath id="c"><circle cx="32" cy="32" r="30"/></clipPath>
   </defs>
 
-  <circle cx="32" cy="32" r="31" fill="#8B6914"/>
-  <circle cx="32" cy="32" r="28" fill="#c8930a"/>
-  <circle cx="32" cy="32" r="25" fill="url(#coin)"/>
-  <circle cx="32" cy="32" r="25" fill="url(#shine)"/>
+  <!-- Rim -->
+  <circle cx="32" cy="32" r="32" fill="#7a5500"/>
+  <!-- Face -->
+  <circle cx="32" cy="32" r="30" fill="url(#coin)"/>
 
-  <text
-    x="32" y="44"
+  <!-- White knockout behind letters for contrast -->
+  <text x="32" y="45"
     font-family="Arial Black, Arial, sans-serif"
-    font-weight="900"
-    font-size="38"
-    fill="#1a7a3c"
-    stroke="#0d4a22"
-    stroke-width="1"
-    text-anchor="middle"
-    letter-spacing="-3"
-    clip-path="url(#coinClip)"
-  >D$</text>
+    font-weight="900" font-size="42"
+    fill="white" stroke="white" stroke-width="4"
+    text-anchor="middle" letter-spacing="-3"
+    clip-path="url(#c)">D$</text>
+
+  <!-- Green letters on top -->
+  <text x="32" y="45"
+    font-family="Arial Black, Arial, sans-serif"
+    font-weight="900" font-size="42"
+    fill="#0d6e2e" stroke="#0d6e2e" stroke-width="0.5"
+    text-anchor="middle" letter-spacing="-3"
+    clip-path="url(#c)">D$</text>
 </svg>
