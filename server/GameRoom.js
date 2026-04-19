@@ -73,7 +73,7 @@ class GameRoom {
       drops.forEach(d => {
         const dist = Math.hypot(d.x, d.y);
         if (dist > safeR) { const sc = safeR / dist; d.x *= sc; d.y *= sc; }
-        this.foodManager.spawnOne(this.worldRadius, d.x, d.y, d.value, cashPerDrop);
+        this.foodManager.spawnOne(this.worldRadius, d.x, d.y, d.value, cashPerDrop, d.color);
       });
     }
     this.snakes.delete(socketId);
@@ -155,7 +155,7 @@ class GameRoom {
         const safeR = this.worldRadius * 0.95;
         for (const drop of snake.boostDrops) {
           const dist = Math.hypot(drop.x, drop.y);
-          if (dist <= safeR) this.foodManager.spawnOne(this.worldRadius, drop.x, drop.y, drop.value);
+          if (dist <= safeR) this.foodManager.spawnOne(this.worldRadius, drop.x, drop.y, drop.value, 0, drop.color);
         }
         snake.boostDrops = [];
       }

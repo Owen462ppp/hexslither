@@ -90,7 +90,7 @@ class Snake {
       if (this._boostTick >= 12) {
         this._boostTick = 0;
         const dropped = this.segments.pop();
-        if (dropped) this.boostDrops.push({ x: dropped.x, y: dropped.y, value: 0.15 });
+        if (dropped) this.boostDrops.push({ x: dropped.x, y: dropped.y, value: 0.15, color: this.color });
       }
     } else {
       if (this.boosting) this.boosting = false;
@@ -135,6 +135,7 @@ class Snake {
         x: seg.x + (Math.random() - 0.5) * 20,
         y: seg.y + (Math.random() - 0.5) * 20,
         value: 2,
+        color: this.color,
       });
     }
     return drops;
