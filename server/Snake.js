@@ -69,10 +69,24 @@ class Snake {
       this.angle = this.targetAngle;
     }
 
-    // Boost ramp: 0 → 1 over ~8 ticks (0.13s) — fast but smooth
+    // Boost ramp — clean integer phases, no fractional alternation
+    let steps = 1;
     if (this.boosting && this.boostFuel > 0) {
-      this.boostRamp = Math.min(1, (this.boostRamp || 0) + 1 / 8);
-      this._boostTick = (this._boostTick || 0) + 1;
+      this._boostAge  = (this._boostAge  || 0) + 1; // total ticks held
+      this._boostTick = (this._boostTick || 0) + 1; // resets for food drop
+
+      // Phase 1 (ticks 1-5): 1 step — feels like wind-up
+      // Phase 2 (ticks 6-10): 2 steps — mid acceleration
+      // Phase 3 (tick 11+):   3 steps — full boost
+      if      (this._boostAge <= 5)  steps = 1;
+      else if (this._boostAge <= 10) steps = 2;
+      else                           steps = 3;
+
+      // boostRamp drives client-side rendering (0 → 0.5 → 1)
+      this.boostRamp = this._boostAge <= 5  ? this._boostAge / 5 * 0.5
+                     : this._boostAge <= 10 ? 0.5 + (this._boostAge - 5) / 5 * 0.5
+                     : 1;
+
       if (this._boostTick >= 12) {
         this._boostTick = 0;
         const dropped = this.segments.pop();
@@ -80,8 +94,9 @@ class Snake {
       }
     } else {
       if (this.boosting) this.boosting = false;
+      this._boostAge  = 0;
       this._boostTick = 0;
-      this.boostRamp = 0;
+      this.boostRamp  = 0;
     }
 
     // Movement accumulator (handles speedMult < 1)
@@ -91,17 +106,17 @@ class Snake {
     if (this._moveAccum < 1) return;
     this._moveAccum -= 1;
 
-    // Smooth float speed — no integer steps, no jitter
-    // boostRamp scales speed continuously from 1x (6) to 3x (18)
-    const speed = C.SNAKE_BASE_SPEED * (1 + (this.boostRamp || 0) * 2);
-    this.segments.unshift({
-      x: this.segments[0].x + Math.cos(this.angle) * speed,
-      y: this.segments[0].y + Math.sin(this.angle) * speed,
-    });
-    if (this.pendingGrowth > 0) {
-      this.pendingGrowth--;
-    } else {
-      this.segments.pop();
+    const speed = C.SNAKE_BASE_SPEED;
+    for (let s = 0; s < steps; s++) {
+      this.segments.unshift({
+        x: this.segments[0].x + Math.cos(this.angle) * speed,
+        y: this.segments[0].y + Math.sin(this.angle) * speed,
+      });
+      if (this.pendingGrowth > 0) {
+        this.pendingGrowth--;
+      } else {
+        this.segments.pop();
+      }
     }
   }
 
