@@ -89,6 +89,8 @@ class Renderer {
       const wx = f.x + Math.sin(t * 1.4 + phase) * amp;
       const wy = f.y + Math.cos(t * 1.1 + phase * 1.3) * amp;
 
+      if (f.dropped) ctx.globalAlpha = 0.55;
+
       if (f.isGolden) {
         // Outer glow
         const glow = ctx.createRadialGradient(wx, wy, r * 0.4, wx, wy, r * 2.2);
@@ -145,6 +147,7 @@ class Renderer {
         ctx.stroke();
       }
 
+      if (f.dropped) ctx.globalAlpha = 1;
     }
   }
 

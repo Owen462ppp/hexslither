@@ -90,7 +90,7 @@ class Snake {
       if (this._boostTick >= 12) {
         this._boostTick = 0;
         const dropped = this.segments.pop();
-        if (dropped) this.boostDrops.push({ x: dropped.x, y: dropped.y, value: 0.15, color: this.color });
+        if (dropped) this.boostDrops.push({ x: dropped.x, y: dropped.y, value: 0.15, color: this.color, dropped: true });
       }
     } else {
       if (this.boosting) this.boosting = false;
@@ -137,6 +137,7 @@ class Snake {
         value: 2,
         color: this.color,
         size: 3,
+        dropped: true,
       });
     }
     return drops;
