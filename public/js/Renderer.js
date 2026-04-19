@@ -85,8 +85,9 @@ class Renderer {
       let hash = 0;
       for (let i = 0; i < idStr.length; i++) hash = (hash * 31 + idStr.charCodeAt(i)) & 0xffff;
       const phase = hash * 0.00038; // maps 0-65535 → 0-~25 radians
-      const wx = f.x + Math.sin(t * 1.4 + phase) * 3;
-      const wy = f.y + Math.cos(t * 1.1 + phase * 1.3) * 3;
+      const amp = hash % 100 < 80 ? 7 : 0; // 80% of orbs hover, 20% stay still
+      const wx = f.x + Math.sin(t * 1.4 + phase) * amp;
+      const wy = f.y + Math.cos(t * 1.1 + phase * 1.3) * amp;
 
       if (f.isGolden) {
         // Outer glow
