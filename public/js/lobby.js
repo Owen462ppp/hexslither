@@ -1188,38 +1188,6 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // Boost trail — drawn from tail outward so it appears behind the snake
-    if (boostId && boostId !== 'default') {
-      const BOOST_RGBA = {
-        fire:      [[255,102,0],[255,51,0],[255,170,0]],
-        ice:       [[136,221,255],[170,238,255],[255,255,255]],
-        lightning: [[255,255,68],[255,255,255],[255,238,136]],
-        smoke:     [[136,136,136],[170,170,170],[102,102,102]],
-        stars:     [[255,255,255],[255,255,153],[255,255,204]],
-        galaxy:    [[170,68,255],[102,34,204],[221,136,255]],
-      };
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const trailLen = Math.min(30, N - 1);
-      for (let i = 0; i < trailLen; i++) {
-        const idx = N - 1 - i; // start at tail, move toward body
-        const fade = 1 - i / trailLen;
-        let fc;
-        if (boostId === 'rainbow') {
-          fc = `hsla(${((t * 80 + i * 8) % 360 + 360) % 360},100%,65%,${(fade * 0.85).toFixed(2)})`;
-        } else {
-          const cols = BOOST_RGBA[boostId] || [[255,255,255]];
-          const [r,g,b] = cols[i % cols.length];
-          fc = `rgba(${r},${g},${b},${(fade * 0.85).toFixed(2)})`;
-        }
-        ctx.beginPath();
-        ctx.arc(pts[idx].x, pts[idx].y, R * (0.35 + fade * 0.5), 0, Math.PI * 2);
-        ctx.fillStyle = fc;
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-
     // Body
     ctx.beginPath();
     ctx.moveTo(pts[N-1].x, pts[N-1].y);
@@ -1361,6 +1329,47 @@ document.getElementById('btn-play').addEventListener('click', async () => {
         ctx.shadowBlur = 0;
       }
 
+      ctx.restore();
+    }
+
+    // Boost trail — drawn last so it's always visible, extending past the tail
+    if (boostId && boostId !== 'default') {
+      const BOOST_RGBA = {
+        fire:      [[255,102,0],[255,51,0],[255,170,0]],
+        ice:       [[136,221,255],[170,238,255],[255,255,255]],
+        lightning: [[255,255,68],[255,255,255],[255,238,136]],
+        smoke:     [[136,136,136],[170,170,170],[102,102,102]],
+        stars:     [[255,255,255],[255,255,153],[255,255,204]],
+        galaxy:    [[170,68,255],[102,34,204],[221,136,255]],
+      };
+      // Direction the tail is pointing — extend ghost points beyond pts[N-1]
+      const tdx = pts[N-1].x - pts[N-2].x, tdy = pts[N-1].y - pts[N-2].y;
+      const tlen = Math.sqrt(tdx*tdx + tdy*tdy) || 1;
+      const stepX = tdx / tlen, stepY = tdy / tlen;
+      const spacing = tlen;
+      const GHOST = 22;
+      const trailPts = [];
+      for (let i = 0; i < GHOST; i++) {
+        trailPts.push({ x: pts[N-1].x + stepX * i * spacing, y: pts[N-1].y + stepY * i * spacing });
+      }
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < trailPts.length; i++) {
+        const fade = 1 - i / trailPts.length;
+        let fc;
+        if (boostId === 'rainbow') {
+          fc = `hsla(${((t * 80 + i * 10) % 360 + 360) % 360},100%,65%,${(fade * 0.9).toFixed(2)})`;
+        } else {
+          const cols = BOOST_RGBA[boostId] || [[255,255,255]];
+          const [r,g,b] = cols[i % cols.length];
+          fc = `rgba(${r},${g},${b},${(fade * 0.9).toFixed(2)})`;
+        }
+        ctx.beginPath();
+        ctx.arc(trailPts[i].x, trailPts[i].y, R * (0.75 * fade + 0.1), 0, Math.PI * 2);
+        ctx.fillStyle = fc;
+        ctx.fill();
+      }
       ctx.restore();
     }
 
