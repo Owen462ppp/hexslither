@@ -1190,10 +1190,13 @@ document.getElementById('btn-play').addEventListener('click', async () => {
 
     // Boost trail (drawn under body so body covers the head end)
     if (boostId && boostId !== 'default') {
-      const BOOST_COLORS = {
-        fire:['#ff6600','#ff3300','#ffaa00'], ice:['#88ddff','#aaeeff','#ffffff'],
-        lightning:['#ffff44','#ffffff','#ffee88'], smoke:['#888','#aaa','#666'],
-        stars:['#fff','#ffff99','#ffffcc'], galaxy:['#aa44ff','#6622cc','#dd88ff'],
+      const BOOST_RGBA = {
+        fire:      [[255,102,0],[255,51,0],[255,170,0]],
+        ice:       [[136,221,255],[170,238,255],[255,255,255]],
+        lightning: [[255,255,68],[255,255,255],[255,238,136]],
+        smoke:     [[136,136,136],[170,170,170],[102,102,102]],
+        stars:     [[255,255,255],[255,255,153],[255,255,204]],
+        galaxy:    [[170,68,255],[102,34,204],[221,136,255]],
       };
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
@@ -1202,14 +1205,14 @@ document.getElementById('btn-play').addEventListener('click', async () => {
         const fade = 1 - i / trailLen;
         let fc;
         if (boostId === 'rainbow') {
-          fc = `hsla(${((t * 80 - i * 8) % 360 + 360) % 360},100%,65%,${(fade * 0.45).toFixed(2)})`;
+          fc = `hsla(${((t * 80 - i * 8) % 360 + 360) % 360},100%,65%,${(fade * 0.75).toFixed(2)})`;
         } else {
-          const cols = BOOST_COLORS[boostId] || ['#fff'];
-          const hex = cols[i % cols.length];
-          fc = hex + Math.floor(fade * 0.45 * 255).toString(16).padStart(2, '0');
+          const cols = BOOST_RGBA[boostId] || [[255,255,255]];
+          const [r,g,b] = cols[i % cols.length];
+          fc = `rgba(${r},${g},${b},${(fade * 0.75).toFixed(2)})`;
         }
         ctx.beginPath();
-        ctx.arc(pts[i].x, pts[i].y, R * Math.max(0.1, 0.9 - i * 0.01), 0, Math.PI * 2);
+        ctx.arc(pts[i].x, pts[i].y, R * Math.max(0.2, 1.1 - i * 0.015), 0, Math.PI * 2);
         ctx.fillStyle = fc;
         ctx.fill();
       }
