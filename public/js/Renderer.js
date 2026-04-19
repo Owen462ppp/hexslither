@@ -4,6 +4,7 @@ class Renderer {
     this.ctx = canvas.getContext('2d');
     this.hexGrid = new HexGrid();
     this.camera = new Camera();
+    this.boostTrails = new Map(); // snakeId -> [{x,y,t,boostId,r}]
   }
 
   resize() {
@@ -55,9 +56,11 @@ class Renderer {
       if (snake.id === myId) continue;
       const hx = snake.segs && snake.segs[0], hy = snake.segs && snake.segs[1];
       if (hx < visL || hx > visR || hy < visT || hy > visB) continue; // off-screen
+      this._recordTrail(snake);
       this._drawSnake(ctx, snake, false);
     }
-    if (mySnake) this._drawSnake(ctx, mySnake, true);
+    if (mySnake) { this._recordTrail(mySnake); this._drawSnake(ctx, mySnake, true); }
+    this._drawLingeringTrails(ctx);
 
     // Border overlay drawn last so red tint still appears on top of snakes
     this._drawBorder(ctx, state.worldRadius, camera);
@@ -165,38 +168,6 @@ class Renderer {
     ctx.save();
     ctx.lineCap  = 'round';
     ctx.lineJoin = 'round';
-
-    // Boost trail (drawn under body)
-    if (boosting && boostId !== 'default') {
-      const BOOST_RGBA = {
-        fire:      [[255,102,0],[255,51,0],[255,170,0]],
-        ice:       [[136,221,255],[170,238,255],[255,255,255]],
-        lightning: [[255,255,68],[255,255,255],[255,238,136]],
-        smoke:     [[136,136,136],[170,170,170],[102,102,102]],
-        stars:     [[255,255,255],[255,255,153],[255,255,204]],
-        galaxy:    [[170,68,255],[102,34,204],[221,136,255]],
-      };
-      const t = Date.now() / 1000;
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const trailLen = Math.min(SN, 42);
-      for (let i = 1; i < trailLen; i++) {
-        const fade = 1 - i / trailLen;
-        let fc;
-        if (boostId === 'rainbow') {
-          fc = `hsla(${((t * 80 - i * 8) % 360 + 360) % 360},100%,65%,${(fade * 0.75).toFixed(2)})`;
-        } else {
-          const cols = BOOST_RGBA[boostId] || [[255,255,255]];
-          const [r,g,b] = cols[i % cols.length];
-          fc = `rgba(${r},${g},${b},${(fade * 0.75).toFixed(2)})`;
-        }
-        ctx.beginPath();
-        ctx.arc(segs[i * 2], segs[i * 2 + 1], R * Math.max(0.2, 1.1 - i * 0.015), 0, Math.PI * 2);
-        ctx.fillStyle = fc;
-        ctx.fill();
-      }
-      ctx.restore();
-    }
 
     const STEPS = 4;
     const CHUNK = 4;
@@ -415,6 +386,72 @@ class Renderer {
       ctx.fillText(`C$${cadVal}`, hx, hy - HR * (name ? 3.8 : 2.5));
     }
 
+    ctx.restore();
+  }
+
+  _recordTrail(snake) {
+    const { id, segs, boosting, boostId } = snake;
+    if (!boosting || !boostId || boostId === 'default') return;
+    const SN = (segs.length >> 1);
+    if (SN < 2) return;
+    const tx = segs[(SN - 1) * 2], ty = segs[(SN - 1) * 2 + 1];
+    const growthScale = 1 + Math.min(1.5, (snake.length || 20) / 200);
+    const R = CONSTANTS.SNAKE_HEAD_RADIUS * growthScale;
+
+    if (!this.boostTrails.has(id)) this.boostTrails.set(id, []);
+    const trail = this.boostTrails.get(id);
+
+    // Only add a point if it's moved enough from the last one (avoid stacking dots)
+    if (trail.length > 0) {
+      const last = trail[trail.length - 1];
+      const dx = tx - last.x, dy = ty - last.y;
+      if (dx * dx + dy * dy < (R * 0.4) * (R * 0.4)) return;
+    }
+    trail.push({ x: tx, y: ty, t: Date.now(), boostId, r: R });
+  }
+
+  _drawLingeringTrails(ctx) {
+    const now = Date.now();
+    const MAX_AGE = 500;
+    const BOOST_RGBA = {
+      fire:      [[255,102,0],[255,51,0],[255,170,0]],
+      ice:       [[136,221,255],[170,238,255],[255,255,255]],
+      lightning: [[255,255,68],[255,255,255],[255,238,136]],
+      smoke:     [[136,136,136],[170,170,170],[102,102,102]],
+      stars:     [[255,255,255],[255,255,153],[255,255,204]],
+      galaxy:    [[170,68,255],[102,34,204],[221,136,255]],
+    };
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const [id, trail] of this.boostTrails) {
+      // Prune expired points
+      let start = 0;
+      while (start < trail.length && now - trail[start].t > MAX_AGE) start++;
+      if (start > 0) trail.splice(0, start);
+      if (trail.length === 0) { this.boostTrails.delete(id); continue; }
+
+      for (const pt of trail) {
+        const age = now - pt.t;
+        const fade = 1 - age / MAX_AGE;
+        const radius = pt.r * 0.35 * fade;
+        if (radius < 0.5) continue;
+
+        let fc;
+        if (pt.boostId === 'rainbow') {
+          const h = ((now * 0.08 - age * 0.5) % 360 + 360) % 360;
+          fc = `hsla(${h},100%,65%,${(fade * 0.8).toFixed(2)})`;
+        } else {
+          const cols = BOOST_RGBA[pt.boostId] || [[255,255,255]];
+          const [r,g,b] = cols[Math.floor(age / 60) % cols.length];
+          fc = `rgba(${r},${g},${b},${(fade * 0.8).toFixed(2)})`;
+        }
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = fc;
+        ctx.fill();
+      }
+    }
     ctx.restore();
   }
 
