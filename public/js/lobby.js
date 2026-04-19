@@ -1169,8 +1169,8 @@ document.getElementById('btn-play').addEventListener('click', async () => {
 
     const N  = 80;
     const R  = Math.min(W * 0.068, H * 0.13);
-    const cx = W * 0.60, cy = H / 2; // shifted right to leave room for tail trail
-    const spanX = W * 0.35;
+    const cx = W / 2, cy = H / 2;
+    const spanX = W * 0.42;
     const amp   = H * 0.22; // wave amplitude
 
     // Horizontal snake: head (pts[0]) on right, tail (pts[N-1]) on left
@@ -1334,12 +1334,11 @@ document.getElementById('btn-play').addEventListener('click', async () => {
 
     // Boost trail — drawn last, extending ghost points past the tail tip
     if (boostId && boostId !== 'default') {
-      const tdx = pts[N-1].x - pts[N-2].x, tdy = pts[N-1].y - pts[N-2].y;
-      const tlen = Math.sqrt(tdx*tdx + tdy*tdy) || 1;
-      const stepX = tdx/tlen, stepY = tdy/tlen;
-      const perpX = -stepY, perpY = stepX;
-      const spacing = tlen;
-      const GHOST = 22;
+      // Extend trail leftward from tail — use pure -X direction so it spreads across canvas
+      const perpX = 0, perpY = 1; // perp is vertical for a horizontal snake
+      const stepX = -1, stepY = 0;
+      const spacing = R * 1.6; // larger spacing so trail fans out further
+      const GHOST = 28;
       const tp = [];
       for (let i = 0; i < GHOST; i++)
         tp.push({ x: pts[N-1].x + stepX*i*spacing, y: pts[N-1].y + stepY*i*spacing });
