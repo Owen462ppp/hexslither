@@ -1136,14 +1136,17 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     const N  = 80;
     const R  = Math.min(W * 0.068, H * 0.13);
     const cx = W / 2, cy = H / 2;
+    const spanX = W * 0.42; // half-width the snake occupies
+    const amp   = H * 0.22; // wave amplitude
 
-    // Lissajous spine: freq ratio 1:0.5 — head sweeps a figure-8 while body undulates
+    // Horizontal snake: head (pts[0]) on right, tail (pts[N-1]) on left
+    // Wave phase animates so it looks like the snake is slithering rightward
     const pts = [];
     for (let i = 0; i < N; i++) {
-      const phase = t * 1.5 - i * 0.175;
+      const u = i / (N - 1); // 0=head, 1=tail
       pts.push({
-        x: cx + Math.sin(phase)          * (W * 0.31),
-        y: cy + Math.sin(phase * 0.5 + 0.9) * (H * 0.28),
+        x: cx + spanX * (1 - u * 2),
+        y: cy + Math.sin(u * Math.PI * 2.5 - t * 2) * amp * (0.4 + u * 0.6),
       });
     }
 
@@ -1262,6 +1265,8 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     document.getElementById('ap-tab-inv').classList.toggle('ap-htab-active', mode === 'inventory');
     document.getElementById('ap-tab-shop').classList.toggle('ap-htab-active', mode === 'shop');
     const isShop = mode === 'shop';
+    document.getElementById('ap-preview-wrap').classList.toggle('hidden', isShop);
+    document.getElementById('ap-catbar').classList.toggle('hidden', isShop);
     document.getElementById('ap-selector').classList.toggle('hidden', isShop);
     document.getElementById('ap-save-row').classList.toggle('hidden', isShop);
     document.getElementById('ap-shop-wrap').classList.toggle('hidden', !isShop);
@@ -1282,6 +1287,8 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     document.querySelectorAll('.ap-cat').forEach(b => b.classList.toggle('ap-cat-active', b.dataset.apcat === 'skins'));
     document.getElementById('ap-tab-inv').classList.add('ap-htab-active');
     document.getElementById('ap-tab-shop').classList.remove('ap-htab-active');
+    document.getElementById('ap-preview-wrap').classList.remove('hidden');
+    document.getElementById('ap-catbar').classList.remove('hidden');
     document.getElementById('ap-selector').classList.remove('hidden');
     document.getElementById('ap-save-row').classList.remove('hidden');
     document.getElementById('ap-shop-wrap').classList.add('hidden');
