@@ -234,7 +234,7 @@ class GameRoom {
         d.x *= scale;
         d.y *= scale;
       }
-      this.foodManager.spawnOne(this.worldRadius, d.x, d.y, d.value, cashPerDrop);
+      this.foodManager.spawnOne(this.worldRadius, d.x, d.y, d.value, cashPerDrop, d.color);
     });
 
     const player = this.players.get(snake.id);
