@@ -69,9 +69,9 @@ class Snake {
       this.angle = this.targetAngle;
     }
 
-    // Boost ramp: gradually accelerates to full speed over ~15 ticks (0.25s)
+    // Boost ramp: 0 → 1 over ~8 ticks (0.13s) — fast but smooth
     if (this.boosting && this.boostFuel > 0) {
-      this.boostRamp = Math.min(1, (this.boostRamp || 0) + 1 / 15);
+      this.boostRamp = Math.min(1, (this.boostRamp || 0) + 1 / 8);
       this._boostTick = (this._boostTick || 0) + 1;
       if (this._boostTick >= 12) {
         this._boostTick = 0;
@@ -79,7 +79,7 @@ class Snake {
         if (dropped) this.boostDrops.push({ x: dropped.x, y: dropped.y, value: 0.15 });
       }
     } else {
-      if (this.boosting) { this.boosting = false; }
+      if (this.boosting) this.boosting = false;
       this._boostTick = 0;
       this.boostRamp = 0;
     }
@@ -91,24 +91,17 @@ class Snake {
     if (this._moveAccum < 1) return;
     this._moveAccum -= 1;
 
-    // Step accumulator: boostRamp smoothly scales steps from 1 → 3
-    const effectiveSteps = 1 + (this.boostRamp || 0) * 2;
-    if (this._stepAccum === undefined) this._stepAccum = 0;
-    this._stepAccum += effectiveSteps;
-    const steps = Math.floor(this._stepAccum);
-    this._stepAccum -= steps;
-
-    const speed = C.SNAKE_BASE_SPEED;
-    for (let step = 0; step < steps; step++) {
-      this.segments.unshift({
-        x: this.segments[0].x + Math.cos(this.angle) * speed,
-        y: this.segments[0].y + Math.sin(this.angle) * speed,
-      });
-      if (this.pendingGrowth > 0) {
-        this.pendingGrowth--;
-      } else {
-        this.segments.pop();
-      }
+    // Smooth float speed — no integer steps, no jitter
+    // boostRamp scales speed continuously from 1x (6) to 3x (18)
+    const speed = C.SNAKE_BASE_SPEED * (1 + (this.boostRamp || 0) * 2);
+    this.segments.unshift({
+      x: this.segments[0].x + Math.cos(this.angle) * speed,
+      y: this.segments[0].y + Math.sin(this.angle) * speed,
+    });
+    if (this.pendingGrowth > 0) {
+      this.pendingGrowth--;
+    } else {
+      this.segments.pop();
     }
   }
 
