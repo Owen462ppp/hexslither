@@ -978,8 +978,40 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     { id: 'shadow',  name: 'Shadow',     color: '#374151', locked: true  },
   ];
 
-  let equippedId = localStorage.getItem('duelseries_skin_id') || 'coral';
-  let previewIdx = Math.max(0, SKINS.findIndex(s => s.id === equippedId));
+  const HATS = [
+    { id: 'none',    name: 'No Hat',      locked: false },
+    { id: 'crown',   name: 'Crown',       locked: false },
+    { id: 'tophat',  name: 'Top Hat',     locked: false },
+    { id: 'cap',     name: 'Cap',         locked: false },
+    { id: 'wizard',  name: 'Wizard Hat',  locked: true  },
+    { id: 'cowboy',  name: 'Cowboy Hat',  locked: true  },
+    { id: 'party',   name: 'Party Hat',   locked: true  },
+    { id: 'halo',    name: 'Halo',        locked: true  },
+  ];
+
+  const BOOSTS = [
+    { id: 'default',   name: 'Default',       locked: false },
+    { id: 'fire',      name: 'Fire Trail',     locked: false },
+    { id: 'ice',       name: 'Ice Trail',      locked: false },
+    { id: 'rainbow',   name: 'Rainbow',        locked: true  },
+    { id: 'lightning', name: 'Lightning',      locked: true  },
+    { id: 'smoke',     name: 'Smoke Trail',    locked: true  },
+    { id: 'stars',     name: 'Star Burst',     locked: true  },
+    { id: 'galaxy',    name: 'Galaxy Trail',   locked: true  },
+  ];
+
+  const CATS = { skins: SKINS, hats: HATS, boosts: BOOSTS };
+
+  let equippedId  = localStorage.getItem('duelseries_skin_id')  || 'coral';
+  let equippedHat = localStorage.getItem('duelseries_hat_id')   || 'none';
+  let equippedBoost = localStorage.getItem('duelseries_boost_id') || 'default';
+
+  let previewBycat = {
+    skins:  Math.max(0, SKINS.findIndex(s => s.id === equippedId)),
+    hats:   Math.max(0, HATS.findIndex(h => h.id === equippedHat)),
+    boosts: Math.max(0, BOOSTS.findIndex(b => b.id === equippedBoost)),
+  };
+
   let apCat      = 'skins';
   let apMode     = 'inventory';
   let apAnimT    = 0;
@@ -1127,7 +1159,7 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   }
 
   // ── Animated snake for the appearance screen ─────────────────────────────────
-  function drawAnimSnake(canvas, color, t) {
+  function drawAnimSnake(canvas, color, t, hatId) {
     const W = canvas.width  = canvas.offsetWidth  || 520;
     const H = canvas.height = canvas.offsetHeight || 260;
     const ctx = canvas.getContext('2d');
@@ -1212,6 +1244,92 @@ document.getElementById('btn-play').addEventListener('click', async () => {
       const ps = eyeR - pupilR;
       ctx.beginPath(); ctx.arc(ex+fwdX*ps, ey+fwdY*ps, pupilR, 0, Math.PI*2); ctx.fillStyle='#060606'; ctx.fill();
     }
+
+    // Hat — drawn above head in local space rotated to head angle
+    if (hatId && hatId !== 'none') {
+      ctx.save();
+      ctx.translate(hx, hy);
+      ctx.rotate(ang - Math.PI / 2); // "up" in local space = above head visually
+      const by = -R * 1.08; // base of hat just above head circle
+
+      if (hatId === 'crown') {
+        const w = R*1.5, h = R*0.95;
+        ctx.fillStyle = '#FFD700'; ctx.strokeStyle = '#B8860B'; ctx.lineWidth = 0.8;
+        ctx.fillRect(-w/2, by - h*0.32, w, h*0.32);
+        ctx.beginPath();
+        ctx.moveTo(-w/2, by - h*0.32);
+        ctx.lineTo(-w/3, by - h); ctx.lineTo(-w/8, by - h*0.48);
+        ctx.lineTo(0, by - h);    ctx.lineTo(w/8, by - h*0.48);
+        ctx.lineTo(w/3, by - h);  ctx.lineTo(w/2, by - h*0.32);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        for (const [rx, col] of [[-w/3,'#ff3333'],[0,'#3399ff'],[w/3,'#ff3333']]) {
+          ctx.fillStyle = col;
+          ctx.beginPath(); ctx.arc(rx, by - h*0.16, R*0.1, 0, Math.PI*2); ctx.fill();
+        }
+
+      } else if (hatId === 'tophat') {
+        const w = R*1.3, bw = R*1.75, bh = R*1.1;
+        ctx.fillStyle = '#111'; ctx.strokeStyle = '#333'; ctx.lineWidth = 0.7;
+        ctx.beginPath(); ctx.ellipse(0, by, bw/2, R*0.2, 0, 0, Math.PI*2);
+        ctx.fill(); ctx.stroke();
+        ctx.fillRect(-w/2, by - bh, w, bh); ctx.strokeRect(-w/2, by - bh, w, bh);
+        ctx.fillStyle = '#880000';
+        ctx.fillRect(-w/2, by - bh*0.25, w, bh*0.18);
+
+      } else if (hatId === 'cap') {
+        const w = R*1.35;
+        ctx.fillStyle = '#2255cc'; ctx.strokeStyle = '#1133aa'; ctx.lineWidth = 0.7;
+        ctx.beginPath(); ctx.arc(0, by, w/2, Math.PI, 0); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(w*0.3, by, w*0.52, R*0.15, -0.25, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(0, by - w/2, R*0.09, 0, Math.PI*2); ctx.fill();
+
+      } else if (hatId === 'wizard') {
+        const bw = R*1.7;
+        ctx.fillStyle = '#7722cc'; ctx.strokeStyle = '#5511aa'; ctx.lineWidth = 0.7;
+        ctx.beginPath(); ctx.ellipse(0, by, bw/2, R*0.2, 0, 0, Math.PI*2);
+        ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-R*0.62, by); ctx.lineTo(0, by - R*2.2); ctx.lineTo(R*0.62, by);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#FFD700'; ctx.font = `${R*0.5}px serif`; ctx.textAlign = 'center';
+        ctx.fillText('★', R*0.08, by - R*0.7); ctx.fillText('✦', -R*0.08, by - R*1.35);
+
+      } else if (hatId === 'cowboy') {
+        const w = R*1.3, bw = R*2.0;
+        ctx.fillStyle = '#8B4513'; ctx.strokeStyle = '#5c2d0a'; ctx.lineWidth = 0.7;
+        ctx.beginPath(); ctx.ellipse(0, by, bw/2, R*0.22, 0, 0, Math.PI*2);
+        ctx.fill(); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-w/2, by);
+        ctx.bezierCurveTo(-w/2, by - R*1.1, -R*0.1, by - R*1.25, 0, by - R*1.25);
+        ctx.bezierCurveTo(R*0.1, by - R*1.25, w/2, by - R*1.1, w/2, by);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#FFD700';
+        ctx.fillRect(-w/2, by - R*0.28, w, R*0.17);
+
+      } else if (hatId === 'party') {
+        ctx.fillStyle = '#ff3399'; ctx.strokeStyle = '#cc0077'; ctx.lineWidth = 0.7;
+        ctx.beginPath(); ctx.moveTo(-R*0.58, by); ctx.lineTo(0, by - R*1.85); ctx.lineTo(R*0.58, by);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#FFD700';
+        for (const [px, py] of [[-R*0.22, by-R*0.4],[R*0.1, by-R*0.9],[-R*0.05, by-R*1.4]]) {
+          ctx.beginPath(); ctx.arc(px, py, R*0.1, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.beginPath(); ctx.arc(0, by - R*1.9, R*0.18, 0, Math.PI*2); ctx.fill();
+
+      } else if (hatId === 'halo') {
+        ctx.strokeStyle = '#FFD700'; ctx.lineWidth = R*0.18;
+        ctx.shadowColor = '#FFD700'; ctx.shadowBlur = R*0.7;
+        ctx.beginPath(); ctx.ellipse(0, by - R*0.6, R*0.75, R*0.22, 0, 0, Math.PI*2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+
+      ctx.restore();
+    }
+
     ctx.restore();
   }
 
@@ -1220,8 +1338,9 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     if (!canvas) return;
     if (apAnimRaf) cancelAnimationFrame(apAnimRaf);
     function loop() {
-      const skin = SKINS[previewIdx] || SKINS[0];
-      drawAnimSnake(canvas, skin.color, apAnimT);
+      const skin   = SKINS[previewBycat.skins]   || SKINS[0];
+      const hatId  = apCat === 'hats'   ? (HATS[previewBycat.hats]     || HATS[0]).id   : equippedHat;
+      drawAnimSnake(canvas, skin.color, apAnimT, hatId);
       apAnimT += 0.022;
       apAnimRaf = requestAnimationFrame(loop);
     }
@@ -1234,18 +1353,17 @@ document.getElementById('btn-play').addEventListener('click', async () => {
 
   // ── Selector UI ──────────────────────────────────────────────────────────────
   function updateApSelector() {
-    const skin = apCat === 'skins' ? SKINS[previewIdx] : null;
-    const nameEl = document.getElementById('ap-sel-name');
-    const lockEl = document.getElementById('ap-sel-lock');
+    const list = CATS[apCat];
+    const item = list ? list[previewBycat[apCat]] : null;
+    const nameEl  = document.getElementById('ap-sel-name');
+    const lockEl  = document.getElementById('ap-sel-lock');
     const saveBtn = document.getElementById('ap-save');
-
-    if (skin) {
-      nameEl.textContent = skin.name;
-      const locked = skin.locked;
-      lockEl.classList.toggle('hidden', !locked);
-      saveBtn.disabled = locked;
+    if (item) {
+      nameEl.textContent = item.name;
+      lockEl.classList.toggle('hidden', !item.locked);
+      saveBtn.disabled = !!item.locked;
     } else {
-      nameEl.textContent = 'Coming Soon';
+      nameEl.textContent = '—';
       lockEl.classList.add('hidden');
       saveBtn.disabled = true;
     }
@@ -1254,9 +1372,8 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   function setApCat(cat) {
     apCat = cat;
     document.querySelectorAll('.ap-cat').forEach(b => b.classList.toggle('ap-cat-active', b.dataset.apcat === cat));
-    const notSkins = cat !== 'skins';
-    document.getElementById('ap-prev').disabled = notSkins;
-    document.getElementById('ap-next').disabled = notSkins;
+    document.getElementById('ap-prev').disabled = false;
+    document.getElementById('ap-next').disabled = false;
     updateApSelector();
   }
 
@@ -1275,9 +1392,13 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   // ── Open / close ─────────────────────────────────────────────────────────────
   function openAppearanceScreen(lobbyNum) {
     apSrcLobby = lobbyNum || 1;
-    previewIdx = Math.max(0, SKINS.findIndex(s => s.id === equippedId));
+    previewBycat.skins  = Math.max(0, SKINS.findIndex(s => s.id === equippedId));
+    previewBycat.hats   = Math.max(0, HATS.findIndex(h => h.id === equippedHat));
+    previewBycat.boosts = Math.max(0, BOOSTS.findIndex(b => b.id === equippedBoost));
     apCat = 'skins';
     apMode = 'inventory';
+    const snakeCanvas = document.getElementById('snake-canvas');
+    if (snakeCanvas) snakeCanvas.style.opacity = '0';
 
     document.getElementById('appearance-screen').classList.remove('hidden');
     document.getElementById('lobby-screen').classList.add('hidden');
@@ -1294,7 +1415,6 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     document.getElementById('ap-shop-wrap').classList.add('hidden');
     document.getElementById('ap-prev').disabled = false;
     document.getElementById('ap-next').disabled = false;
-    document.getElementById('ap-saved-msg').textContent = '';
 
     updateApSelector();
     startApAnim();
@@ -1304,6 +1424,8 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     stopApAnim();
     document.getElementById('appearance-screen').classList.add('hidden');
     document.querySelectorAll('.lobby-nav-arrow').forEach(el => el.classList.remove('hidden'));
+    const snakeCanvas = document.getElementById('snake-canvas');
+    if (snakeCanvas) snakeCanvas.style.opacity = '';
     if (apSrcLobby === 2) {
       document.getElementById('lobby-screen-2').classList.remove('hidden');
     } else {
@@ -1324,25 +1446,33 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   });
 
   document.getElementById('ap-prev').addEventListener('click', () => {
-    if (apCat !== 'skins') return;
-    previewIdx = (previewIdx - 1 + SKINS.length) % SKINS.length;
+    const list = CATS[apCat]; if (!list) return;
+    previewBycat[apCat] = (previewBycat[apCat] - 1 + list.length) % list.length;
     updateApSelector();
   });
 
   document.getElementById('ap-next').addEventListener('click', () => {
-    if (apCat !== 'skins') return;
-    previewIdx = (previewIdx + 1) % SKINS.length;
+    const list = CATS[apCat]; if (!list) return;
+    previewBycat[apCat] = (previewBycat[apCat] + 1) % list.length;
     updateApSelector();
   });
 
   document.getElementById('ap-save').addEventListener('click', () => {
-    if (apCat !== 'skins') return;
-    const skin = SKINS[previewIdx];
-    if (!skin || skin.locked) return;
-    equippedId = skin.id;
-    localStorage.setItem('duelseries_skin_id',    skin.id);
-    localStorage.setItem('duelseries_skin_color', skin.color);
-    refreshMiniCanvas();
+    const list = CATS[apCat]; if (!list) return;
+    const item = list[previewBycat[apCat]];
+    if (!item || item.locked) return;
+    if (apCat === 'skins') {
+      equippedId = item.id;
+      localStorage.setItem('duelseries_skin_id',    item.id);
+      localStorage.setItem('duelseries_skin_color', item.color);
+      refreshMiniCanvas();
+    } else if (apCat === 'hats') {
+      equippedHat = item.id;
+      localStorage.setItem('duelseries_hat_id', item.id);
+    } else if (apCat === 'boosts') {
+      equippedBoost = item.id;
+      localStorage.setItem('duelseries_boost_id', item.id);
+    }
     closeAppearanceScreen();
   });
 
