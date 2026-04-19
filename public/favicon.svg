@@ -11,26 +11,25 @@
     </radialGradient>
   </defs>
 
-  <!-- Outer rim (dark gold edge) -->
+  <!-- Outer rim -->
   <circle cx="32" cy="32" r="31" fill="#8B6914"/>
-
   <!-- Inner rim -->
   <circle cx="32" cy="32" r="28" fill="#c8930a"/>
-
   <!-- Coin face -->
   <circle cx="32" cy="32" r="25" fill="url(#coin)"/>
-
-  <!-- Shine overlay -->
+  <!-- Shine -->
   <circle cx="32" cy="32" r="25" fill="url(#shine)"/>
 
-  <!-- DS text -->
+  <!-- D$ text — green money color, large -->
   <text
-    x="32" y="38"
+    x="32" y="41"
     font-family="Arial Black, Arial, sans-serif"
     font-weight="900"
-    font-size="22"
-    fill="#7a4f00"
+    font-size="30"
+    fill="#1a7a3c"
+    stroke="#0d4a22"
+    stroke-width="0.8"
     text-anchor="middle"
-    letter-spacing="-1"
-  >DS</text>
+    letter-spacing="-2"
+  >D$</text>
 </svg>
