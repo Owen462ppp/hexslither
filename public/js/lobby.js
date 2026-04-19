@@ -950,6 +950,8 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   sessionStorage.setItem('walletAddress', account?.walletAddress || '');
   sessionStorage.setItem('googleId',      account?.googleId || '');
   sessionStorage.setItem('snakeColor',    localStorage.getItem('duelseries_skin_color') || '#E8756A');
+  sessionStorage.setItem('hatId',         localStorage.getItem('duelseries_hat_id')   || 'none');
+  sessionStorage.setItem('boostId',       localStorage.getItem('duelseries_boost_id') || 'default');
   sessionStorage.setItem('lobbyType',     selectedLobbyType);
   sessionStorage.setItem('entrySol',      entrySol);
   window.location.href = '/game.html';
@@ -1159,7 +1161,7 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   }
 
   // ── Animated snake for the appearance screen ─────────────────────────────────
-  function drawAnimSnake(canvas, color, t, hatId) {
+  function drawAnimSnake(canvas, color, t, hatId, boostId) {
     const W = canvas.width  = canvas.offsetWidth  || 520;
     const H = canvas.height = canvas.offsetHeight || 260;
     const ctx = canvas.getContext('2d');
@@ -1185,6 +1187,34 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     ctx.save();
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+
+    // Boost trail (drawn under body so body covers the head end)
+    if (boostId && boostId !== 'default') {
+      const BOOST_COLORS = {
+        fire:['#ff6600','#ff3300','#ffaa00'], ice:['#88ddff','#aaeeff','#ffffff'],
+        lightning:['#ffff44','#ffffff','#ffee88'], smoke:['#888','#aaa','#666'],
+        stars:['#fff','#ffff99','#ffffcc'], galaxy:['#aa44ff','#6622cc','#dd88ff'],
+      };
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const trailLen = Math.min(pts.length - 1, 42);
+      for (let i = 1; i < trailLen; i++) {
+        const fade = 1 - i / trailLen;
+        let fc;
+        if (boostId === 'rainbow') {
+          fc = `hsla(${((t * 80 - i * 8) % 360 + 360) % 360},100%,65%,${(fade * 0.45).toFixed(2)})`;
+        } else {
+          const cols = BOOST_COLORS[boostId] || ['#fff'];
+          const hex = cols[i % cols.length];
+          fc = hex + Math.floor(fade * 0.45 * 255).toString(16).padStart(2, '0');
+        }
+        ctx.beginPath();
+        ctx.arc(pts[i].x, pts[i].y, R * Math.max(0.1, 0.9 - i * 0.01), 0, Math.PI * 2);
+        ctx.fillStyle = fc;
+        ctx.fill();
+      }
+      ctx.restore();
+    }
 
     // Body
     ctx.beginPath();
@@ -1338,9 +1368,10 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     if (!canvas) return;
     if (apAnimRaf) cancelAnimationFrame(apAnimRaf);
     function loop() {
-      const skin   = SKINS[previewBycat.skins]   || SKINS[0];
-      const hatId  = apCat === 'hats'   ? (HATS[previewBycat.hats]     || HATS[0]).id   : equippedHat;
-      drawAnimSnake(canvas, skin.color, apAnimT, hatId);
+      const skin    = SKINS[previewBycat.skins]  || SKINS[0];
+      const hatId   = apCat === 'hats'   ? (HATS[previewBycat.hats]     || HATS[0]).id   : equippedHat;
+      const boostId = apCat === 'boosts' ? (BOOSTS[previewBycat.boosts] || BOOSTS[0]).id : equippedBoost;
+      drawAnimSnake(canvas, skin.color, apAnimT, hatId, boostId);
       apAnimT += 0.022;
       apAnimRaf = requestAnimationFrame(loop);
     }

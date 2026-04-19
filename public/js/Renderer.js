@@ -154,6 +154,8 @@ class Renderer {
   _drawSnake(ctx, snake, isMe) {
     if (!snake.segs || snake.segs.length < 4) return;
     const { segs, color, boosting, name } = snake;
+    const hatId   = snake.hatId   || 'none';
+    const boostId = snake.boostId || 'default';
 
     const growthScale = 1 + Math.min(1.5, (snake.length || 20) / 200);
     const R  = CONSTANTS.SNAKE_HEAD_RADIUS * growthScale;
@@ -163,6 +165,38 @@ class Renderer {
     ctx.save();
     ctx.lineCap  = 'round';
     ctx.lineJoin = 'round';
+
+    // Boost trail (drawn under body)
+    if (boosting && boostId !== 'default') {
+      const BOOST_COLORS = {
+        fire:      ['#ff6600','#ff3300','#ffaa00'],
+        ice:       ['#88ddff','#aaeeff','#ffffff'],
+        lightning: ['#ffff44','#ffffff','#ffee88'],
+        smoke:     ['#888','#aaa','#666'],
+        stars:     ['#fff','#ffff99','#ffffcc'],
+        galaxy:    ['#aa44ff','#6622cc','#dd88ff'],
+      };
+      const t = Date.now() / 1000;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const trailLen = Math.min(SN, 42);
+      for (let i = 1; i < trailLen; i++) {
+        const fade = 1 - i / trailLen;
+        let fc;
+        if (boostId === 'rainbow') {
+          fc = `hsla(${((t * 80 - i * 8) % 360 + 360) % 360},100%,65%,${(fade * 0.45).toFixed(2)})`;
+        } else {
+          const cols = BOOST_COLORS[boostId] || ['#fff'];
+          const hex = cols[i % cols.length];
+          fc = hex + Math.floor(fade * 0.45 * 255).toString(16).padStart(2, '0');
+        }
+        ctx.beginPath();
+        ctx.arc(segs[i * 2], segs[i * 2 + 1], R * Math.max(0.1, 0.9 - i * 0.01), 0, Math.PI * 2);
+        ctx.fillStyle = fc;
+        ctx.fill();
+      }
+      ctx.restore();
+    }
 
     const STEPS = 4;
     const CHUNK = 4;
@@ -284,6 +318,80 @@ class Renderer {
       const ps = eyeR - pupilR;
       ctx.beginPath(); ctx.arc(ex + pupilFwdX * ps, ey + pupilFwdY * ps, pupilR, 0, Math.PI * 2);
       ctx.fillStyle = '#060606'; ctx.fill();
+    }
+
+    // ── Hat ───────────────────────────────────────────────────────────────────
+    if (hatId !== 'none') {
+      ctx.save();
+      ctx.translate(hx, hy);
+      ctx.rotate(angle - Math.PI / 2);
+      const by = -HR * 1.08;
+
+      if (hatId === 'crown') {
+        const w = HR*1.5, h = HR*0.95;
+        ctx.fillStyle = '#FFD700'; ctx.strokeStyle = '#B8860B'; ctx.lineWidth = HR*0.06;
+        ctx.fillRect(-w/2, by - h*0.32, w, h*0.32);
+        ctx.beginPath();
+        ctx.moveTo(-w/2, by - h*0.32);
+        ctx.lineTo(-w/3, by - h); ctx.lineTo(-w/8, by - h*0.48);
+        ctx.lineTo(0, by - h);    ctx.lineTo(w/8, by - h*0.48);
+        ctx.lineTo(w/3, by - h);  ctx.lineTo(w/2, by - h*0.32);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        for (const ox of [-w/3, 0, w/3]) {
+          ctx.beginPath(); ctx.arc(ox, by - h, HR*0.12, 0, Math.PI*2);
+          ctx.fillStyle = '#ff3333'; ctx.fill();
+        }
+      } else if (hatId === 'tophat') {
+        const w = HR*1.3, brimW = HR*1.8, brimH = HR*0.18, h = HR*1.1;
+        ctx.fillStyle = '#111'; ctx.strokeStyle = '#333'; ctx.lineWidth = HR*0.06;
+        ctx.fillRect(-w/2, by - h, w, h); ctx.strokeRect(-w/2, by - h, w, h);
+        ctx.fillRect(-brimW/2, by - brimH, brimW, brimH); ctx.strokeRect(-brimW/2, by - brimH, brimW, brimH);
+        ctx.fillStyle = '#8B0000'; ctx.fillRect(-w/2+HR*0.08, by - h*0.28, w - HR*0.16, HR*0.18);
+      } else if (hatId === 'cap') {
+        const w = HR*1.6, h = HR*0.7;
+        ctx.fillStyle = '#1a6eff'; ctx.strokeStyle = '#0044cc'; ctx.lineWidth = HR*0.06;
+        ctx.beginPath();
+        ctx.ellipse(0, by - h*0.5, w/2, h/2, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#1a6eff';
+        ctx.beginPath(); ctx.ellipse(w*0.15, by, w*0.48, HR*0.18, 0.25, 0, Math.PI); ctx.fill();
+        ctx.beginPath(); ctx.arc(0, by - h*0.5, HR*0.22, 0, Math.PI*2);
+        ctx.fillStyle = '#fff'; ctx.fill();
+      } else if (hatId === 'wizard') {
+        const w = HR*1.1, h = HR*1.6, brimW = HR*1.8, brimH = HR*0.18;
+        ctx.fillStyle = '#6a0dad'; ctx.strokeStyle = '#4a0080'; ctx.lineWidth = HR*0.06;
+        ctx.beginPath();
+        ctx.moveTo(-w/2, by); ctx.lineTo(w/2, by); ctx.lineTo(0, by - h); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillRect(-brimW/2, by - brimH, brimW, brimH); ctx.strokeRect(-brimW/2, by - brimH, brimW, brimH);
+        ctx.fillStyle = '#ffd700';
+        for (const [sx, sy] of [[-w*0.15, by - h*0.35],[w*0.1, by - h*0.6],[0, by - h*0.15]]) {
+          ctx.beginPath(); ctx.arc(sx, sy, HR*0.09, 0, Math.PI*2); ctx.fill();
+        }
+      } else if (hatId === 'cowboy') {
+        const brimW = HR*2.2, brimH = HR*0.2, w = HR*1.0, h = HR*0.8;
+        ctx.fillStyle = '#8B4513'; ctx.strokeStyle = '#5C2D0A'; ctx.lineWidth = HR*0.06;
+        ctx.fillRect(-brimW/2, by - brimH, brimW, brimH); ctx.strokeRect(-brimW/2, by - brimH, brimW, brimH);
+        ctx.beginPath();
+        ctx.moveTo(-w/2, by - brimH); ctx.lineTo(-w*0.7, by - brimH - h*0.4);
+        ctx.quadraticCurveTo(-w*0.4, by - brimH - h*1.1, 0, by - brimH - h);
+        ctx.quadraticCurveTo(w*0.4, by - brimH - h*1.1, w*0.7, by - brimH - h*0.4);
+        ctx.lineTo(w/2, by - brimH); ctx.closePath(); ctx.fill(); ctx.stroke();
+      } else if (hatId === 'party') {
+        const w = HR*0.9, h = HR*1.4;
+        ctx.fillStyle = '#ff1493'; ctx.strokeStyle = '#cc0077'; ctx.lineWidth = HR*0.06;
+        ctx.beginPath();
+        ctx.moveTo(-w/2, by); ctx.lineTo(w/2, by); ctx.lineTo(0, by - h); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#fff';
+        for (const [sx, sy] of [[-w*0.2, by - h*0.25],[w*0.15, by - h*0.55],[0, by - h*0.12],[-w*0.05, by - h*0.7]]) {
+          ctx.beginPath(); ctx.arc(sx, sy, HR*0.07, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.fillStyle = '#ffff00'; ctx.beginPath(); ctx.arc(0, by - h, HR*0.16, 0, Math.PI*2); ctx.fill();
+      } else if (hatId === 'halo') {
+        ctx.strokeStyle = '#FFD700'; ctx.lineWidth = HR*0.28; ctx.shadowColor = '#FFD700'; ctx.shadowBlur = HR*0.6;
+        ctx.beginPath(); ctx.ellipse(0, by - HR*0.5, HR*0.75, HR*0.22, 0, 0, Math.PI*2); ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+
+      ctx.restore();
     }
 
     // ── Labels ────────────────────────────────────────────────────────────────

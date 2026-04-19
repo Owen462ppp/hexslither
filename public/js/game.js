@@ -40,9 +40,11 @@ let displayState = { snakes: [], food: [], worldRadius: CONSTANTS.BASE_WORLD_RAD
 const socket = io();
 
 const snakeColor = sessionStorage.getItem('snakeColor') || localStorage.getItem('duelseries_skin_color') || '#E8756A';
+const hatId      = sessionStorage.getItem('hatId')      || 'none';
+const boostId    = sessionStorage.getItem('boostId')    || 'default';
 
 socket.on('connect', () => {
-  socket.emit(CONSTANTS.EVENTS.PLAY, { name: playerName, walletAddress, googleId, color: snakeColor, lobbyType, entrySol });
+  socket.emit(CONSTANTS.EVENTS.PLAY, { name: playerName, walletAddress, googleId, color: snakeColor, lobbyType, entrySol, hatId, boostId });
 });
 
 function playJoinSound() {

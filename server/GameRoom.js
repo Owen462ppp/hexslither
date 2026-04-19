@@ -36,12 +36,12 @@ class GameRoom {
     if (this.tickInterval) clearInterval(this.tickInterval);
   }
 
-  addPlayer(socket, name, walletAddress, color, entrySol) {
+  addPlayer(socket, name, walletAddress, color, entrySol, hatId, boostId) {
     socket.join(this.socketRoomName);
     this.players.set(socket.id, { socket, name, walletAddress });
 
     const { x, y } = this.safeSpawnPoint();
-    const snake = new Snake(socket.id, name, x, y, color);
+    const snake = new Snake(socket.id, name, x, y, color, hatId, boostId);
     snake.worth = entrySol || 0;
     this.snakes.set(socket.id, snake);
 

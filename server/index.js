@@ -432,7 +432,7 @@ io.on('connection', (socket) => {
     broadcastLobbyState();
   });
 
-  socket.on(C.EVENTS.PLAY, ({ name, walletAddress, googleId, color, lobbyType, entrySol } = {}) => {
+  socket.on(C.EVENTS.PLAY, ({ name, walletAddress, googleId, color, lobbyType, entrySol, hatId, boostId } = {}) => {
     const playerName = (name || 'Player').slice(0, 20);
     if (googleId) {
       socket._googleId = googleId;
@@ -442,7 +442,7 @@ io.on('connection', (socket) => {
     socket._room = room;
     socket._joinTime = Date.now();
     console.log(`[>] ${playerName} joins ${lobbyType || 'free'} lobby (worth: ${entrySol || 0} SOL)`);
-    room.addPlayer(socket, playerName, walletAddress || null, color || null, entrySol || 0);
+    room.addPlayer(socket, playerName, walletAddress || null, color || null, entrySol || 0, hatId || 'none', boostId || 'default');
     lobbyConnections.delete(socket);
     broadcastLobbyState();
   });
