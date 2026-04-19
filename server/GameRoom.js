@@ -116,12 +116,21 @@ class GameRoom {
   }
 
   addBot() {
-    if (this.lobbyType !== 'free') return null; // no bots in paid lobbies
+    if (this.lobbyType !== 'free') return null; // no free bots in paid lobbies
     const id = 'bot_' + uuidv4();
     const { x, y } = this.safeSpawnPoint();
     const bot = new Bot(id, x, y);
     this.snakes.set(id, bot);
-    // Bot joining expands the border
+    this.borderDrift = Math.min(this.borderDrift + 120, 1200);
+    return bot;
+  }
+
+  addPaidBot(entrySol) {
+    const id = 'bot_' + uuidv4();
+    const { x, y } = this.safeSpawnPoint();
+    const bot = new Bot(id, x, y);
+    bot.worth = entrySol || 0;
+    this.snakes.set(id, bot);
     this.borderDrift = Math.min(this.borderDrift + 120, 1200);
     return bot;
   }

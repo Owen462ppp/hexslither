@@ -494,13 +494,39 @@ io.on('connection', (socket) => {
 
   socket.on('ping_check', () => socket.emit('pong_check'));
 
-  socket.on('admin:spawnbot', ({ count } = {}) => {
+  socket.on('admin:spawnbot', async ({ count } = {}) => {
     const ownerGoogleId = process.env.OWNER_GOOGLE_ID;
     if (!ownerGoogleId || socket._googleId !== ownerGoogleId) return;
     const n = Math.min(Math.max(1, parseInt(count) || 1), 10);
     const room = socket._room || gameRooms.free;
-    for (let i = 0; i < n; i++) room.addBot();
-    socket.emit('admin:ack', { message: `Spawned ${n} bot(s)` });
+
+    if (room.lobbyType === 'free') {
+      for (let i = 0; i < n; i++) room.addBot();
+      socket.emit('admin:ack', { message: `Spawned ${n} free bot(s)` });
+      return;
+    }
+
+    // Paid lobby — deduct entry fee from owner wallet per bot
+    const LOBBY_FEES_CAD = { dime: 0.10, dollar: 1.00 };
+    const feeCad = LOBBY_FEES_CAD[room.lobbyType] || 0;
+    const feeSol = prices.cadToSol(feeCad);
+    let spawned = 0;
+    for (let i = 0; i < n; i++) {
+      try {
+        const acc = await db.getAccountByGoogleId(ownerGoogleId);
+        if (!acc || acc.balance < feeSol) {
+          socket.emit('admin:ack', { message: `Spawned ${spawned}/${n} — insufficient balance` });
+          return;
+        }
+        await db.recordWithdrawal(ownerGoogleId, null, feeSol, 'paid_bot_entry');
+        room.addPaidBot(feeSol);
+        spawned++;
+      } catch (e) {
+        console.error('[BOT] Paid bot fee failed:', e.message);
+        break;
+      }
+    }
+    socket.emit('admin:ack', { message: `Spawned ${spawned} paid bot(s) worth ${feeCad * spawned}¢` });
   });
 
   // ── Agar events ──────────────────────────────────────────────────────────
