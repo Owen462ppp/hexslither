@@ -1188,7 +1188,7 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // Boost trail (drawn under body so body covers the head end)
+    // Boost trail — drawn from tail outward so it appears behind the snake
     if (boostId && boostId !== 'default') {
       const BOOST_RGBA = {
         fire:      [[255,102,0],[255,51,0],[255,170,0]],
@@ -1200,19 +1200,20 @@ document.getElementById('btn-play').addEventListener('click', async () => {
       };
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      const trailLen = Math.min(pts.length - 1, 42);
-      for (let i = 1; i < trailLen; i++) {
+      const trailLen = Math.min(30, N - 1);
+      for (let i = 0; i < trailLen; i++) {
+        const idx = N - 1 - i; // start at tail, move toward body
         const fade = 1 - i / trailLen;
         let fc;
         if (boostId === 'rainbow') {
-          fc = `hsla(${((t * 80 - i * 8) % 360 + 360) % 360},100%,65%,${(fade * 0.75).toFixed(2)})`;
+          fc = `hsla(${((t * 80 + i * 8) % 360 + 360) % 360},100%,65%,${(fade * 0.85).toFixed(2)})`;
         } else {
           const cols = BOOST_RGBA[boostId] || [[255,255,255]];
           const [r,g,b] = cols[i % cols.length];
-          fc = `rgba(${r},${g},${b},${(fade * 0.75).toFixed(2)})`;
+          fc = `rgba(${r},${g},${b},${(fade * 0.85).toFixed(2)})`;
         }
         ctx.beginPath();
-        ctx.arc(pts[i].x, pts[i].y, R * Math.max(0.2, 1.1 - i * 0.015), 0, Math.PI * 2);
+        ctx.arc(pts[idx].x, pts[idx].y, R * (0.35 + fade * 0.5), 0, Math.PI * 2);
         ctx.fillStyle = fc;
         ctx.fill();
       }
