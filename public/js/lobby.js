@@ -1761,6 +1761,16 @@ document.getElementById('btn-play').addEventListener('click', async () => {
 // ─── My Profile Modal ─────────────────────────────────────────────────────────
 (function () {
   const modal       = document.getElementById('modal-my-profile');
+  // ── Mute toggle ───────────────────────────────────────────────────────
+  window.gameMuted = false;
+  const muteBtn = document.getElementById('btn-mute');
+  muteBtn.addEventListener('click', () => {
+    window.gameMuted = !window.gameMuted;
+    muteBtn.classList.toggle('muted', window.gameMuted);
+    muteBtn.querySelector('.icon-sound-on').classList.toggle('hidden', window.gameMuted);
+    muteBtn.querySelector('.icon-sound-off').classList.toggle('hidden', !window.gameMuted);
+  });
+
   const closeBtn    = document.getElementById('close-my-profile');
   const openBtn     = document.getElementById('btn-profile');
   const chartCanvas = document.getElementById('pm-chart');

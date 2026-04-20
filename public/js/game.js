@@ -48,6 +48,7 @@ socket.on('connect', () => {
 });
 
 function playJoinSound() {
+  if (window.gameMuted) return;
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     // Three ascending notes: C5 → E5 → G5, quick staggered chime

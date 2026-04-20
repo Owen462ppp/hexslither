@@ -29,6 +29,20 @@
       <div id="topbar-user" class="hidden">
         <img id="topbar-avatar" src="" alt="">
         <span id="topbar-username"></span>
+        <button id="btn-mute" class="btn-mute-icon" title="Mute sounds" aria-label="Mute sounds">
+          <!-- Speaker on -->
+          <svg class="icon-sound-on" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M11 5L6 9H3a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h3l5 4V5z" fill="currentColor"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M18.36 5.64a9 9 0 0 1 0 12.73" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <!-- Speaker muted (cross) -->
+          <svg class="icon-sound-off hidden" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M11 5L6 9H3a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h3l5 4V5z" fill="currentColor"/>
+            <line x1="23" y1="9" x2="17" y2="15" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            <line x1="17" y1="9" x2="23" y2="15" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </button>
         <button id="btn-profile" class="btn-profile-icon" title="My Profile" aria-label="My Profile">
           <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="14" cy="10" r="5" fill="currentColor"/>

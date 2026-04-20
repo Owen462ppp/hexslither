@@ -888,6 +888,22 @@ body {
 .name-error-msg.is-error   { color: #ef4444; }
 .name-error-msg.is-success { color: var(--green); }
 
+/* ── Mute button ─────────────────────────────────────────────────────── */
+.btn-mute-icon {
+  background: none;
+  border: 1.5px solid rgba(255,255,255,0.15);
+  border-radius: 50%;
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: #ccc;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+  flex-shrink: 0;
+}
+.btn-mute-icon:hover { border-color: var(--green); color: var(--green); background: rgba(20,241,149,0.08); }
+.btn-mute-icon.muted { color: #ef4444; border-color: rgba(239,68,68,0.4); }
+.btn-mute-icon.muted:hover { border-color: #ef4444; background: rgba(239,68,68,0.08); }
+
 /* ── Profile icon button ─────────────────────────────────────────────── */
 .btn-profile-icon {
   background: none;
