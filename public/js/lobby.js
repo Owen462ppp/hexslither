@@ -1776,6 +1776,77 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     applyMuteState();
   });
 
+  // ── Settings Modal ────────────────────────────────────────────────────
+  (function initSettings() {
+    const overlay = document.getElementById('modal-settings');
+    document.getElementById('btn-settings').addEventListener('click', () => {
+      // Populate account tab with live data
+      document.getElementById('st-username').textContent = sessionStorage.getItem('playerName') || '—';
+      const addr = walletInfo?.escrowAddress || '—';
+      document.getElementById('st-sol-address').textContent = addr.length > 12 ? addr.slice(0,6) + '…' + addr.slice(-4) : addr;
+      // Member since / login streak placeholders — real data from account if available
+      const acct = window._accountData || {};
+      document.getElementById('st-member-since').textContent = acct.memberSince || '—';
+      document.getElementById('st-login-streak').textContent = acct.loginStreak ? acct.loginStreak + ' days' : '—';
+      overlay.style.display = 'flex';
+    });
+    document.getElementById('close-settings').addEventListener('click', () => overlay.style.display = 'none');
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.style.display = 'none'; });
+
+    // Tab switching (re-use existing pm-nav-tab class scoped to settings)
+    overlay.querySelectorAll('.pm-nav-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        overlay.querySelectorAll('.pm-nav-tab').forEach(b => b.classList.remove('active'));
+        overlay.querySelectorAll('.st-panel').forEach(p => p.classList.add('hidden'));
+        btn.classList.add('active');
+        document.getElementById('st-panel-' + btn.dataset.stab).classList.remove('hidden');
+      });
+    });
+
+    // Audio settings — load from localStorage, wire sliders
+    const audioEnabled = document.getElementById('st-audio-enabled');
+    const masterSlider = document.getElementById('st-master-vol');
+    const sfxSlider    = document.getElementById('st-sfx-vol');
+    const musicSlider  = document.getElementById('st-music-vol');
+
+    function loadAudioPrefs() {
+      audioEnabled.checked     = localStorage.getItem('ds_audio_enabled') !== 'false';
+      masterSlider.value       = localStorage.getItem('ds_master_vol')    ?? 100;
+      sfxSlider.value          = localStorage.getItem('ds_sfx_vol')       ?? 50;
+      musicSlider.value        = localStorage.getItem('ds_music_vol')      ?? 30;
+      document.getElementById('st-master-vol-val').textContent = masterSlider.value + '%';
+      document.getElementById('st-sfx-vol-val').textContent    = sfxSlider.value    + '%';
+      document.getElementById('st-music-vol-val').textContent  = musicSlider.value  + '%';
+      window.gameMuted = !audioEnabled.checked;
+      applyMuteState();
+    }
+    loadAudioPrefs();
+
+    audioEnabled.addEventListener('change', () => {
+      localStorage.setItem('ds_audio_enabled', audioEnabled.checked);
+      window.gameMuted = !audioEnabled.checked;
+      localStorage.setItem('duelseries_muted', window.gameMuted);
+      applyMuteState();
+    });
+    function wireSlider(el, key, valId) {
+      el.addEventListener('input', () => {
+        document.getElementById(valId).textContent = el.value + '%';
+        localStorage.setItem(key, el.value);
+        window.gameMasterVol = parseInt(masterSlider.value) / 100;
+        window.gameSfxVol    = parseInt(sfxSlider.value)    / 100;
+        window.gameMusicVol  = parseInt(musicSlider.value)  / 100;
+      });
+    }
+    wireSlider(masterSlider, 'ds_master_vol', 'st-master-vol-val');
+    wireSlider(sfxSlider,    'ds_sfx_vol',    'st-sfx-vol-val');
+    wireSlider(musicSlider,  'ds_music_vol',  'st-music-vol-val');
+
+    // Expose volume globals for game.js
+    window.gameMasterVol = parseInt(masterSlider.value) / 100;
+    window.gameSfxVol    = parseInt(sfxSlider.value)    / 100;
+    window.gameMusicVol  = parseInt(musicSlider.value)  / 100;
+  })();
+
   const closeBtn    = document.getElementById('close-my-profile');
   const openBtn     = document.getElementById('btn-profile');
   const chartCanvas = document.getElementById('pm-chart');

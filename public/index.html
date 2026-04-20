@@ -29,6 +29,12 @@
       <div id="topbar-user" class="hidden">
         <img id="topbar-avatar" src="" alt="">
         <span id="topbar-username"></span>
+        <button id="btn-settings" class="btn-mute-icon" title="Settings" aria-label="Settings">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="3" fill="currentColor"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
         <button id="btn-mute" class="btn-mute-icon" title="Mute sounds" aria-label="Mute sounds">
           <!-- Speaker on -->
           <svg class="icon-sound-on" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -512,6 +518,111 @@
           <div class="pm-cs-text">Friends — Coming Soon</div>
           <div class="pm-cs-sub">Add friends, challenge them to duels, and track their stats.</div>
         </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="modal-settings" style="display:none">
+    <div class="modal modal-settings">
+
+      <div class="settings-header">
+        <div class="settings-header-left">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="color:#14F195;fill:currentColor">
+            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>Settings</span>
+        </div>
+        <button class="btn-cust-close" id="close-settings">✕</button>
+      </div>
+
+      <div class="pm-tab-bar">
+        <button class="pm-nav-tab active" data-stab="account">Account</button>
+        <button class="pm-nav-tab" data-stab="game">Game</button>
+        <button class="pm-nav-tab" data-stab="legal">Legal</button>
+      </div>
+
+      <!-- ── Account Tab ── -->
+      <div class="st-panel" id="st-panel-account">
+        <div class="st-section-label">Username</div>
+        <div class="st-info-row"><span class="st-info-key">Display Name</span><span class="st-info-val" id="st-username">—</span></div>
+
+        <div class="st-section-label">Wallet Information</div>
+        <div class="st-info-row"><span class="st-info-key">SOL Address</span><span class="st-info-val st-mono" id="st-sol-address">—</span></div>
+
+        <div class="st-section-label">Account Information</div>
+        <div class="st-info-row"><span class="st-info-key">Member Since</span><span class="st-info-val" id="st-member-since">—</span></div>
+        <div class="st-info-row"><span class="st-info-key">Login Streak</span><span class="st-info-val" id="st-login-streak">—</span></div>
+      </div>
+
+      <!-- ── Game Tab ── -->
+      <div class="st-panel hidden" id="st-panel-game">
+
+        <div class="st-section-label">Audio Settings</div>
+        <div class="st-toggle-row">
+          <div class="st-toggle-info"><div class="st-toggle-name">Enable Audio</div></div>
+          <label class="st-toggle-switch"><input type="checkbox" id="st-audio-enabled" checked><span class="st-toggle-slider"></span></label>
+        </div>
+        <div class="st-slider-row">
+          <div class="st-slider-label"><span>Master Volume</span><span class="st-slider-val" id="st-master-vol-val">100%</span></div>
+          <input type="range" class="st-slider" id="st-master-vol" min="0" max="100" value="100">
+        </div>
+        <div class="st-slider-row">
+          <div class="st-slider-label"><span>Sound Effects</span><span class="st-slider-val" id="st-sfx-vol-val">50%</span></div>
+          <input type="range" class="st-slider" id="st-sfx-vol" min="0" max="100" value="50">
+          <div class="st-slider-desc">Controls button clicks, hover sounds, and UI audio</div>
+        </div>
+        <div class="st-slider-row">
+          <div class="st-slider-label"><span>Music Volume</span><span class="st-slider-val" id="st-music-vol-val">30%</span></div>
+          <input type="range" class="st-slider" id="st-music-vol" min="0" max="100" value="30">
+          <div class="st-slider-desc">Background music (when available)</div>
+        </div>
+
+        <div class="st-section-label">Visual Settings <span class="st-coming-pill">Coming Soon</span></div>
+        <div class="st-slider-row st-disabled">
+          <div class="st-slider-label"><span>Graphics Quality</span><span class="st-slider-val">High</span></div>
+          <input type="range" class="st-slider" min="0" max="2" value="2" disabled>
+        </div>
+        <div class="st-toggle-row st-disabled"><div class="st-toggle-info"><div class="st-toggle-name">Show FPS Counter</div></div><label class="st-toggle-switch"><input type="checkbox" disabled><span class="st-toggle-slider"></span></label></div>
+        <div class="st-toggle-row st-disabled"><div class="st-toggle-info"><div class="st-toggle-name">Smooth Camera</div></div><label class="st-toggle-switch"><input type="checkbox" disabled><span class="st-toggle-slider"></span></label></div>
+        <div class="st-toggle-row st-disabled"><div class="st-toggle-info"><div class="st-toggle-name">Screen Shake</div></div><label class="st-toggle-switch"><input type="checkbox" disabled><span class="st-toggle-slider"></span></label></div>
+
+        <div class="st-section-label">Performance Settings <span class="st-coming-pill">Coming Soon</span></div>
+        <div class="st-slider-row st-disabled">
+          <div class="st-slider-label"><span>Frame Rate Limit</span><span class="st-slider-val">60 FPS</span></div>
+          <input type="range" class="st-slider" min="30" max="144" value="60" disabled>
+        </div>
+        <div class="st-toggle-row st-disabled"><div class="st-toggle-info"><div class="st-toggle-name">V-Sync</div></div><label class="st-toggle-switch"><input type="checkbox" disabled><span class="st-toggle-slider"></span></label></div>
+        <div class="st-toggle-row st-disabled"><div class="st-toggle-info"><div class="st-toggle-name">Reduce Motion</div></div><label class="st-toggle-switch"><input type="checkbox" disabled><span class="st-toggle-slider"></span></label></div>
+
+        <div class="st-section-label">Gameplay Settings <span class="st-coming-pill">Coming Soon</span></div>
+        <div class="st-slider-row st-disabled">
+          <div class="st-slider-label"><span>Mouse Sensitivity</span><span class="st-slider-val">50%</span></div>
+          <input type="range" class="st-slider" min="0" max="100" value="50" disabled>
+        </div>
+        <div class="st-toggle-row st-disabled"><div class="st-toggle-info"><div class="st-toggle-name">Auto-Zoom</div></div><label class="st-toggle-switch"><input type="checkbox" disabled><span class="st-toggle-slider"></span></label></div>
+        <div class="st-toggle-row st-disabled"><div class="st-toggle-info"><div class="st-toggle-name">Show Grid</div></div><label class="st-toggle-switch"><input type="checkbox" disabled><span class="st-toggle-slider"></span></label></div>
+        <div class="st-toggle-row st-disabled"><div class="st-toggle-info"><div class="st-toggle-name">Show Player Names</div></div><label class="st-toggle-switch"><input type="checkbox" disabled><span class="st-toggle-slider"></span></label></div>
+      </div>
+
+      <!-- ── Legal Tab ── -->
+      <div class="st-panel hidden" id="st-panel-legal">
+        <div class="st-section-label">Legal Documents</div>
+        <a href="#" class="st-legal-link" id="link-privacy">Privacy Policy ↗</a>
+        <a href="#" class="st-legal-link" id="link-terms">Terms &amp; Conditions ↗</a>
+
+        <div class="st-section-label">Contact Information</div>
+        <div class="st-info-row"><span class="st-info-key">Email Support</span><a href="mailto:playduelseries@gmail.com" class="st-info-val st-link">playduelseries@gmail.com</a></div>
+
+        <div class="st-section-label">Community</div>
+        <div class="st-info-row"><span class="st-info-key">Discord</span><a href="#" class="st-info-val st-link">Join our Discord server ↗</a></div>
+
+        <div class="st-section-label">Additional Information</div>
+        <p class="st-legal-body"><strong>Game Support:</strong> For technical issues, gameplay questions, or account problems, please contact us via email or Discord.</p>
+        <p class="st-legal-body"><strong>Business Inquiries:</strong> For partnerships, sponsorships, or other business-related matters, please use the email contact above.</p>
+        <p class="st-legal-body"><strong>Community Guidelines:</strong> Please review our Terms &amp; Conditions and follow our community guidelines when participating in the game and Discord server.</p>
       </div>
 
     </div>

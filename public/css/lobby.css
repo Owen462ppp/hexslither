@@ -1302,3 +1302,155 @@ body {
   gap: 16px;
 }
 .ap-shop-wrap.hidden { display: none; }
+
+/* ── Settings Modal ──────────────────────────────────────────────────── */
+.modal-settings {
+  width: 500px;
+  max-width: 95vw;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 0;
+  border-radius: 14px;
+}
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--card-border);
+}
+.settings-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+}
+.st-panel { padding: 6px 0 16px; }
+.st-section-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  padding: 14px 20px 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.st-coming-pill {
+  background: rgba(255,255,255,0.07);
+  color: #888;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 2px 7px;
+  border-radius: 20px;
+  text-transform: uppercase;
+}
+.st-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.st-info-key { font-size: 0.83rem; color: #aaa; }
+.st-info-val { font-size: 0.83rem; color: #fff; font-weight: 600; text-align: right; max-width: 60%; word-break: break-all; }
+.st-mono { font-family: monospace; font-size: 0.75rem; color: var(--green); }
+.st-link { color: var(--green); text-decoration: none; }
+.st-link:hover { text-decoration: underline; }
+
+/* Slider rows */
+.st-slider-row {
+  padding: 10px 20px 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.st-slider-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.83rem;
+  color: #ddd;
+  margin-bottom: 6px;
+}
+.st-slider-val { color: var(--green); font-weight: 700; }
+.st-slider-desc { font-size: 0.72rem; color: #666; margin-top: 4px; }
+.st-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.12);
+  outline: none;
+}
+.st-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--green);
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(20,241,149,0.5);
+}
+.st-slider::-moz-range-thumb {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--green);
+  cursor: pointer;
+  border: none;
+}
+
+/* Toggle rows */
+.st-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.st-toggle-name { font-size: 0.83rem; color: #ddd; }
+.st-toggle-switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
+.st-toggle-switch input { opacity: 0; width: 0; height: 0; }
+.st-toggle-slider {
+  position: absolute; inset: 0;
+  background: rgba(255,255,255,0.12);
+  border-radius: 22px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.st-toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 16px; height: 16px;
+  left: 3px; top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+.st-toggle-switch input:checked + .st-toggle-slider { background: var(--green); }
+.st-toggle-switch input:checked + .st-toggle-slider::before { transform: translateX(18px); }
+
+/* Disabled (coming soon) rows */
+.st-disabled { opacity: 0.38; pointer-events: none; }
+
+/* Legal */
+.st-legal-link {
+  display: flex;
+  align-items: center;
+  padding: 11px 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--green);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.15s;
+}
+.st-legal-link:hover { background: rgba(20,241,149,0.06); }
+.st-legal-body {
+  font-size: 0.8rem;
+  color: #888;
+  line-height: 1.6;
+  padding: 6px 20px 2px;
+  margin: 0;
+}
+.st-legal-body strong { color: #bbb; }

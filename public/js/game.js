@@ -74,7 +74,8 @@ function playJoinSound() {
 
       const start = ctx.currentTime + t;
       gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(0.28, start + 0.018);
+      const vol = (window.gameMasterVol ?? 1) * (window.gameSfxVol ?? 0.5);
+      gain.gain.linearRampToValueAtTime(0.28 * vol, start + 0.018);
       gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.55);
 
       gain2.gain.setValueAtTime(0, start);
