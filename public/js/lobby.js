@@ -1762,13 +1762,18 @@ document.getElementById('btn-play').addEventListener('click', async () => {
 (function () {
   const modal       = document.getElementById('modal-my-profile');
   // ── Mute toggle ───────────────────────────────────────────────────────
-  window.gameMuted = false;
+  window.gameMuted = localStorage.getItem('duelseries_muted') === 'true';
   const muteBtn = document.getElementById('btn-mute');
-  muteBtn.addEventListener('click', () => {
-    window.gameMuted = !window.gameMuted;
+  function applyMuteState() {
     muteBtn.classList.toggle('muted', window.gameMuted);
     muteBtn.querySelector('.icon-sound-on').classList.toggle('hidden', window.gameMuted);
     muteBtn.querySelector('.icon-sound-off').classList.toggle('hidden', !window.gameMuted);
+  }
+  applyMuteState(); // restore saved state on load
+  muteBtn.addEventListener('click', () => {
+    window.gameMuted = !window.gameMuted;
+    localStorage.setItem('duelseries_muted', window.gameMuted);
+    applyMuteState();
   });
 
   const closeBtn    = document.getElementById('close-my-profile');
