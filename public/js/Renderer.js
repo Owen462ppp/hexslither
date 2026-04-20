@@ -52,15 +52,22 @@ class Renderer {
     const visR = (W - camera.x) / camera.scale + margin;
     const visT = (-camera.y) / camera.scale - margin;
     const visB = (H - camera.y) / camera.scale + margin;
+    // Record trails first, then draw trails under snakes, then draw snakes on top
     for (const snake of state.snakes) {
       if (snake.id === myId) continue;
       const hx = snake.segs && snake.segs[0], hy = snake.segs && snake.segs[1];
-      if (hx < visL || hx > visR || hy < visT || hy > visB) continue; // off-screen
+      if (hx < visL || hx > visR || hy < visT || hy > visB) continue;
       this._recordTrail(snake);
+    }
+    if (mySnake) this._recordTrail(mySnake);
+    this._drawLingeringTrails(ctx);
+    for (const snake of state.snakes) {
+      if (snake.id === myId) continue;
+      const hx = snake.segs && snake.segs[0], hy = snake.segs && snake.segs[1];
+      if (hx < visL || hx > visR || hy < visT || hy > visB) continue;
       this._drawSnake(ctx, snake, false);
     }
-    if (mySnake) { this._recordTrail(mySnake); this._drawSnake(ctx, mySnake, true); }
-    this._drawLingeringTrails(ctx);
+    if (mySnake) this._drawSnake(ctx, mySnake, true);
 
     // Border overlay drawn last so red tint still appears on top of snakes
     this._drawBorder(ctx, state.worldRadius, camera);
