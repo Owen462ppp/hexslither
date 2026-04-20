@@ -1086,7 +1086,6 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  overflow: hidden;
 }
 #appearance-screen.hidden { display: none; }
 

@@ -1183,50 +1183,6 @@ document.getElementById('btn-play').addEventListener('click', async () => {
       });
     }
 
-    // Pre-compute tail direction for trail (drawn before body so snake overlaps it)
-    if (boostId && boostId !== 'default') {
-      const _tdx = pts[N-1].x-pts[N-2].x, _tdy = pts[N-1].y-pts[N-2].y;
-      const _tlen = Math.sqrt(_tdx*_tdx+_tdy*_tdy)||1;
-      const _sX = _tdx/_tlen, _sY = _tdy/_tlen;
-      const _pX = -_sY, _pY = _sX;
-      const tp = [];
-      for (let i=0;i<22;i++) tp.push({x:pts[N-1].x+_sX*i*_tlen, y:pts[N-1].y+_sY*i*_tlen});
-
-      if (boostId==='fire') {
-        ctx.save(); ctx.globalCompositeOperation='lighter';
-        for (let i=0;i<tp.length;i++){const fade=1-i/tp.length,flk=0.75+0.25*Math.sin(t*14+i*1.3); ctx.fillStyle=`rgba(200,15,0,${(fade*0.35).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x,tp[i].y,R*1.3*fade*flk,0,Math.PI*2); ctx.fill(); ctx.fillStyle=`rgba(255,80,0,${(fade*0.55).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x,tp[i].y,R*0.75*fade*flk,0,Math.PI*2); ctx.fill(); ctx.fillStyle=`rgba(255,220,0,${(fade*0.75).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x,tp[i].y,R*0.35*fade,0,Math.PI*2); ctx.fill();}
-        for (let i=0;i<tp.length;i+=2){const fade=1-i/tp.length; ctx.fillStyle=`rgba(255,160,0,${(fade*0.95).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x+_pX*Math.sin(t*5+i*2.3)*R*1.1,tp[i].y+_pY*Math.sin(t*5+i*2.3)*R*1.1,R*0.13*fade,0,Math.PI*2); ctx.fill();}
-        ctx.restore();
-      } else if (boostId==='ice') {
-        ctx.save(); ctx.globalCompositeOperation='lighter';
-        for (let i=0;i<tp.length;i++){const fade=1-i/tp.length; ctx.fillStyle=`rgba(80,180,255,${(fade*0.35).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x,tp[i].y,R*1.2*fade,0,Math.PI*2); ctx.fill(); ctx.fillStyle=`rgba(180,235,255,${(fade*0.55).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x,tp[i].y,R*0.55*fade,0,Math.PI*2); ctx.fill();}
-        ctx.restore(); ctx.save();
-        for (let i=0;i<tp.length;i+=3){const fade=1-i/tp.length; if(fade<0.1)continue; const cr=R*0.32*fade,ang=t*1.2+i*0.9; ctx.strokeStyle=`rgba(210,245,255,${(fade*0.9).toFixed(2)})`; ctx.lineWidth=R*0.08; for(let arm=0;arm<6;arm++){const a=ang+arm*Math.PI/3; ctx.beginPath(); ctx.moveTo(tp[i].x,tp[i].y); ctx.lineTo(tp[i].x+Math.cos(a)*cr,tp[i].y+Math.sin(a)*cr); ctx.stroke();}}
-        ctx.restore();
-      } else if (boostId==='rainbow') {
-        ctx.save(); ctx.globalCompositeOperation='lighter';
-        for (let i=0;i<tp.length;i++){const fade=1-i/tp.length,h1=((t*150-i*16)%360+360)%360; ctx.fillStyle=`hsla(${h1},100%,60%,${(fade*0.55).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x,tp[i].y,R*1.0*fade,0,Math.PI*2); ctx.fill(); ctx.fillStyle=`hsla(${(h1+120)%360},100%,80%,${(fade*0.4).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x,tp[i].y,R*0.5*fade,0,Math.PI*2); ctx.fill();}
-        ctx.restore();
-      } else if (boostId==='lightning') {
-        ctx.save(); ctx.globalCompositeOperation='lighter';
-        for (let i=0;i<tp.length;i++){const fade=1-i/tp.length; ctx.fillStyle=`rgba(80,80,255,${(fade*0.3).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x,tp[i].y,R*1.1*fade,0,Math.PI*2); ctx.fill();}
-        for (let bolt=0;bolt<2;bolt++){ctx.beginPath(); ctx.moveTo(tp[0].x,tp[0].y); for(let i=1;i<tp.length;i++){ctx.lineTo(tp[i].x+_pX*Math.sin(t*18+i*3.5+bolt*Math.PI)*R*0.6,tp[i].y+_pY*Math.sin(t*18+i*3.5+bolt*Math.PI)*R*0.6);} ctx.strokeStyle=`rgba(255,255,255,${bolt===0?0.95:0.5})`; ctx.lineWidth=R*(bolt===0?0.12:0.06); ctx.lineCap='round'; ctx.stroke();}
-        ctx.restore();
-      } else if (boostId==='smoke') {
-        ctx.save();
-        for (let i=0;i<tp.length;i++){const fade=1-i/tp.length,grow=1+i*0.10,ox=_pX*Math.sin(i*0.6+t*0.8)*R*0.45,oy=_pY*Math.sin(i*0.6+t*0.8)*R*0.45,grey=Math.floor(130+fade*60); ctx.fillStyle=`rgba(${grey},${grey},${grey},${(fade*0.22).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x+ox,tp[i].y+oy,R*grow*0.7,0,Math.PI*2); ctx.fill();}
-        ctx.restore();
-      } else if (boostId==='stars') {
-        ctx.save(); ctx.globalCompositeOperation='lighter';
-        for (let i=0;i<tp.length;i++){const fade=1-i/tp.length,twinkle=0.55+0.45*Math.sin(t*9+i*1.8),sr=R*0.6*fade,sa=t*2.5+i*0.55; ctx.beginPath(); for(let s=0;s<10;s++){const a=s*Math.PI/5+sa,rad=s%2===0?sr:sr*0.38; s===0?ctx.moveTo(tp[i].x+Math.cos(a)*rad,tp[i].y+Math.sin(a)*rad):ctx.lineTo(tp[i].x+Math.cos(a)*rad,tp[i].y+Math.sin(a)*rad);} ctx.closePath(); ctx.fillStyle=`rgba(255,240,100,${(fade*0.75*twinkle).toFixed(2)})`; ctx.fill();}
-        ctx.restore();
-      } else if (boostId==='galaxy') {
-        ctx.save(); ctx.globalCompositeOperation='lighter';
-        for (let i=0;i<tp.length;i++){const fade=1-i/tp.length; ctx.fillStyle=`rgba(100,0,200,${(fade*0.4).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x,tp[i].y,R*1.1*fade,0,Math.PI*2); ctx.fill(); for(let arm=0;arm<3;arm++){const sa=t*4+i*0.5+arm*Math.PI*2/3; ctx.fillStyle=`hsla(${260+arm*50},100%,70%,${(fade*0.65).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x+Math.cos(sa)*R*0.33*fade,tp[i].y+Math.sin(sa)*R*0.33*fade,R*0.28*fade,0,Math.PI*2); ctx.fill();}}
-        ctx.restore();
-      }
-    }
-
     ctx.save();
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -1375,161 +1331,46 @@ document.getElementById('btn-play').addEventListener('click', async () => {
       ctx.restore();
     }
 
-    if (false) { // old trail block removed — trail now drawn before body
-      if (boostId === 'fire') {
-        ctx.save(); ctx.globalCompositeOperation = 'lighter';
-        for (let i = 0; i < tp.length; i++) {
-          const fade = 1 - i/tp.length;
-          const flk = 0.75 + 0.25*Math.sin(t*14+i*1.3);
-          ctx.fillStyle = `rgba(200,15,0,${(fade*0.35).toFixed(2)})`;
-          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*1.3*fade*flk, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = `rgba(255,80,0,${(fade*0.55).toFixed(2)})`;
-          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*0.75*fade*flk, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = `rgba(255,220,0,${(fade*0.75).toFixed(2)})`;
-          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*0.35*fade, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = `rgba(255,255,200,${(fade*0.6).toFixed(2)})`;
-          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*0.14*fade, 0, Math.PI*2); ctx.fill();
-        }
-        for (let i = 0; i < tp.length; i += 2) {
-          const fade = 1 - i/tp.length;
-          const ex = tp[i].x + perpX*Math.sin(t*5+i*2.3)*R*1.1;
-          const ey = tp[i].y + perpY*Math.sin(t*5+i*2.3)*R*1.1;
-          ctx.fillStyle = `rgba(255,160,0,${(fade*0.95).toFixed(2)})`;
-          ctx.beginPath(); ctx.arc(ex, ey, R*0.13*fade, 0, Math.PI*2); ctx.fill();
-        }
-        ctx.restore();
+    // Boost trail — drawn LAST with lighter blend so it glows through body edges, no hard border
+    if (boostId && boostId !== 'default') {
+      const tdx = pts[N-1].x-pts[N-2].x, tdy = pts[N-1].y-pts[N-2].y;
+      const tlen = Math.sqrt(tdx*tdx+tdy*tdy)||1;
+      const sX = tdx/tlen, sY = tdy/tlen;
+      const pX = -sY, pY = sX;
+      const tp = [];
+      for (let i=0;i<22;i++) tp.push({x:pts[N-1].x+sX*i*tlen, y:pts[N-1].y+sY*i*tlen});
 
-      } else if (boostId === 'ice') {
-        ctx.save(); ctx.globalCompositeOperation = 'lighter';
-        for (let i = 0; i < tp.length; i++) {
-          const fade = 1 - i/tp.length;
-          ctx.fillStyle = `rgba(80,180,255,${(fade*0.35).toFixed(2)})`;
-          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*1.2*fade, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = `rgba(180,235,255,${(fade*0.55).toFixed(2)})`;
-          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*0.55*fade, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = `rgba(255,255,255,${(fade*0.7).toFixed(2)})`;
-          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*0.2*fade, 0, Math.PI*2); ctx.fill();
-        }
+      if (boostId==='fire') {
+        ctx.save(); ctx.globalCompositeOperation='lighter';
+        for (let i=0;i<tp.length;i++){const fade=1-i/tp.length,flk=0.75+0.25*Math.sin(t*14+i*1.3); ctx.fillStyle=`rgba(200,15,0,${(fade*0.35).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x,tp[i].y,R*1.3*fade*flk,0,Math.PI*2); ctx.fill(); ctx.fillStyle=`rgba(255,80,0,${(fade*0.55).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x,tp[i].y,R*0.75*fade*flk,0,Math.PI*2); ctx.fill(); ctx.fillStyle=`rgba(255,220,0,${(fade*0.75).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x,tp[i].y,R*0.35*fade,0,Math.PI*2); ctx.fill();}
+        for (let i=0;i<tp.length;i+=2){const fade=1-i/tp.length; ctx.fillStyle=`rgba(255,160,0,${(fade*0.95).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x+pX*Math.sin(t*5+i*2.3)*R*1.1,tp[i].y+pY*Math.sin(t*5+i*2.3)*R*1.1,R*0.13*fade,0,Math.PI*2); ctx.fill();}
         ctx.restore();
+      } else if (boostId==='ice') {
+        ctx.save(); ctx.globalCompositeOperation='lighter';
+        for (let i=0;i<tp.length;i++){const fade=1-i/tp.length; ctx.fillStyle=`rgba(80,180,255,${(fade*0.35).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x,tp[i].y,R*1.2*fade,0,Math.PI*2); ctx.fill(); ctx.fillStyle=`rgba(180,235,255,${(fade*0.55).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x,tp[i].y,R*0.55*fade,0,Math.PI*2); ctx.fill();}
+        ctx.restore(); ctx.save();
+        for (let i=0;i<tp.length;i+=3){const fade=1-i/tp.length; if(fade<0.1)continue; const cr=R*0.32*fade,ang=t*1.2+i*0.9; ctx.strokeStyle=`rgba(210,245,255,${(fade*0.9).toFixed(2)})`; ctx.lineWidth=R*0.08; for(let arm=0;arm<6;arm++){const a=ang+arm*Math.PI/3; ctx.beginPath(); ctx.moveTo(tp[i].x,tp[i].y); ctx.lineTo(tp[i].x+Math.cos(a)*cr,tp[i].y+Math.sin(a)*cr); ctx.stroke();}}
+        ctx.restore();
+      } else if (boostId==='rainbow') {
+        ctx.save(); ctx.globalCompositeOperation='lighter';
+        for (let i=0;i<tp.length;i++){const fade=1-i/tp.length,h1=((t*150-i*16)%360+360)%360; ctx.fillStyle=`hsla(${h1},100%,60%,${(fade*0.55).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x,tp[i].y,R*1.0*fade,0,Math.PI*2); ctx.fill(); ctx.fillStyle=`hsla(${(h1+120)%360},100%,80%,${(fade*0.4).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x,tp[i].y,R*0.5*fade,0,Math.PI*2); ctx.fill();}
+        ctx.restore();
+      } else if (boostId==='lightning') {
+        ctx.save(); ctx.globalCompositeOperation='lighter';
+        for (let i=0;i<tp.length;i++){const fade=1-i/tp.length; ctx.fillStyle=`rgba(80,80,255,${(fade*0.3).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x,tp[i].y,R*1.1*fade,0,Math.PI*2); ctx.fill();}
+        for (let bolt=0;bolt<2;bolt++){ctx.beginPath(); ctx.moveTo(tp[0].x,tp[0].y); for(let i=1;i<tp.length;i++){ctx.lineTo(tp[i].x+pX*Math.sin(t*18+i*3.5+bolt*Math.PI)*R*0.6,tp[i].y+pY*Math.sin(t*18+i*3.5+bolt*Math.PI)*R*0.6);} ctx.strokeStyle=`rgba(255,255,255,${bolt===0?0.95:0.5})`; ctx.lineWidth=R*(bolt===0?0.12:0.06); ctx.lineCap='round'; ctx.stroke();}
+        ctx.restore();
+      } else if (boostId==='smoke') {
         ctx.save();
-        for (let i = 0; i < tp.length; i += 3) {
-          const fade = 1 - i/tp.length; if (fade < 0.1) continue;
-          const cr = R*0.32*fade, ang = t*1.2 + i*0.9;
-          ctx.strokeStyle = `rgba(210,245,255,${(fade*0.9).toFixed(2)})`;
-          ctx.lineWidth = R*0.08;
-          for (let arm = 0; arm < 6; arm++) {
-            const a = ang + arm*Math.PI/3;
-            ctx.beginPath(); ctx.moveTo(tp[i].x, tp[i].y);
-            ctx.lineTo(tp[i].x+Math.cos(a)*cr, tp[i].y+Math.sin(a)*cr); ctx.stroke();
-            const mx = tp[i].x+Math.cos(a)*cr*0.55, my = tp[i].y+Math.sin(a)*cr*0.55;
-            ctx.beginPath(); ctx.moveTo(mx, my);
-            ctx.lineTo(mx+Math.cos(a+Math.PI/3)*cr*0.25, my+Math.sin(a+Math.PI/3)*cr*0.25); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(mx, my);
-            ctx.lineTo(mx+Math.cos(a-Math.PI/3)*cr*0.25, my+Math.sin(a-Math.PI/3)*cr*0.25); ctx.stroke();
-          }
-        }
+        for (let i=0;i<tp.length;i++){const fade=1-i/tp.length,grow=1+i*0.10,ox=pX*Math.sin(i*0.6+t*0.8)*R*0.45,oy=pY*Math.sin(i*0.6+t*0.8)*R*0.45,grey=Math.floor(130+fade*60); ctx.fillStyle=`rgba(${grey},${grey},${grey},${(fade*0.22).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x+ox,tp[i].y+oy,R*grow*0.7,0,Math.PI*2); ctx.fill();}
         ctx.restore();
-
-      } else if (boostId === 'rainbow') {
-        ctx.save(); ctx.globalCompositeOperation = 'lighter';
-        for (let i = 0; i < tp.length; i++) {
-          const fade = 1 - i/tp.length;
-          const h1 = ((t*150 - i*16) % 360 + 360) % 360;
-          const h2 = (h1 + 120) % 360;
-          ctx.fillStyle = `hsla(${h1},100%,60%,${(fade*0.55).toFixed(2)})`;
-          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*1.0*fade, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = `hsla(${h2},100%,80%,${(fade*0.4).toFixed(2)})`;
-          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*0.5*fade, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = `rgba(255,255,255,${(fade*0.3).toFixed(2)})`;
-          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*0.18*fade, 0, Math.PI*2); ctx.fill();
-        }
+      } else if (boostId==='stars') {
+        ctx.save(); ctx.globalCompositeOperation='lighter';
+        for (let i=0;i<tp.length;i++){const fade=1-i/tp.length,twinkle=0.55+0.45*Math.sin(t*9+i*1.8),sr=R*0.6*fade,sa=t*2.5+i*0.55; ctx.beginPath(); for(let s=0;s<10;s++){const a=s*Math.PI/5+sa,rad=s%2===0?sr:sr*0.38; s===0?ctx.moveTo(tp[i].x+Math.cos(a)*rad,tp[i].y+Math.sin(a)*rad):ctx.lineTo(tp[i].x+Math.cos(a)*rad,tp[i].y+Math.sin(a)*rad);} ctx.closePath(); ctx.fillStyle=`rgba(255,240,100,${(fade*0.75*twinkle).toFixed(2)})`; ctx.fill();}
         ctx.restore();
-
-      } else if (boostId === 'lightning') {
-        ctx.save(); ctx.globalCompositeOperation = 'lighter';
-        for (let i = 0; i < tp.length; i++) {
-          const fade = 1 - i/tp.length;
-          ctx.fillStyle = `rgba(80,80,255,${(fade*0.3).toFixed(2)})`;
-          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*1.1*fade, 0, Math.PI*2); ctx.fill();
-        }
-        for (let bolt = 0; bolt < 2; bolt++) {
-          ctx.beginPath(); ctx.moveTo(tp[0].x, tp[0].y);
-          for (let i = 1; i < tp.length; i++) {
-            const zz = perpX*Math.sin(t*18+i*3.5+bolt*Math.PI)*R*0.6;
-            ctx.lineTo(tp[i].x+zz, tp[i].y+perpY*Math.sin(t*18+i*3.5+bolt*Math.PI)*R*0.6);
-          }
-          ctx.strokeStyle = `rgba(255,255,255,${bolt===0?0.95:0.5})`;
-          ctx.lineWidth = R*(bolt===0?0.12:0.06); ctx.lineCap='round'; ctx.stroke();
-          ctx.strokeStyle = 'rgba(160,160,255,0.25)'; ctx.lineWidth = R*0.5; ctx.stroke();
-        }
-        for (let i = 0; i < tp.length; i += 3) {
-          const fade = 1 - i/tp.length; if (fade<0.1) continue;
-          ctx.fillStyle = `rgba(255,255,160,${(fade*0.9).toFixed(2)})`;
-          ctx.beginPath(); ctx.arc(tp[i].x+perpX*Math.sin(t*12+i*2)*R*0.8, tp[i].y+perpY*Math.sin(t*12+i*2)*R*0.8, R*0.1*fade, 0, Math.PI*2); ctx.fill();
-        }
-        ctx.restore();
-
-      } else if (boostId === 'smoke') {
-        ctx.save();
-        for (let i = 0; i < tp.length; i++) {
-          const fade = 1 - i/tp.length;
-          const grow = 1 + i*0.10;
-          const ox = perpX*Math.sin(i*0.6+t*0.8)*R*0.45;
-          const oy = perpY*Math.sin(i*0.6+t*0.8)*R*0.45;
-          const grey = Math.floor(130 + fade*60);
-          ctx.fillStyle = `rgba(${grey},${grey},${grey},${(fade*0.22).toFixed(2)})`;
-          ctx.beginPath(); ctx.arc(tp[i].x+ox, tp[i].y+oy, R*grow*0.7, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = `rgba(200,200,200,${(fade*0.10).toFixed(2)})`;
-          ctx.beginPath(); ctx.arc(tp[i].x-ox*0.5, tp[i].y-oy*0.5, R*grow*0.45, 0, Math.PI*2); ctx.fill();
-        }
-        ctx.restore();
-
-      } else if (boostId === 'stars') {
-        ctx.save(); ctx.globalCompositeOperation = 'lighter';
-        for (let i = 0; i < tp.length; i++) {
-          const fade = 1 - i/tp.length;
-          const twinkle = 0.55 + 0.45*Math.sin(t*9+i*1.8);
-          const sr = R*0.6*fade, sa = t*2.5+i*0.55;
-          ctx.beginPath();
-          for (let s = 0; s < 10; s++) {
-            const a = s*Math.PI/5 + sa, rad = s%2===0 ? sr : sr*0.38;
-            s===0 ? ctx.moveTo(tp[i].x+Math.cos(a)*rad, tp[i].y+Math.sin(a)*rad)
-                  : ctx.lineTo(tp[i].x+Math.cos(a)*rad, tp[i].y+Math.sin(a)*rad);
-          }
-          ctx.closePath();
-          ctx.fillStyle = `rgba(255,240,100,${(fade*0.75*twinkle).toFixed(2)})`; ctx.fill();
-          if (i%2===0) {
-            ctx.strokeStyle = `rgba(255,255,200,${(fade*0.8*twinkle).toFixed(2)})`;
-            ctx.lineWidth = R*0.07;
-            for (const a of [0, Math.PI/2]) {
-              ctx.beginPath();
-              ctx.moveTo(tp[i].x+Math.cos(a+t)*R*0.7*fade, tp[i].y+Math.sin(a+t)*R*0.7*fade);
-              ctx.lineTo(tp[i].x-Math.cos(a+t)*R*0.7*fade, tp[i].y-Math.sin(a+t)*R*0.7*fade);
-              ctx.stroke();
-            }
-          }
-          ctx.fillStyle = `rgba(255,255,255,${(fade*0.9).toFixed(2)})`;
-          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*0.11*fade, 0, Math.PI*2); ctx.fill();
-        }
-        ctx.restore();
-
-      } else if (boostId === 'galaxy') {
-        ctx.save(); ctx.globalCompositeOperation = 'lighter';
-        for (let i = 0; i < tp.length; i++) {
-          const fade = 1 - i/tp.length;
-          ctx.fillStyle = `rgba(100,0,200,${(fade*0.4).toFixed(2)})`;
-          ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*1.1*fade, 0, Math.PI*2); ctx.fill();
-          for (let arm = 0; arm < 3; arm++) {
-            const sa = t*4 + i*0.5 + arm*Math.PI*2/3;
-            const sx = tp[i].x+Math.cos(sa)*R*0.33*fade, sy = tp[i].y+Math.sin(sa)*R*0.33*fade;
-            ctx.fillStyle = `hsla(${260+arm*50},100%,70%,${(fade*0.65).toFixed(2)})`;
-            ctx.beginPath(); ctx.arc(sx, sy, R*0.28*fade, 0, Math.PI*2); ctx.fill();
-          }
-          if (i%3===0) {
-            ctx.fillStyle = `rgba(220,180,255,${(fade*0.9).toFixed(2)})`;
-            ctx.beginPath(); ctx.arc(tp[i].x, tp[i].y, R*0.11*fade, 0, Math.PI*2); ctx.fill();
-          }
-        }
+      } else if (boostId==='galaxy') {
+        ctx.save(); ctx.globalCompositeOperation='lighter';
+        for (let i=0;i<tp.length;i++){const fade=1-i/tp.length; ctx.fillStyle=`rgba(100,0,200,${(fade*0.4).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x,tp[i].y,R*1.1*fade,0,Math.PI*2); ctx.fill(); for(let arm=0;arm<3;arm++){const sa=t*4+i*0.5+arm*Math.PI*2/3; ctx.fillStyle=`hsla(${260+arm*50},100%,70%,${(fade*0.65).toFixed(2)})`; ctx.beginPath(); ctx.arc(tp[i].x+Math.cos(sa)*R*0.33*fade,tp[i].y+Math.sin(sa)*R*0.33*fade,R*0.28*fade,0,Math.PI*2); ctx.fill();}}
         ctx.restore();
       }
     }
