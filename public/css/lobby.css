@@ -697,6 +697,33 @@ body {
 #lobby-alltime-list .al-name  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #lobby-alltime-list .al-score { font-weight: 600; color: #7dd3fc; }
 
+/* ── Discord button ─────────────────────────────────────────────────────── */
+.btn-discord {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #5865F2;
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: 0 4px 18px rgba(88,101,242,0.45);
+  transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+}
+.btn-discord:hover { background: #4752c4; box-shadow: 0 6px 24px rgba(88,101,242,0.6); }
+.btn-discord:active { transform: scale(0.97); }
+.discord-logo { width: 22px; height: 22px; fill: #fff; flex-shrink: 0; }
+
 /* ── Lobby navigation arrows ───────────────────────────────────────────── */
 .lobby-nav-arrow {
   position: fixed;
