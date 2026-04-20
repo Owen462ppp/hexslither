@@ -741,8 +741,10 @@ document.getElementById('btn-add-funds').addEventListener('click', () => {
 
   const qrEl = document.getElementById('receive-qr');
   qrEl.innerHTML = '';
+  // Solana Pay URL — Phantom scans this and opens with recipient pre-filled
+  const solanaPayUrl = `solana:${addr}?label=HexSlither&message=Add%20Funds%20to%20HexSlither`;
   new QRCode(qrEl, {
-    text: addr,
+    text: solanaPayUrl,
     width: 190,
     height: 190,
     colorDark: '#ffffff',
