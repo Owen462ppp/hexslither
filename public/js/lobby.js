@@ -742,7 +742,7 @@ document.getElementById('btn-add-funds').addEventListener('click', () => {
   const qrEl = document.getElementById('receive-qr');
   qrEl.innerHTML = '';
   // Solana Pay URL — Phantom scans this and opens with recipient pre-filled
-  const solanaPayUrl = `solana:${addr}?label=HexSlither&message=Add%20Funds%20to%20HexSlither`;
+  const solanaPayUrl = `solana:${addr}?label=DuelSeries&message=Add%20Funds%20to%20DuelSeries`;
   new QRCode(qrEl, {
     text: solanaPayUrl,
     width: 190,
