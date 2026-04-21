@@ -1527,3 +1527,55 @@ body {
 @media (pointer: coarse) {
   .btn-fullscreen-lobby { display: flex; }
 }
+
+/* ── Mobile landscape responsive layout ─────────────────────────────────── */
+@media (pointer: coarse) {
+  /* Scale the whole lobby down uniformly to fit the screen */
+  .lobby-page {
+    padding: 6px 8px;
+    gap: 8px;
+  }
+
+  .lobby-grid {
+    grid-template-columns: 1fr 1.38fr 1fr;
+    gap: 8px;
+    width: min(908px, 98vw);
+  }
+
+  .lobby-col { gap: 8px; }
+
+  .card { padding: 10px 12px; gap: 8px; }
+
+  .topbar {
+    height: 40px;
+    padding: 0 12px;
+  }
+
+  .lobby-page { top: 40px; }
+
+  /* Shrink the giant emoji and title */
+  .lobby-title-block { display: none; }
+
+  /* Shrink text throughout */
+  .card-title, .card h4 { font-size: 0.8rem; }
+  .btn-join { padding: 10px 16px; font-size: 0.9rem; }
+  .stat-val { font-size: 1.1rem; }
+  .stat-lbl { font-size: 0.65rem; }
+  .account-name { font-size: 0.82rem; }
+  .account-email { font-size: 0.62rem; }
+  .server-stat-val { font-size: 1rem; }
+  .server-stat-lbl { font-size: 0.62rem; }
+
+  /* Smaller skin preview canvas */
+  .ap-canvas { max-height: 100px !important; }
+
+  /* Topbar items */
+  .topbar-snake-icon { font-size: 1rem; }
+  .topbar-welcome { font-size: 0.75rem; }
+  #topbar-user { font-size: 0.72rem; }
+  .btn-profile-icon, .btn-mute-icon { width: 30px; height: 30px; }
+  .btn-profile-icon svg, .btn-mute-icon svg { width: 18px; height: 18px; }
+
+  /* Discord button — move up so it doesn't clash with joystick */
+  .btn-discord { bottom: 90px; font-size: 0.75rem; padding: 8px 14px; }
+}
