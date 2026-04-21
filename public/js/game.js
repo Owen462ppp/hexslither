@@ -1,3 +1,9 @@
+// Navigate back to lobby — uses postMessage if running inside iframe (keeps fullscreen)
+function goToLobby() {
+  if (window.self !== window.top) window.parent.postMessage('game:done', '*');
+  else goToLobby();
+}
+
 // ─── Fullscreen (mobile) ──────────────────────────────────────────────────────
 (function() {
   function requestFS() {
@@ -9,19 +15,8 @@
   }
   function isInFS() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
 
-  // Toggle button
   const btn = document.getElementById('btn-fullscreen');
   if (btn) btn.addEventListener('click', () => { if (isInFS()) exitFS(); else requestFS(); });
-
-  // If user was in fullscreen in the lobby, show tap overlay to re-enter
-  const fsOverlay = document.getElementById('fs-overlay');
-  if (fsOverlay && localStorage.getItem('ds_wants_fullscreen') === '1') {
-    fsOverlay.style.display = 'flex';
-    fsOverlay.addEventListener('click', () => {
-      requestFS();
-      fsOverlay.style.display = 'none';
-    }, { once: true });
-  }
 })();
 
 // Game client
@@ -386,6 +381,27 @@ canvas.addEventListener('touchmove', (e) => {
 canvas.addEventListener('touchstart', (e) => { if (e.touches.length > 1) boostActive = true; });
 canvas.addEventListener('touchend',   (e) => { if (e.touches.length === 0) boostActive = false; });
 
+// Mobile cash-out button — wired after startQTimer/cancelQTimer are defined below
+document.addEventListener('DOMContentLoaded', () => {});
+(function wireCashoutBtn() {
+  const coBtn = document.getElementById('cashout-btn-mobile');
+  if (!coBtn) return;
+  coBtn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    coBtn.classList.add('holding');
+    if (typeof startQTimer === 'function') startQTimer();
+  }, { passive: false });
+  coBtn.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    coBtn.classList.remove('holding');
+    if (typeof cancelQTimer === 'function') cancelQTimer();
+  }, { passive: false });
+  coBtn.addEventListener('touchcancel', () => {
+    coBtn.classList.remove('holding');
+    if (typeof cancelQTimer === 'function') cancelQTimer();
+  });
+})();
+
 // ─── Q Cash-out ───────────────────────────────────────────────────────────────
 const Q_HOLD_MS = 3000;
 const RING_CIRC = 213.6;
@@ -472,7 +488,7 @@ document.getElementById('btn-cashout-spectate').addEventListener('click', () => 
   enterSpectate();
 });
 document.getElementById('btn-cashout-lobby').addEventListener('click', () => {
-  window.location.href = '/';
+  goToLobby();
 });
 
 // ─── Spectate ─────────────────────────────────────────────────────────────────
@@ -524,7 +540,7 @@ document.getElementById('spectate-next').addEventListener('click', () => {
 });
 
 document.getElementById('spectate-stop').addEventListener('click', () => {
-  window.location.href = '/';
+  goToLobby();
 });
 
 // Death screen
@@ -546,7 +562,7 @@ document.getElementById('btn-respawn').addEventListener('click', async () => {
   if (earnedEl) earnedEl.textContent = '';
 });
 document.getElementById('btn-lobby').addEventListener('click', () => {
-  window.location.href = '/';
+  goToLobby();
 });
 
 // ─── All-Time Leaderboard Modal ───────────────────────────────────────────────

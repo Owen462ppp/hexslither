@@ -956,10 +956,10 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   sessionStorage.setItem('boostId',       localStorage.getItem('duelseries_boost_id') || 'default');
   sessionStorage.setItem('lobbyType',     selectedLobbyType);
   sessionStorage.setItem('entrySol',      entrySol);
-  // Carry fullscreen preference into the game page
-  const inFS = !!(document.fullscreenElement || document.webkitFullscreenElement);
-  localStorage.setItem('ds_wants_fullscreen', inFS ? '1' : '0');
-  window.location.href = '/game.html';
+  // Load game in iframe so fullscreen stays active
+  const gameFrame = document.getElementById('game-frame');
+  gameFrame.src = '/game.html';
+  gameFrame.style.display = 'block';
 });
 
 // ─── Customize / Appearance Screen ───────────────────────────────────────────
@@ -2202,3 +2202,11 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   document.addEventListener('fullscreenchange', updateIcon);
   document.addEventListener('webkitfullscreenchange', updateIcon);
 })();
+
+// ── Listen for game iframe signalling "back to lobby" ────────────────────
+window.addEventListener('message', (e) => {
+  if (e.data === 'game:done') {
+    const gameFrame = document.getElementById('game-frame');
+    if (gameFrame) { gameFrame.style.display = 'none'; gameFrame.src = ''; }
+  }
+});
