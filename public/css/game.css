@@ -438,3 +438,68 @@ body {
 #profile-chart { display: block; width: 100%; border-radius: 8px; background: rgba(255,255,255,0.03); }
 #leaderboard-list li[data-player-name] { cursor: pointer; }
 #leaderboard-list li[data-player-name]:hover .lb-name { text-decoration: underline; color: #7dd3fc; }
+
+/* ── Mobile Joystick & Boost Button ─────────────────────────────────────── */
+.joystick-zone,
+.boost-btn {
+  display: none;
+}
+
+@media (pointer: coarse) {
+  .joystick-zone {
+    display: block;
+    position: fixed;
+    bottom: 30px;
+    left: 30px;
+    z-index: 9999;
+    touch-action: none;
+  }
+  .joystick-base {
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    border: 2px solid rgba(255,255,255,0.25);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .joystick-knob {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: rgba(20, 241, 149, 0.7);
+    box-shadow: 0 0 14px rgba(20, 241, 149, 0.5);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .boost-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 9999;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 2px solid rgba(20, 241, 149, 0.4);
+    background: rgba(20, 241, 149, 0.15);
+    color: #14F195;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    touch-action: none;
+    cursor: pointer;
+    transition: background 0.1s, transform 0.1s;
+  }
+  .boost-btn.active {
+    background: rgba(20, 241, 149, 0.35);
+    transform: scale(0.94);
+  }
+}
