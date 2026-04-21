@@ -503,3 +503,26 @@ body {
     transform: scale(0.94);
   }
 }
+
+/* ── Fullscreen button (mobile only) ────────────────────────────────────── */
+.btn-fullscreen { display: none; }
+
+@media (pointer: coarse) {
+  .btn-fullscreen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 9999;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: none;
+    background: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.7);
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+}

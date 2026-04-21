@@ -1,3 +1,25 @@
+// ─── Fullscreen (mobile) ──────────────────────────────────────────────────────
+(function() {
+  const btn = document.getElementById('btn-fullscreen');
+  if (!btn) return;
+  function requestFS() {
+    const el = document.documentElement;
+    (el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen || function(){}).call(el);
+  }
+  function exitFS() {
+    (document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen || function(){}).call(document);
+  }
+  btn.addEventListener('click', () => {
+    if (document.fullscreenElement || document.webkitFullscreenElement) exitFS();
+    else requestFS();
+  });
+  // Auto-request fullscreen on first joystick touch (Android UX)
+  document.addEventListener('touchstart', function autoFS() {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) requestFS();
+    document.removeEventListener('touchstart', autoFS);
+  }, { once: true });
+})();
+
 // Game client
 const canvas = document.getElementById('game-canvas');
 const renderer = new Renderer(canvas);
