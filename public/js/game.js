@@ -285,8 +285,74 @@ canvas.addEventListener('mousedown', (e) => { if (e.button === 0 || e.button ===
 canvas.addEventListener('mouseup',   (e) => { if (e.button === 0 || e.button === 2) boostActive = false; });
 window.addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); boostActive = true; } });
 window.addEventListener('keyup',   (e) => { if (e.code === 'Space') boostActive = false; });
+// ─── Virtual Joystick ────────────────────────────────────────────────────────
+{
+  const joystickZone = document.getElementById('joystick-zone');
+  const joystickBase = document.getElementById('joystick-base');
+  const joystickKnob = document.getElementById('joystick-knob');
+  const boostBtn     = document.getElementById('boost-btn');
+  const BASE_R = 55; // half of 110px base
+  const KNOB_CLAMP = BASE_R - 6;
+
+  let joystickActive = false;
+  let joystickAngle  = null;
+  let joystickTouchId = null;
+
+  function onJoyStart(e) {
+    e.preventDefault();
+    if (joystickTouchId !== null) return;
+    const t = e.changedTouches[0];
+    joystickTouchId = t.identifier;
+    joystickActive = true;
+    updateKnob(t.clientX, t.clientY);
+  }
+  function onJoyMove(e) {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier !== joystickTouchId) continue;
+      updateKnob(t.clientX, t.clientY);
+    }
+  }
+  function onJoyEnd(e) {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier !== joystickTouchId) continue;
+      joystickTouchId = null;
+      joystickActive = false;
+      joystickAngle = null;
+      joystickKnob.style.transform = 'translate(-50%, -50%)';
+    }
+  }
+  function updateKnob(cx, cy) {
+    const rect = joystickBase.getBoundingClientRect();
+    const ox = cx - (rect.left + BASE_R);
+    const oy = cy - (rect.top  + BASE_R);
+    const dist = Math.sqrt(ox * ox + oy * oy);
+    const clampDist = Math.min(dist, KNOB_CLAMP);
+    const nx = dist === 0 ? 0 : (ox / dist) * clampDist;
+    const ny = dist === 0 ? 0 : (oy / dist) * clampDist;
+    joystickKnob.style.transform = `translate(calc(-50% + ${nx}px), calc(-50% + ${ny}px))`;
+    if (dist > 6) joystickAngle = Math.atan2(oy, ox);
+  }
+
+  joystickZone.addEventListener('touchstart', onJoyStart, { passive: false });
+  joystickZone.addEventListener('touchmove',  onJoyMove,  { passive: false });
+  joystickZone.addEventListener('touchend',   onJoyEnd,   { passive: false });
+  joystickZone.addEventListener('touchcancel',onJoyEnd,   { passive: false });
+
+  // Boost button
+  boostBtn.addEventListener('touchstart', (e) => { e.preventDefault(); boostActive = true; boostBtn.classList.add('active'); },    { passive: false });
+  boostBtn.addEventListener('touchend',   (e) => { e.preventDefault(); boostActive = false; boostBtn.classList.remove('active'); }, { passive: false });
+  boostBtn.addEventListener('touchcancel',(e) => { boostActive = false; boostBtn.classList.remove('active'); }, { passive: false });
+
+  // Expose for sendInput
+  window._joystick = { get active() { return joystickActive; }, get angle() { return joystickAngle; } };
+}
+
+// Canvas touch (finger steering) — only used when joystick not active
 canvas.addEventListener('touchmove', (e) => {
   e.preventDefault();
+  if (window._joystick && window._joystick.active) return;
   const t = e.touches[0];
   mousePos.x = t.clientX;
   mousePos.y = t.clientY;
@@ -513,8 +579,11 @@ function sendInput() {
 
   if (qHoldStart !== null && lockedAngle === null) lockedAngle = mySnake.angle;
 
+  const joy = window._joystick;
   const angle = lockedAngle !== null
     ? lockedAngle
+    : (joy && joy.active && joy.angle !== null)
+    ? joy.angle
     : Math.atan2(
         renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).y - mySnake.segs[1],
         renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).x - mySnake.segs[0]
