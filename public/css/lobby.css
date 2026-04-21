@@ -1521,3 +1521,9 @@ body {
     transform: scale(0.94);
   }
 }
+
+/* Fullscreen button — mobile only */
+.btn-fullscreen-lobby { display: none; }
+@media (pointer: coarse) {
+  .btn-fullscreen-lobby { display: flex; }
+}
