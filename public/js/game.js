@@ -1,7 +1,5 @@
 // ─── Fullscreen (mobile) ──────────────────────────────────────────────────────
 (function() {
-  const btn = document.getElementById('btn-fullscreen');
-  if (!btn) return;
   function requestFS() {
     const el = document.documentElement;
     (el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen || function(){}).call(el);
@@ -9,15 +7,21 @@
   function exitFS() {
     (document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen || function(){}).call(document);
   }
-  btn.addEventListener('click', () => {
-    if (document.fullscreenElement || document.webkitFullscreenElement) exitFS();
-    else requestFS();
-  });
-  // Auto-request fullscreen on first joystick touch (Android UX)
-  document.addEventListener('touchstart', function autoFS() {
-    if (!document.fullscreenElement && !document.webkitFullscreenElement) requestFS();
-    document.removeEventListener('touchstart', autoFS);
-  }, { once: true });
+  function isInFS() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+
+  // Toggle button
+  const btn = document.getElementById('btn-fullscreen');
+  if (btn) btn.addEventListener('click', () => { if (isInFS()) exitFS(); else requestFS(); });
+
+  // If user was in fullscreen in the lobby, show tap overlay to re-enter
+  const fsOverlay = document.getElementById('fs-overlay');
+  if (fsOverlay && localStorage.getItem('ds_wants_fullscreen') === '1') {
+    fsOverlay.style.display = 'flex';
+    fsOverlay.addEventListener('click', () => {
+      requestFS();
+      fsOverlay.style.display = 'none';
+    }, { once: true });
+  }
 })();
 
 // Game client

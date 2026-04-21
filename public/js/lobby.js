@@ -956,6 +956,9 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   sessionStorage.setItem('boostId',       localStorage.getItem('duelseries_boost_id') || 'default');
   sessionStorage.setItem('lobbyType',     selectedLobbyType);
   sessionStorage.setItem('entrySol',      entrySol);
+  // Carry fullscreen preference into the game page
+  const inFS = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  localStorage.setItem('ds_wants_fullscreen', inFS ? '1' : '0');
   window.location.href = '/game.html';
 });
 
@@ -2168,23 +2171,34 @@ document.getElementById('btn-play').addEventListener('click', async () => {
 (function() {
   const btn = document.getElementById('btn-fullscreen-lobby');
   if (!btn) return;
+
+  // Intercept resize events at capture phase for 400ms to prevent canvas zoom on fullscreen toggle
+  function freezeResize() {
+    const blocker = e => e.stopImmediatePropagation();
+    window.addEventListener('resize', blocker, { capture: true });
+    setTimeout(() => window.removeEventListener('resize', blocker, { capture: true }), 400);
+  }
+
+  function isInFS() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+
   function requestFS() {
+    freezeResize();
     const el = document.documentElement;
     (el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen || function(){}).call(el);
   }
   function exitFS() {
+    freezeResize();
     (document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen || function(){}).call(document);
   }
+
   function updateIcon() {
-    const inFS = !!(document.fullscreenElement || document.webkitFullscreenElement);
-    btn.innerHTML = inFS
+    btn.innerHTML = isInFS()
       ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/></svg>`
       : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
+    localStorage.setItem('ds_wants_fullscreen', isInFS() ? '1' : '0');
   }
-  btn.addEventListener('click', () => {
-    if (document.fullscreenElement || document.webkitFullscreenElement) exitFS();
-    else requestFS();
-  });
+
+  btn.addEventListener('click', () => { if (isInFS()) exitFS(); else requestFS(); });
   document.addEventListener('fullscreenchange', updateIcon);
   document.addEventListener('webkitfullscreenchange', updateIcon);
 })();
