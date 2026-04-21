@@ -1,15 +1,12 @@
-// ─── Mobile scale-to-fit: zoom body so 940px lobby fits any screen ────────────
+// ─── Mobile scale-to-fit: set viewport so content appears at 68% on any phone ─
 (function() {
   if (!('ontouchstart' in window)) return;
-  const DESIGN_W = 940;
-  function applyScale() {
-    const scale = Math.min(1, window.innerWidth / DESIGN_W);
-    document.body.style.zoom = scale;
-  }
-  applyScale();
-  window.addEventListener('resize', applyScale);
-  document.addEventListener('fullscreenchange', applyScale);
-  document.addEventListener('webkitfullscreenchange', applyScale);
+  // Use the larger of screen.width/height (=landscape dimension regardless of orientation)
+  const landscapeW = Math.max(window.screen.width, window.screen.height);
+  const TARGET_SCALE = 0.68;
+  const vpWidth = Math.round(landscapeW / TARGET_SCALE);
+  const mv = document.querySelector('meta[name=viewport]');
+  if (mv) mv.content = `width=${vpWidth}, initial-scale=1.0, viewport-fit=cover`;
 })();
 
 // ─── Hex background ───────────────────────────────────────────────────────────
@@ -2206,25 +2203,14 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   const btn = document.getElementById('btn-fullscreen-lobby');
   if (!btn) return;
 
-  // Intercept resize events at capture phase for 400ms to prevent canvas zoom on fullscreen toggle
-  function freezeResize() {
-    const blocker = e => e.stopImmediatePropagation();
-    window.addEventListener('resize', blocker, { capture: true });
-    setTimeout(() => window.removeEventListener('resize', blocker, { capture: true }), 400);
-  }
-
   function isInFS() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
-
   function requestFS() {
-    freezeResize();
     const el = document.documentElement;
     (el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen || function(){}).call(el);
   }
   function exitFS() {
-    freezeResize();
     (document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen || function(){}).call(document);
   }
-
   function updateIcon() {
     btn.innerHTML = isInFS()
       ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/></svg>`
