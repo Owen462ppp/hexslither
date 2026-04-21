@@ -1,3 +1,9 @@
+// ─── Mobile viewport scale — makes entire lobby shrink to fit screen ─────────
+if ('ontouchstart' in window) {
+  const mv = document.getElementById('meta-viewport');
+  if (mv) mv.content = 'width=940, initial-scale=1.0, viewport-fit=cover';
+}
+
 // ─── Hex background ───────────────────────────────────────────────────────────
 (function() {
   const canvas = document.getElementById('bg-canvas');
