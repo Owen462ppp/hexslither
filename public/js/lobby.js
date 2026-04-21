@@ -2163,3 +2163,15 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     if (modal.style.display !== 'none' && activeTab === 'profile' && profileData) drawChart();
   });
 })();
+
+// ── Mobile fullscreen on first touch ─────────────────────────────────────
+(function() {
+  function requestFS() {
+    const el = document.documentElement;
+    (el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen || function(){}).call(el);
+  }
+  document.addEventListener('touchstart', function autoFS() {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) requestFS();
+    document.removeEventListener('touchstart', autoFS);
+  }, { once: true, passive: true });
+})();
