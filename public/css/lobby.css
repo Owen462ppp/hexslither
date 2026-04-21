@@ -1528,8 +1528,7 @@ body {
   .btn-fullscreen-lobby { display: flex; }
 }
 
-/* ── Mobile: hide nav arrows (they overlap buttons on small screens) ──────── */
+/* ── Mobile tweaks ───────────────────────────────────────────────────────── */
 @media (pointer: coarse) {
-  .lobby-nav-arrow { display: none !important; }
   .btn-discord { bottom: 14px; }
 }

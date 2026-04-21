@@ -1,8 +1,16 @@
-// ─── Mobile viewport scale — makes entire lobby shrink to fit screen ─────────
-if ('ontouchstart' in window) {
-  const mv = document.getElementById('meta-viewport');
-  if (mv) mv.content = 'width=940, initial-scale=1.0, viewport-fit=cover';
-}
+// ─── Mobile scale-to-fit: zoom body so 940px lobby fits any screen ────────────
+(function() {
+  if (!('ontouchstart' in window)) return;
+  const DESIGN_W = 940;
+  function applyScale() {
+    const scale = Math.min(1, window.innerWidth / DESIGN_W);
+    document.body.style.zoom = scale;
+  }
+  applyScale();
+  window.addEventListener('resize', applyScale);
+  document.addEventListener('fullscreenchange', applyScale);
+  document.addEventListener('webkitfullscreenchange', applyScale);
+})();
 
 // ─── Hex background ───────────────────────────────────────────────────────────
 (function() {
@@ -452,6 +460,26 @@ function switchLobby(direction) {
 
 arrowRight.addEventListener('click', () => switchLobby(1));
 arrowLeft.addEventListener('click',  () => switchLobby(-1));
+
+// ─── Swipe to switch lobby (mobile) ───────────────────────────────────────────
+(function() {
+  let swipeStartX = null, swipeStartY = null;
+  const SWIPE_MIN = 50, SWIPE_MAX_Y = 80;
+  document.addEventListener('touchstart', (e) => {
+    // Ignore touches on interactive elements
+    if (e.target.closest('button, input, select, a, .modal-overlay')) return;
+    swipeStartX = e.touches[0].clientX;
+    swipeStartY = e.touches[0].clientY;
+  }, { passive: true });
+  document.addEventListener('touchend', (e) => {
+    if (swipeStartX === null) return;
+    const dx = e.changedTouches[0].clientX - swipeStartX;
+    const dy = e.changedTouches[0].clientY - swipeStartY;
+    swipeStartX = null;
+    if (Math.abs(dx) < SWIPE_MIN || Math.abs(dy) > SWIPE_MAX_Y) return;
+    switchLobby(dx < 0 ? 1 : -1);
+  }, { passive: true });
+})();
 
 // ─── Lobby UI ─────────────────────────────────────────────────────────────────
 function showLobby() {
