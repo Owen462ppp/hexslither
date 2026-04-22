@@ -1,13 +1,3 @@
-// ─── Mobile scale-to-fit: set viewport so content appears at 68% on any phone ─
-(function() {
-  if (!('ontouchstart' in window)) return;
-  // Use the larger of screen.width/height (=landscape dimension regardless of orientation)
-  const landscapeW = Math.max(window.screen.width, window.screen.height);
-  const TARGET_SCALE = 0.68;
-  const vpWidth = Math.round(landscapeW / TARGET_SCALE);
-  const mv = document.querySelector('meta[name=viewport]');
-  if (mv) mv.content = `width=${vpWidth}, initial-scale=1.0, viewport-fit=cover`;
-})();
 
 // ─── Hex background ───────────────────────────────────────────────────────────
 (function() {

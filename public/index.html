@@ -3,11 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" id="vp" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="/manifest.json">
+  <script>
+    // Runs before first paint — zooms mobile out so lobby fits the screen
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+      document.getElementById('vp').content = 'width=1400, initial-scale=1.0, viewport-fit=cover';
+    }
+  </script>
   <title>DuelSeries</title>
   <link rel="stylesheet" href="/css/lobby.css">
 </head>
