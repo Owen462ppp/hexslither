@@ -1593,8 +1593,9 @@ document.getElementById('btn-play').addEventListener('click', async () => {
 
   let snakes = [];
   function resize() {
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const uiZoom = parseFloat(getComputedStyle(document.getElementById('ui-root')).zoom) || 1;
+    canvas.width  = Math.round(window.innerWidth  / uiZoom);
+    canvas.height = Math.round(window.innerHeight / uiZoom);
     snakes = COLORS.map((c, i) => makeSnake(c, canvas.width, canvas.height, TRAILS[i]));
   }
   resize();

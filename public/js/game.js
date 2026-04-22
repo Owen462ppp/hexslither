@@ -4,21 +4,6 @@ function goToLobby() {
   else goToLobby();
 }
 
-// ─── Fullscreen (mobile) ──────────────────────────────────────────────────────
-(function() {
-  function requestFS() {
-    const el = document.documentElement;
-    (el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen || function(){}).call(el);
-  }
-  function exitFS() {
-    (document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen || function(){}).call(document);
-  }
-  function isInFS() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
-
-  const btn = document.getElementById('btn-fullscreen');
-  if (btn) btn.addEventListener('click', () => { if (isInFS()) exitFS(); else requestFS(); });
-})();
-
 // Game client
 const canvas = document.getElementById('game-canvas');
 const renderer = new Renderer(canvas);
@@ -505,11 +490,19 @@ function enterSpectate() {
   document.getElementById('death-screen').classList.remove('active');
   document.getElementById('spectate-bar').classList.add('active');
   updateSpectateLabel();
+  ['joystick-zone', 'boost-btn', 'cashout-btn-mobile'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
 }
 
 function exitSpectate() {
   spectating = false;
   document.getElementById('spectate-bar').classList.remove('active');
+  ['joystick-zone', 'boost-btn', 'cashout-btn-mobile'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = '';
+  });
 }
 
 function updateSpectateLabel() {
