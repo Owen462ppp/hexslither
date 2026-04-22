@@ -13,6 +13,9 @@
 @media (pointer: coarse) {
   #ui-root { zoom: 0.6; }
 }
+@media (pointer: coarse) and (orientation: landscape) {
+  #ui-root { zoom: 0.42; }
+}
 
 :root {
   --bg: #070707;
