@@ -1,5 +1,19 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* UI root: wraps all lobby UI (not canvases). Zoom scales everything on mobile. */
+#ui-root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+#ui-root > * { pointer-events: auto; }
+
+@media (pointer: coarse) {
+  #ui-root { zoom: 0.6; }
+}
+
 :root {
   --bg: #070707;
   --card: #111111;
