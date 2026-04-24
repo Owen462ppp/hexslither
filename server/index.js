@@ -433,6 +433,11 @@ io.on('connection', (socket) => {
   });
 
   socket.on(C.EVENTS.PLAY, ({ name, walletAddress, googleId, color, lobbyType, entrySol, hatId, boostId } = {}) => {
+    // Ignore duplicate PLAY events (e.g. from socket reconnect while alive)
+    if (socket._room) {
+      const existingSnake = socket._room.snakes.get(socket.id);
+      if (existingSnake && existingSnake.alive) return;
+    }
     const playerName = (name || 'Player').slice(0, 20);
     if (googleId) {
       socket._googleId = googleId;
@@ -489,7 +494,10 @@ io.on('connection', (socket) => {
   });
 
   socket.on(C.EVENTS.RESPAWN, ({ entrySol } = {}) => {
-    if (socket._room) socket._room.respawnPlayer(socket.id, entrySol || 0);
+    if (!socket._room) return;
+    const existing = socket._room.snakes.get(socket.id);
+    if (existing && existing.alive) return; // block respawn while alive
+    socket._room.respawnPlayer(socket.id, entrySol || 0);
   });
 
   socket.on('ping_check', () => socket.emit('pong_check'));
