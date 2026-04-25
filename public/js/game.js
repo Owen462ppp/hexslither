@@ -33,8 +33,10 @@ let mousePos = { x: 0, y: 0 };
 let boostActive  = false;
 
 // --- Interpolation buffers ---
-let snapBuffer   = [];    // [{t, state}]  — t is server Date.now() ms
-let clockOffset  = null;  // server Date.now() minus client performance.now()
+let snapBuffer   = [];
+let clockOffset  = null;
+let interpBeforeMap = null; // reused across frames to avoid Map allocation
+let interpSnakeBuf  = null; // reused across frames to avoid array allocation
 const INTERP_DELAY_MS = 50; // 50ms gives ~3 buffered snaps at 60Hz
 let spawnTime        = null;  // performance.now() when last joined — used to ramp up interp delay
 let cashoutSpeedMult = 1;    // smoothed speedMult sent to server during Q hold/release
@@ -197,25 +199,22 @@ function interpolateState(now) {
   displayState.leaderboard = after.state.leaderboard;
   displayState.food = after.state.food; // food doesn't need interpolation
 
-  // Interpolate each snake — O(1) Map lookup instead of O(n) find
-  const beforeMap = new Map(before.state.snakes.map(s => [s.id, s]));
-  const interpolatedSnakes = [];
+  // Interpolate each snake — reuse persistent map to avoid per-frame allocation
+  if (!interpBeforeMap) interpBeforeMap = new Map();
+  else interpBeforeMap.clear();
+  for (const s of before.state.snakes) interpBeforeMap.set(s.id, s);
+
+  if (!interpSnakeBuf) interpSnakeBuf = [];
+  interpSnakeBuf.length = 0;
   for (const snakeAfter of after.state.snakes) {
-    const snakeBefore = beforeMap.get(snakeAfter.id);
-    if (!snakeBefore) {
-      interpolatedSnakes.push(snakeAfter);
-      continue;
-    }
-    const segs = [];
+    const snakeBefore = interpBeforeMap.get(snakeAfter.id);
+    if (!snakeBefore) { interpSnakeBuf.push(snakeAfter); continue; }
     const len = Math.min(snakeBefore.segs.length, snakeAfter.segs.length);
-    for (let i = 0; i < len; i++) segs.push(lerp(snakeBefore.segs[i], snakeAfter.segs[i], alpha));
-    interpolatedSnakes.push({
-      ...snakeAfter,
-      segs,
-      angle: lerpAngle(snakeBefore.angle, snakeAfter.angle, alpha),
-    });
+    const segs = new Float32Array(len);
+    for (let i = 0; i < len; i++) segs[i] = snakeBefore.segs[i] + (snakeAfter.segs[i] - snakeBefore.segs[i]) * alpha;
+    interpSnakeBuf.push({ ...snakeAfter, segs, angle: lerpAngle(snakeBefore.angle, snakeAfter.angle, alpha) });
   }
-  displayState.snakes = interpolatedSnakes;
+  displayState.snakes = interpSnakeBuf;
 }
 
 // Per-snake smooth-position state — eliminates skip-tick vibration during cashout slowdown

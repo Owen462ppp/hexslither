@@ -4,7 +4,44 @@ class Renderer {
     this.ctx = canvas.getContext('2d');
     this.hexGrid = new HexGrid();
     this.camera = new Camera();
-    this.boostTrails = new Map(); // snakeId -> [{x,y,t,boostId,r}]
+    this.boostTrails = new Map();
+    this._foodPhaseCache = new Map();
+    this._foodOverlaySprite  = this._makeFoodOverlaySprite();
+    this._goldenFoodSprite   = this._makeGoldenFoodSprite();
+  }
+
+  _makeFoodOverlaySprite() {
+    const sz = 64, c = document.createElement('canvas');
+    c.width = c.height = sz;
+    const cx = sz / 2;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(cx, cx, 0, cx, cx, cx);
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(0,0,0,0.55)');
+    ctx.beginPath(); ctx.arc(cx, cx, cx, 0, Math.PI * 2);
+    ctx.fillStyle = g; ctx.fill();
+    return c;
+  }
+
+  _makeGoldenFoodSprite() {
+    const sz = 64, c = document.createElement('canvas');
+    c.width = c.height = sz;
+    const cx = sz / 2, sr = sz * 0.19; // sr = food radius in sprite pixels
+    const ctx = c.getContext('2d');
+    const glow = ctx.createRadialGradient(cx, cx, sr * 0.4, cx, cx, sr * 2.2);
+    glow.addColorStop(0, 'rgba(255,215,0,0.35)');
+    glow.addColorStop(1, 'rgba(255,215,0,0)');
+    ctx.beginPath(); ctx.arc(cx, cx, sr * 2.2, 0, Math.PI * 2);
+    ctx.fillStyle = glow; ctx.fill();
+    const core = ctx.createRadialGradient(cx - sr*0.3, cx - sr*0.3, sr*0.1, cx, cx, sr);
+    core.addColorStop(0, '#FFFACD'); core.addColorStop(0.4, '#FFD700'); core.addColorStop(1, '#B8860B');
+    ctx.beginPath(); ctx.arc(cx, cx, sr, 0, Math.PI * 2);
+    ctx.fillStyle = core; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cx, sr, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,165,0,0.9)'; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx - sr*0.28, cx - sr*0.28, sr*0.22, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fill();
+    return c;
   }
 
   resize() {
@@ -53,21 +90,18 @@ class Renderer {
     const visR = (W - camera.x) / camera.scale + margin;
     const visT = (-camera.y) / camera.scale - margin;
     const visB = (H - camera.y) / camera.scale + margin;
-    // Record trails first, then draw trails under snakes, then draw snakes on top
+    // Compute visible other snakes once — used for both trail recording and drawing
+    const visibleOthers = [];
     for (const snake of state.snakes) {
       if (snake.id === myId) continue;
       const hx = snake.segs && snake.segs[0], hy = snake.segs && snake.segs[1];
       if (hx < visL || hx > visR || hy < visT || hy > visB) continue;
-      this._recordTrail(snake);
+      visibleOthers.push(snake);
     }
+    for (const snake of visibleOthers) this._recordTrail(snake);
     if (mySnake) this._recordTrail(mySnake);
     this._drawLingeringTrails(ctx);
-    for (const snake of state.snakes) {
-      if (snake.id === myId) continue;
-      const hx = snake.segs && snake.segs[0], hy = snake.segs && snake.segs[1];
-      if (hx < visL || hx > visR || hy < visT || hy > visB) continue;
-      this._drawSnake(ctx, snake, false);
-    }
+    for (const snake of visibleOthers) this._drawSnake(ctx, snake, false);
     if (mySnake) this._drawSnake(ctx, mySnake, true);
 
     // Border overlay drawn last so red tint still appears on top of snakes
@@ -136,70 +170,42 @@ class Renderer {
     const halfH = H / (2 * scale) + margin;
 
     const t = Date.now() / 1000;
+    // golden sprite: food radius = sz * 0.19, so world span = r / 0.19 * 2 each side
+    const GS = 1 / 0.19;
     for (const f of food) {
       if (Math.abs(f.x - worldCX) > halfW || Math.abs(f.y - worldCY) > halfH) continue;
 
       const r = BASE_R * (f.size || 1);
-      // Hash string ID to a stable float so each orb floats at a unique phase
-      const idStr = String(f.id);
-      let hash = 0;
-      for (let i = 0; i < idStr.length; i++) hash = (hash * 31 + idStr.charCodeAt(i)) & 0xffff;
-      const phase = hash * 0.00038; // maps 0-65535 → 0-~25 radians
-      const amp = hash % 100 < 80 ? 7 : 0; // 80% of orbs hover, 20% stay still
-      const wx = f.x + Math.sin(t * 1.4 + phase) * amp;
-      const wy = f.y + Math.cos(t * 1.1 + phase * 1.3) * amp;
+
+      // Phase cached per food ID — avoids hashing every frame
+      let ph = this._foodPhaseCache.get(f.id);
+      if (!ph) {
+        const idStr = String(f.id);
+        let hash = 0;
+        for (let i = 0; i < idStr.length; i++) hash = (hash * 31 + idStr.charCodeAt(i)) & 0xffff;
+        ph = { phase: hash * 0.00038, amp: hash % 100 < 80 ? 7 : 0 };
+        this._foodPhaseCache.set(f.id, ph);
+      }
+      const wx = f.x + Math.sin(t * 1.4 + ph.phase) * ph.amp;
+      const wy = f.y + Math.cos(t * 1.1 + ph.phase * 1.3) * ph.amp;
 
       if (f.dropped) ctx.globalAlpha = 0.55;
 
       if (f.isGolden) {
-        // Outer glow
-        const glow = ctx.createRadialGradient(wx, wy, r * 0.4, wx, wy, r * 2.2);
-        glow.addColorStop(0, 'rgba(255,215,0,0.35)');
-        glow.addColorStop(1, 'rgba(255,215,0,0)');
-        ctx.beginPath();
-        ctx.arc(wx, wy, r * 2.2, 0, Math.PI * 2);
-        ctx.fillStyle = glow;
-        ctx.fill();
-
-        // Core golden orb
-        const grad = ctx.createRadialGradient(wx - r * 0.3, wy - r * 0.3, r * 0.1, wx, wy, r);
-        grad.addColorStop(0, '#FFFACD');
-        grad.addColorStop(0.4, '#FFD700');
-        grad.addColorStop(1, '#B8860B');
-        ctx.beginPath();
-        ctx.arc(wx, wy, r, 0, Math.PI * 2);
-        ctx.fillStyle = grad;
-        ctx.fill();
-
-        // Gold outline
-        ctx.beginPath();
-        ctx.arc(wx, wy, r, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(255,165,0,0.9)';
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-
-        // Glint
-        ctx.beginPath();
-        ctx.arc(wx - r * 0.28, wy - r * 0.28, r * 0.22, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.75)';
-        ctx.fill();
+        // Pre-rendered sprite replaces 2 gradient allocations per frame
+        const span = r * GS;
+        ctx.drawImage(this._goldenFoodSprite, wx - span, wy - span, span * 2, span * 2);
       } else {
-        // Core orb — solid base color
+        // Solid fill
         ctx.beginPath();
         ctx.arc(wx, wy, r, 0, Math.PI * 2);
         ctx.fillStyle = f.color;
         ctx.fill();
 
-        // Dark radial overlay: transparent center → dark edge
-        const darkOverlay = ctx.createRadialGradient(wx, wy, 0, wx, wy, r);
-        darkOverlay.addColorStop(0, 'rgba(0,0,0,0)');
-        darkOverlay.addColorStop(1, 'rgba(0,0,0,0.55)');
-        ctx.beginPath();
-        ctx.arc(wx, wy, r, 0, Math.PI * 2);
-        ctx.fillStyle = darkOverlay;
-        ctx.fill();
+        // Pre-rendered dark overlay replaces createRadialGradient per frame
+        ctx.drawImage(this._foodOverlaySprite, wx - r, wy - r, r * 2, r * 2);
 
-        // Thin black outline
+        // Thin outline
         ctx.beginPath();
         ctx.arc(wx, wy, r, 0, Math.PI * 2);
         ctx.strokeStyle = 'rgba(0,0,0,0.8)';
@@ -209,6 +215,8 @@ class Renderer {
 
       if (f.dropped) ctx.globalAlpha = 1;
     }
+    // Evict stale phase cache entries
+    if (this._foodPhaseCache.size > food.length * 2) this._foodPhaseCache.clear();
   }
 
   _drawSnake(ctx, snake, isMe) {
@@ -434,7 +442,7 @@ class Renderer {
     }
     if (snake.worth > 0) {
       const rate = typeof solCadRate !== 'undefined' ? solCadRate : 200;
-      const cadVal = (snake.worth * rate).toFixed(2);
+      const cadVal = (Math.round(snake.worth * rate*100)/100);
       const wfs = Math.round(R * 1.0);
       ctx.font = `bold ${wfs}px Segoe UI`;
       ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = wfs * 0.18;
@@ -522,14 +530,14 @@ class Renderer {
         for (let i = 0; i < trail.length; i++) {
           const pt = trail[i]; const fade = 1 - (now - pt.t) / MAX_AGE; const R = pt.r;
           const flk = 0.75 + 0.25 * Math.sin(t * 14 + i * 1.3);
-          ctx.fillStyle = `rgba(200,15,0,${(fade*0.35).toFixed(2)})`; ctx.beginPath(); ctx.arc(pt.x, pt.y, R*1.3*fade*flk, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = `rgba(255,80,0,${(fade*0.55).toFixed(2)})`; ctx.beginPath(); ctx.arc(pt.x, pt.y, R*0.75*fade*flk, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = `rgba(255,220,0,${(fade*0.75).toFixed(2)})`; ctx.beginPath(); ctx.arc(pt.x, pt.y, R*0.35*fade, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = `rgba(200,15,0,${(Math.round(fade*0.35*100)/100)})`; ctx.beginPath(); ctx.arc(pt.x, pt.y, R*1.3*fade*flk, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = `rgba(255,80,0,${(Math.round(fade*0.55*100)/100)})`; ctx.beginPath(); ctx.arc(pt.x, pt.y, R*0.75*fade*flk, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = `rgba(255,220,0,${(Math.round(fade*0.75*100)/100)})`; ctx.beginPath(); ctx.arc(pt.x, pt.y, R*0.35*fade, 0, Math.PI*2); ctx.fill();
         }
         for (let i = 0; i < trail.length; i += 2) {
           const pt = trail[i]; const fade = 1 - (now - pt.t) / MAX_AGE; const R = pt.r;
           const { px, py } = perp(trail, i);
-          ctx.fillStyle = `rgba(255,160,0,${(fade*0.95).toFixed(2)})`;
+          ctx.fillStyle = `rgba(255,160,0,${(Math.round(fade*0.95*100)/100)})`;
           ctx.beginPath(); ctx.arc(pt.x + px*Math.sin(t*5+i*2.3)*R*1.1, pt.y + py*Math.sin(t*5+i*2.3)*R*1.1, R*0.13*fade, 0, Math.PI*2); ctx.fill();
         }
 
@@ -537,15 +545,15 @@ class Renderer {
         ctx.globalCompositeOperation = 'lighter';
         for (let i = 0; i < trail.length; i++) {
           const pt = trail[i]; const fade = 1 - (now - pt.t) / MAX_AGE; const R = pt.r;
-          ctx.fillStyle = `rgba(80,180,255,${(fade*0.35).toFixed(2)})`; ctx.beginPath(); ctx.arc(pt.x, pt.y, R*1.2*fade, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = `rgba(180,235,255,${(fade*0.55).toFixed(2)})`; ctx.beginPath(); ctx.arc(pt.x, pt.y, R*0.55*fade, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = `rgba(80,180,255,${(Math.round(fade*0.35*100)/100)})`; ctx.beginPath(); ctx.arc(pt.x, pt.y, R*1.2*fade, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = `rgba(180,235,255,${(Math.round(fade*0.55*100)/100)})`; ctx.beginPath(); ctx.arc(pt.x, pt.y, R*0.55*fade, 0, Math.PI*2); ctx.fill();
         }
         ctx.globalCompositeOperation = 'source-over';
         for (let i = 0; i < trail.length; i += 3) {
           const pt = trail[i]; const fade = 1 - (now - pt.t) / MAX_AGE; const R = pt.r;
           if (fade < 0.1) continue;
           const cr = R*0.32*fade, ang = t*1.2 + i*0.9;
-          ctx.strokeStyle = `rgba(210,245,255,${(fade*0.9).toFixed(2)})`; ctx.lineWidth = R*0.08;
+          ctx.strokeStyle = `rgba(210,245,255,${(Math.round(fade*0.9*100)/100)})`; ctx.lineWidth = R*0.08;
           for (let arm = 0; arm < 6; arm++) {
             const a = ang + arm*Math.PI/3;
             ctx.beginPath(); ctx.moveTo(pt.x, pt.y); ctx.lineTo(pt.x + Math.cos(a)*cr, pt.y + Math.sin(a)*cr); ctx.stroke();
@@ -557,15 +565,15 @@ class Renderer {
         for (let i = 0; i < trail.length; i++) {
           const pt = trail[i]; const fade = 1 - (now - pt.t) / MAX_AGE; const R = pt.r;
           const h1 = ((t*150 - i*16) % 360 + 360) % 360;
-          ctx.fillStyle = `hsla(${h1},100%,60%,${(fade*0.55).toFixed(2)})`; ctx.beginPath(); ctx.arc(pt.x, pt.y, R*1.0*fade, 0, Math.PI*2); ctx.fill();
-          ctx.fillStyle = `hsla(${(h1+120)%360},100%,80%,${(fade*0.4).toFixed(2)})`; ctx.beginPath(); ctx.arc(pt.x, pt.y, R*0.5*fade, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = `hsla(${h1},100%,60%,${(Math.round(fade*0.55*100)/100)})`; ctx.beginPath(); ctx.arc(pt.x, pt.y, R*1.0*fade, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = `hsla(${(h1+120)%360},100%,80%,${(Math.round(fade*0.4*100)/100)})`; ctx.beginPath(); ctx.arc(pt.x, pt.y, R*0.5*fade, 0, Math.PI*2); ctx.fill();
         }
 
       } else if (boostId === 'lightning') {
         ctx.globalCompositeOperation = 'lighter';
         for (let i = 0; i < trail.length; i++) {
           const pt = trail[i]; const fade = 1 - (now - pt.t) / MAX_AGE; const R = pt.r;
-          ctx.fillStyle = `rgba(80,80,255,${(fade*0.3).toFixed(2)})`; ctx.beginPath(); ctx.arc(pt.x, pt.y, R*1.1*fade, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = `rgba(80,80,255,${(Math.round(fade*0.3*100)/100)})`; ctx.beginPath(); ctx.arc(pt.x, pt.y, R*1.1*fade, 0, Math.PI*2); ctx.fill();
         }
         for (let bolt = 0; bolt < 2; bolt++) {
           ctx.beginPath(); ctx.moveTo(trail[0].x, trail[0].y);
@@ -584,7 +592,7 @@ class Renderer {
           const grow = 1 + (1 - fade) * 0.5;
           const ox = px*Math.sin(i*0.6+t*0.8)*R*0.45, oy = py*Math.sin(i*0.6+t*0.8)*R*0.45;
           const grey = Math.floor(130 + fade*60);
-          ctx.fillStyle = `rgba(${grey},${grey},${grey},${(fade*0.22).toFixed(2)})`;
+          ctx.fillStyle = `rgba(${grey},${grey},${grey},${(Math.round(fade*0.22*100)/100)})`;
           ctx.beginPath(); ctx.arc(pt.x+ox, pt.y+oy, R*grow*0.7, 0, Math.PI*2); ctx.fill();
         }
 
@@ -598,17 +606,17 @@ class Renderer {
             const a = s*Math.PI/5 + sa, rad = s%2===0 ? sr : sr*0.38;
             s===0 ? ctx.moveTo(pt.x+Math.cos(a)*rad, pt.y+Math.sin(a)*rad) : ctx.lineTo(pt.x+Math.cos(a)*rad, pt.y+Math.sin(a)*rad);
           }
-          ctx.closePath(); ctx.fillStyle = `rgba(255,240,100,${(fade*0.75*twinkle).toFixed(2)})`; ctx.fill();
+          ctx.closePath(); ctx.fillStyle = `rgba(255,240,100,${(Math.round(fade*0.75*twinkle*100)/100)})`; ctx.fill();
         }
 
       } else if (boostId === 'galaxy') {
         ctx.globalCompositeOperation = 'lighter';
         for (let i = 0; i < trail.length; i++) {
           const pt = trail[i]; const fade = 1 - (now - pt.t) / MAX_AGE; const R = pt.r;
-          ctx.fillStyle = `rgba(100,0,200,${(fade*0.4).toFixed(2)})`; ctx.beginPath(); ctx.arc(pt.x, pt.y, R*1.1*fade, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = `rgba(100,0,200,${(Math.round(fade*0.4*100)/100)})`; ctx.beginPath(); ctx.arc(pt.x, pt.y, R*1.1*fade, 0, Math.PI*2); ctx.fill();
           for (let arm = 0; arm < 3; arm++) {
             const sa = t*4 + i*0.5 + arm*Math.PI*2/3;
-            ctx.fillStyle = `hsla(${260+arm*50},100%,70%,${(fade*0.65).toFixed(2)})`;
+            ctx.fillStyle = `hsla(${260+arm*50},100%,70%,${(Math.round(fade*0.65*100)/100)})`;
             ctx.beginPath(); ctx.arc(pt.x+Math.cos(sa)*R*0.33*fade, pt.y+Math.sin(sa)*R*0.33*fade, R*0.28*fade, 0, Math.PI*2); ctx.fill();
           }
         }
