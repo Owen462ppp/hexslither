@@ -94,7 +94,7 @@ function playJoinSound() {
   } catch (e) { /* audio not supported */ }
 }
 
-socket.on(CONSTANTS.EVENTS.GAME_JOINED, ({ playerId, worldRadius, snakeColor, food }) => {
+socket.on(CONSTANTS.EVENTS.GAME_JOINED, ({ playerId, worldRadius, snakeColor, food, snake }) => {
   myId = playerId;
   isDead = false;
   cashedOut = false;
@@ -105,7 +105,7 @@ socket.on(CONSTANTS.EVENTS.GAME_JOINED, ({ playerId, worldRadius, snakeColor, fo
   snapBuffer = [];
   clockOffset = null;
   spawnTime = performance.now();
-  displayState = { snakes: [], food: food || [], worldRadius, leaderboard: [] };
+  displayState = { snakes: snake ? [snake] : [], food: food || [], worldRadius, leaderboard: [] };
   document.getElementById('death-screen').classList.remove('active');
   document.getElementById('cashout-screen').classList.remove('active');
   playJoinSound();

@@ -50,6 +50,7 @@ class GameRoom {
       worldRadius: this.worldRadius,
       snakeColor: snake.color,
       food: this.foodManager.getAll(),
+      snake: snake.serialize(),
     });
 
     // Each player joining expands the border
@@ -272,6 +273,7 @@ class GameRoom {
       worldRadius: this.worldRadius,
       snakeColor: snake.color,
       food: this.foodManager.getAll(),
+      snake: snake.serialize(),
     });
   }
 
