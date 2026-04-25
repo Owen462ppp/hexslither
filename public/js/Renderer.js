@@ -74,6 +74,55 @@ class Renderer {
     this._drawBorder(ctx, state.worldRadius, camera);
 
     camera.reset(ctx);
+
+    this._drawMinimap(ctx, state, myId, W, H);
+  }
+
+  _drawMinimap(ctx, state, myId, W, H) {
+    const PAD    = 16;
+    const R      = 70;
+    const cx     = PAD + R;
+    const cy     = H - PAD - R;
+    const scale  = R / state.worldRadius;
+
+    ctx.save();
+
+    // Clipped circle background
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fill();
+    ctx.clip();
+
+    // Snake dots
+    for (const snake of state.snakes) {
+      if (!snake.segs || snake.segs.length < 2) continue;
+      const wx = snake.segs[0], wy = snake.segs[1];
+      const sx = cx + wx * scale;
+      const sy = cy + wy * scale;
+      const isMe = snake.id === myId;
+      const dotR = isMe ? 4 : 2.5;
+
+      if (isMe) {
+        ctx.beginPath();
+        ctx.arc(sx, sy, dotR + 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.arc(sx, sy, dotR, 0, Math.PI * 2);
+      ctx.fillStyle = snake.color || '#ffffff';
+      ctx.fill();
+    }
+
+    ctx.restore();
+
+    // Outer ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
   }
 
   _drawFood(ctx, food, camera) {
