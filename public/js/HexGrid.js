@@ -1,7 +1,8 @@
 class HexGrid {
   constructor() {
-    this.SIZE      = 28;
-    this.GAP       = 14.6;
+    const ZOOM     = 0.5;
+    this.SIZE      = 48 * ZOOM;
+    this.GAP       = 14.6 * ZOOM;
     this.FACE_R    = this.SIZE - this.GAP / 2;          // ~40.7
     this.COL_STEP  = Math.sqrt(3) * this.SIZE + this.GAP; // ~97.7
     this.ROW_STEP  = 1.5 * this.SIZE + Math.sqrt(3) / 2 * this.GAP; // ~84.6
