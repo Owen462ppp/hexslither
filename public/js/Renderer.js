@@ -49,7 +49,7 @@ class Renderer {
     this.canvas.height = window.innerHeight;
   }
 
-  render(state, myId, mousePos, spectateSnake, cashoutRings) {
+  render(state, myId, mousePos, spectateSnake, cashoutRings, dt) {
     this._cashoutRings = cashoutRings || null;
     const { ctx, canvas, camera } = this;
     const W = canvas.width, H = canvas.height;
@@ -64,7 +64,7 @@ class Renderer {
       camera.setScale(state.worldRadius, W, H, followSnake.length);
       camera.follow(followSnake.segs[0], followSnake.segs[1], W, H);
     }
-    camera.update();
+    camera.update(Math.min(dt || 16.67, 50));
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#070707';

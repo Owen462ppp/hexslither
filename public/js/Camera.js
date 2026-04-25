@@ -21,10 +21,13 @@ class Camera {
     this.targetScale = Math.max(0.15, Math.min(2.5, base * lengthFactor));
   }
 
-  update() {
-    this.scale += (this.targetScale - this.scale) * 0.02;
-    this.x += (this.targetX - this.x) * this.LERP;
-    this.y += (this.targetY - this.y) * this.LERP;
+  update(dt) {
+    // dt-corrected exponential approach — same feel at any frame rate
+    const posAlpha  = 1 - Math.exp(-dt / 10);  // 10ms time constant (very snappy)
+    const zoomAlpha = 1 - Math.exp(-dt / 300); // 300ms time constant (slow zoom)
+    this.scale += (this.targetScale - this.scale) * zoomAlpha;
+    this.x += (this.targetX - this.x) * posAlpha;
+    this.y += (this.targetY - this.y) * posAlpha;
   }
 
   apply(ctx) {

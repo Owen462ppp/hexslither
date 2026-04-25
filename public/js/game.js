@@ -757,8 +757,11 @@ sendPing();
 let fpsFrames = 0, fpsLast = performance.now(), fpsDisplay = 0;
 const fpsEl = document.getElementById('fps-counter');
 
+let _lastFrameTime = 0;
 // Main render loop — runs at monitor refresh rate (60/144/240Hz)
 function gameLoop(now) {
+  const dt = _lastFrameTime ? now - _lastFrameTime : 16.67;
+  _lastFrameTime = now;
   interpolateState(now);
 
   // Replace local snake with an extrapolated-to-now version so it never lags behind
@@ -786,7 +789,7 @@ function gameLoop(now) {
   const renderState = cashedOut
     ? { ...displayState, snakes: displayState.snakes.filter(s => s.id !== myId) }
     : displayState;
-  renderer.render(renderState, cashedOut ? null : myId, mousePos, spectateSnake, cashoutRings);
+  renderer.render(renderState, cashedOut ? null : myId, mousePos, spectateSnake, cashoutRings, dt);
 
   if (minimapCtx) renderer.drawMinimap(minimapCtx, displayState, myId);
 
