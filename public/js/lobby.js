@@ -4,6 +4,18 @@
   const canvas = document.getElementById('bg-canvas');
   const ctx = canvas.getContext('2d');
 
+  const size    = 48;
+  const gap     = 14.6;
+  const colStep = Math.sqrt(3) * size + gap;
+  const rowStep = 1.5 * size + Math.sqrt(3) / 2 * gap;
+  const faceR   = size - gap / 2;
+  const SCROLL_SPEED = 30; // px per second in grid space
+
+  let W = window.innerWidth, H = window.innerHeight;
+  let scrollX = 0, lastTime = null;
+
+  window.addEventListener('resize', () => { W = window.innerWidth; H = window.innerHeight; });
+
   function hexPath(cx, cy, r) {
     ctx.beginPath();
     for (let i = 0; i < 6; i++) {
@@ -13,28 +25,25 @@
     ctx.closePath();
   }
 
-  function draw() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    const W = canvas.width, H = canvas.height;
+  function draw(now) {
+    if (lastTime !== null) scrollX = (scrollX + (now - lastTime) * SCROLL_SPEED / 1000) % colStep;
+    lastTime = now;
+
+    canvas.width  = W;
+    canvas.height = H;
 
     ctx.fillStyle = '#070707';
     ctx.fillRect(0, 0, W, H);
-
-    const size = 48;
-    const gap = 14.6;
-    const colStep = Math.sqrt(3) * size + gap;
-    const rowStep = 1.5 * size + Math.sqrt(3) / 2 * gap;
-    const faceR = size - gap / 2;
 
     ctx.save();
     ctx.translate(W / 2, H / 2);
     ctx.rotate(-0.285);
     ctx.scale(1.45, 1.45);
     ctx.translate(-W / 2, -H / 2);
+    ctx.translate(scrollX, 0);
 
     for (let row = -4; row < H / rowStep + 5; row++) {
-      for (let col = -4; col < W / colStep + 5; col++) {
+      for (let col = -5; col < W / colStep + 6; col++) {
         const cx = col * colStep + (row % 2 === 1 ? colStep / 2 : 0);
         const cy = row * rowStep;
 
@@ -70,10 +79,10 @@
     }
 
     ctx.restore();
+    requestAnimationFrame(draw);
   }
 
-  draw();
-  window.addEventListener('resize', draw);
+  requestAnimationFrame(draw);
 })();
 
 // ─── Agar.io lobby background ─────────────────────────────────────────────────
