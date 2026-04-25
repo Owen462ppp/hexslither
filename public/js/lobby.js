@@ -945,6 +945,8 @@ document.querySelectorAll('.btn-lobby-type').forEach(btn => {
 
 // ─── Play ─────────────────────────────────────────────────────────────────────
 document.getElementById('btn-play').addEventListener('click', async () => {
+  const gameFrame = document.getElementById('game-frame');
+  if (gameFrame && gameFrame.style.display !== 'none') return; // already in game
   const name = document.getElementById('player-name').value.replace(/\s/g, '') || 'Player';
   if (account && name !== account.name) {
     const r = await fetch('/auth/update-name', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
@@ -978,9 +980,9 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   sessionStorage.setItem('lobbyType',     selectedLobbyType);
   sessionStorage.setItem('entrySol',      entrySol);
   // Load game in iframe so fullscreen stays active
-  const gameFrame = document.getElementById('game-frame');
   gameFrame.src = '/game.html';
   gameFrame.style.display = 'block';
+  document.getElementById('btn-play').blur(); // prevent spacebar re-firing this button
 });
 
 // ─── Customize / Appearance Screen ───────────────────────────────────────────
