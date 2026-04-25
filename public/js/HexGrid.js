@@ -1,6 +1,6 @@
 class HexGrid {
   constructor() {
-    this.SIZE      = 48;
+    this.SIZE      = 28;
     this.GAP       = 14.6;
     this.FACE_R    = this.SIZE - this.GAP / 2;          // ~40.7
     this.COL_STEP  = Math.sqrt(3) * this.SIZE + this.GAP; // ~97.7
