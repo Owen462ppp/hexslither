@@ -1,6 +1,6 @@
 class HexGrid {
   constructor() {
-    const ZOOM     = 0.5;
+    const ZOOM     = 0.62;
     this.SIZE      = 48 * ZOOM;
     this.GAP       = 14.6 * ZOOM;
     this.FACE_R    = this.SIZE - this.GAP / 2;          // ~40.7
