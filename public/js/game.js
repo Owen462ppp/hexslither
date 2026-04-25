@@ -224,6 +224,35 @@ function interpolateState(now) {
   displayState.snakes = interpSnakeBuf;
 }
 
+// Extrapolate the local player's snake from the latest snapshot to "now" instead of
+// showing the 50ms-delayed interpolated version. Removes all snapshot-to-snapshot
+// jitter for the local snake; other snakes still use the interpolation buffer.
+function getLocalSnakeNow(now) {
+  if (!myId || snapBuffer.length === 0 || clockOffset === null) return null;
+  const latest = snapBuffer[snapBuffer.length - 1];
+  const s = latest.state.snakes.find(sn => sn.id === myId);
+  if (!s || !s.segs || s.segs.length < 2) return null;
+
+  // How many ms past the latest server snapshot are we right now?
+  const serverNow = now + clockOffset;
+  const extraMs = Math.max(0, Math.min(serverNow - latest.t, 100));
+  if (extraMs < 0.5) return s;
+
+  const msPerTick = 1000 / CONSTANTS.TICK_RATE;
+  const boostRamp = s.boostRamp || 0;
+  const speed = CONSTANTS.SNAKE_BASE_SPEED * (1 + boostRamp * 2) * (s.speedMult || 1);
+  const dist = speed * extraMs / msPerTick;
+  const dx = Math.cos(s.angle) * dist;
+  const dy = Math.sin(s.angle) * dist;
+
+  const segs = new Float32Array(s.segs.length);
+  for (let i = 0; i < segs.length; i += 2) {
+    segs[i]   = s.segs[i]   + dx;
+    segs[i+1] = s.segs[i+1] + dy;
+  }
+  return { ...s, segs };
+}
+
 // Per-snake smooth-position state — eliminates skip-tick vibration during cashout slowdown
 const snakeSmoothState = new Map(); // id -> { x, y, lastNow }
 
@@ -731,6 +760,23 @@ const fpsEl = document.getElementById('fps-counter');
 // Main render loop — runs at monitor refresh rate (60/144/240Hz)
 function gameLoop(now) {
   interpolateState(now);
+
+  // Replace local snake with an extrapolated-to-now version so it never lags behind
+  // the interpolation buffer. Keeps remote snakes on the normal 50ms-delayed path.
+  if (myId && !isDead && !cashedOut) {
+    const localNow = getLocalSnakeNow(now);
+    if (localNow) {
+      let found = false;
+      for (let i = 0; i < displayState.snakes.length; i++) {
+        if (displayState.snakes[i].id === myId) {
+          displayState.snakes[i] = localNow;
+          found = true;
+          break;
+        }
+      }
+      if (!found) displayState.snakes.push(localNow);
+    }
+  }
 
   let spectateSnake = null;
   if (spectating) {
