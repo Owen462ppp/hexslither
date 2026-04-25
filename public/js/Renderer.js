@@ -226,11 +226,11 @@ class Renderer {
     ctx.lineCap  = 'round';
     ctx.lineJoin = 'round';
 
-    const STEPS = 4;
-    const CHUNK = 4;
+    const STEPS = 3;
+    const CHUNK = 8;
     const CREASE_SPACING = R * 1.76;
-    const PASSES = 15;
-    const ARC_SEGS = 8;
+    const PASSES = 4;
+    const ARC_SEGS = 4;
 
     function taperedArc(cx, cy, fwdAngle, r, baseAlpha, lw) {
       for (let s = 0; s < ARC_SEGS; s++) {
