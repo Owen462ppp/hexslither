@@ -983,6 +983,9 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   gameFrame.src = '/game.html';
   gameFrame.style.display = 'block';
   document.getElementById('btn-play').blur(); // prevent spacebar re-firing this button
+  gameFrame.addEventListener('load', () => {
+    try { gameFrame.contentWindow.focus(); } catch (e) {}
+  }, { once: true });
 });
 
 // ─── Customize / Appearance Screen ───────────────────────────────────────────
