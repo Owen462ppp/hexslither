@@ -550,30 +550,33 @@ document.getElementById('spectate-stop').addEventListener('click', () => {
   goToLobby();
 });
 
-// Death screen
-const btnRespawn = document.getElementById('btn-respawn');
-btnRespawn.addEventListener('click', async () => {
-  if (!isDead || btnRespawn.disabled) return; // must be dead, prevent double-fire
-  btnRespawn.disabled = true;
+// Shared respawn logic used by both the death screen and spectate bar
+let respawning = false;
+async function doRespawn() {
+  if (!isDead || respawning) return;
+  respawning = true;
   try {
     let newEntrySol = 0;
     if (lobbyType !== 'free') {
       const feeRes = await fetch('/wallet/entry-fee', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lobbyType }) });
       const feeData = await feeRes.json();
-      if (feeData.error) { alert(feeData.error); btnRespawn.disabled = false; return; }
+      if (feeData.error) { alert(feeData.error); return; }
       newEntrySol = feeData.feeSol;
     }
     isDead = false;
-    spectating = false;
+    cashedOut = false;
     exitSpectate();
     socket.emit(CONSTANTS.EVENTS.RESPAWN, { entrySol: newEntrySol });
     document.getElementById('death-screen').classList.remove('active');
     const earnedEl = document.getElementById('cashout-earned-inline');
     if (earnedEl) earnedEl.textContent = '';
   } finally {
-    btnRespawn.disabled = false;
+    respawning = false;
   }
-});
+}
+
+document.getElementById('btn-respawn').addEventListener('click', doRespawn);
+document.getElementById('spectate-play-again').addEventListener('click', doRespawn);
 document.getElementById('btn-lobby').addEventListener('click', () => {
   goToLobby();
 });

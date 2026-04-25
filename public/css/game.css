@@ -245,6 +245,13 @@ body {
 #spectate-bar button:hover { background: rgba(255,255,255,0.22); }
 #spectate-prev, #spectate-next { font-size: 1.1rem; padding: 4px 12px; }
 #spectate-label { min-width: 160px; text-align: center; color: #7dd3fc; }
+#spectate-play-again {
+  background: rgba(20,241,149,0.18) !important;
+  border-color: rgba(20,241,149,0.5) !important;
+  color: #14F195 !important;
+  font-weight: 700;
+}
+#spectate-play-again:hover { background: rgba(20,241,149,0.32) !important; }
 
 /* All-time leaderboard button */
 #btn-alltime-lb {
