@@ -725,7 +725,6 @@ const fpsEl = document.getElementById('fps-counter');
 // Main render loop — runs at monitor refresh rate (60/144/240Hz)
 function gameLoop(now) {
   interpolateState(now);
-  applySmoothPositions(displayState.snakes, now);
 
   let spectateSnake = null;
   if (spectating) {
