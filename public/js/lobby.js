@@ -79,10 +79,12 @@
     }
 
     ctx.restore();
-    requestAnimationFrame(draw);
+    hexBgRaf = requestAnimationFrame(draw);
   }
 
-  requestAnimationFrame(draw);
+  let hexBgRaf = requestAnimationFrame(draw);
+  window._pauseLobbyAnims  = () => { cancelAnimationFrame(hexBgRaf); hexBgRaf = null; };
+  window._resumeLobbyAnims = () => { if (!hexBgRaf) hexBgRaf = requestAnimationFrame(draw); };
 })();
 
 // ─── Agar.io lobby background ─────────────────────────────────────────────────
@@ -988,6 +990,7 @@ document.getElementById('btn-play').addEventListener('click', async () => {
   sessionStorage.setItem('lobbyType',     selectedLobbyType);
   sessionStorage.setItem('entrySol',      entrySol);
   // Load game in iframe so fullscreen stays active
+  if (window._pauseLobbyAnims) window._pauseLobbyAnims();
   gameFrame.src = '/game.html';
   gameFrame.style.display = 'block';
   document.getElementById('btn-play').blur(); // prevent spacebar re-firing this button
@@ -2232,5 +2235,6 @@ window.addEventListener('message', (e) => {
   if (e.data === 'game:done') {
     const gameFrame = document.getElementById('game-frame');
     if (gameFrame) { gameFrame.style.display = 'none'; gameFrame.src = ''; }
+    if (window._resumeLobbyAnims) window._resumeLobbyAnims();
   }
 });
