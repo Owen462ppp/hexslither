@@ -9,7 +9,7 @@
   const colStep = Math.sqrt(3) * size + gap;
   const rowStep = 1.5 * size + Math.sqrt(3) / 2 * gap;
   const faceR   = size - gap / 2;
-  const SCROLL_SPEED = 30; // px per second in grid space
+  const SCROLL_SPEED = 80; // px per second in grid space
 
   let W = window.innerWidth, H = window.innerHeight;
   let scrollX = 0, lastTime = null;
