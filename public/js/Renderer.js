@@ -12,7 +12,8 @@ class Renderer {
     this.canvas.height = window.innerHeight;
   }
 
-  render(state, myId, mousePos, spectateSnake) {
+  render(state, myId, mousePos, spectateSnake, cashoutRings) {
+    this._cashoutRings = cashoutRings || null;
     const { ctx, canvas, camera } = this;
     const W = canvas.width, H = canvas.height;
     this._mousePos = mousePos;
@@ -391,6 +392,35 @@ class Renderer {
       ctx.strokeText(`C$${cadVal}`, hx, hy - HR * (name ? 3.8 : 2.5));
       ctx.fillStyle = '#14F195';
       ctx.fillText(`C$${cadVal}`, hx, hy - HR * (name ? 3.8 : 2.5));
+    }
+
+    // ── Cashout ring ─────────────────────────────────────────────────────────
+    const ringInfo = this._cashoutRings && this._cashoutRings.get(snake.id);
+    if (ringInfo) {
+      const elapsed  = performance.now() - ringInfo.start;
+      const progress = Math.min(elapsed / ringInfo.duration, 1);
+      const ringR    = HR * 1.75;
+      const lw       = HR * 0.28;
+      ctx.save();
+      ctx.lineCap = 'round';
+      // Faint background track
+      ctx.beginPath();
+      ctx.arc(hx, hy, ringR, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.lineWidth = lw;
+      ctx.stroke();
+      // Sweeping progress arc
+      if (progress > 0) {
+        ctx.shadowColor = '#14F195';
+        ctx.shadowBlur  = HR * 1.2;
+        ctx.beginPath();
+        ctx.arc(hx, hy, ringR, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2);
+        ctx.strokeStyle = '#14F195';
+        ctx.lineWidth   = lw;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+      ctx.restore();
     }
 
     ctx.restore();

@@ -101,6 +101,7 @@ socket.on(CONSTANTS.EVENTS.GAME_JOINED, ({ playerId, worldRadius, snakeColor, fo
   cashoutSpeedMult = 1;
   lockedAngle = null;
   cancelQTimer();
+  cashoutRings.clear();
   snapBuffer = [];
   clockOffset = null;
   spawnTime = performance.now();
@@ -399,12 +400,16 @@ const qTimerEl   = document.getElementById('q-timer');
 const qRingEl    = document.getElementById('q-timer-ring');
 const qTimerText = document.getElementById('q-timer-text');
 
+// Tracks which snakes are currently cashing out: id -> { start, duration }
+const cashoutRings = new Map();
+
 function startQTimer() {
   if (isDead || cashedOut || !myId) return;
   boostActive = false; // disable boost while cashing out
   qHoldStart = performance.now();
   qTimerEl.classList.add('active');
   qRingEl.style.strokeDashoffset = RING_CIRC;
+  socket.emit('cashout:start');
 
   qHoldTimer = setInterval(() => {
     const elapsed = performance.now() - qHoldStart;
@@ -425,15 +430,24 @@ function cancelQTimer() {
   lockedAngle = null;
   qTimerEl.classList.remove('active');
   qRingEl.style.strokeDashoffset = RING_CIRC;
+  socket.emit('cashout:cancel');
 }
 
 function triggerCashOut() {
   cashedOut = true;
   isDead = true;
+  cashoutRings.delete(myId);
   qTimerEl.classList.remove('active');
   qTimerText.textContent = 'Q';
   socket.emit('cashout');
 }
+
+socket.on('cashout:started', ({ id }) => {
+  cashoutRings.set(id, { start: performance.now(), duration: Q_HOLD_MS });
+});
+socket.on('cashout:cancelled', ({ id }) => {
+  cashoutRings.delete(id);
+});
 
 socket.on('cashout:result', ({ newBalance, earnedSol, score, length }) => {
   const earnedCad = (earnedSol * solCadRate).toFixed(2);
@@ -718,7 +732,7 @@ function gameLoop(now) {
   const renderState = cashedOut
     ? { ...displayState, snakes: displayState.snakes.filter(s => s.id !== myId) }
     : displayState;
-  renderer.render(renderState, cashedOut ? null : myId, mousePos, spectateSnake);
+  renderer.render(renderState, cashedOut ? null : myId, mousePos, spectateSnake, cashoutRings);
 
   if (minimapCtx) renderer.drawMinimap(minimapCtx, displayState, myId);
 

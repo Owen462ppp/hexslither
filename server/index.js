@@ -452,6 +452,20 @@ io.on('connection', (socket) => {
     broadcastLobbyState();
   });
 
+  socket.on('cashout:start', () => {
+    if (socket._room) {
+      socket.to(socket._room.socketRoomName).emit('cashout:started', { id: socket.id });
+      socket.emit('cashout:started', { id: socket.id }); // echo to self for own ring
+    }
+  });
+
+  socket.on('cashout:cancel', () => {
+    if (socket._room) {
+      socket.to(socket._room.socketRoomName).emit('cashout:cancelled', { id: socket.id });
+      socket.emit('cashout:cancelled', { id: socket.id });
+    }
+  });
+
   socket.on('cashout', async () => {
     const room = socket._room;
     if (!room) return;
