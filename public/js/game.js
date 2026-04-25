@@ -35,7 +35,7 @@ let boostActive  = false;
 // --- Interpolation buffers ---
 let snapBuffer   = [];    // [{t, state}]  — t is server Date.now() ms
 let clockOffset  = null;  // server Date.now() minus client performance.now()
-const INTERP_DELAY_MS = 80; // 80ms gives ~2.4 buffered snaps at 30Hz — minimum stable at 40-70ms ping
+const INTERP_DELAY_MS = 50; // 50ms gives ~3 buffered snaps at 60Hz
 let spawnTime        = null;  // performance.now() when last joined — used to ramp up interp delay
 let cashoutSpeedMult = 1;    // smoothed speedMult sent to server during Q hold/release
 
