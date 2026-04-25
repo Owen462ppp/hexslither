@@ -68,17 +68,22 @@ class HexGrid {
     ctx.fillStyle = '#070707';
     ctx.fillRect(0, 0, cc.width, cc.height);
 
-    ctx.setTransform(scale, 0, 0, scale,
+    const TILT = -0.285;
+    const cosT = Math.cos(TILT), sinT = Math.sin(TILT);
+    ctx.setTransform(
+      scale * cosT,  scale * sinT,
+      -scale * sinT, scale * cosT,
       cc.width  / 2 - worldCX * scale,
-      cc.height / 2 - worldCY * scale);
+      cc.height / 2 - worldCY * scale
+    );
 
     const halfW = cc.width  / (2 * scale);
     const halfH = cc.height / (2 * scale);
 
-    const rowStart = Math.floor((worldCY - halfH) / this.ROW_STEP) - 2;
-    const rowEnd   = Math.ceil ((worldCY + halfH) / this.ROW_STEP) + 2;
-    const colStart = Math.floor((worldCX - halfW) / this.COL_STEP) - 2;
-    const colEnd   = Math.ceil ((worldCX + halfW) / this.COL_STEP) + 2;
+    const rowStart = Math.floor((worldCY - halfH) / this.ROW_STEP) - 4;
+    const rowEnd   = Math.ceil ((worldCY + halfH) / this.ROW_STEP) + 4;
+    const colStart = Math.floor((worldCX - halfW) / this.COL_STEP) - 4;
+    const colEnd   = Math.ceil ((worldCX + halfW) / this.COL_STEP) + 4;
 
     for (let row = rowStart; row <= rowEnd; row++) {
       for (let col = colStart; col <= colEnd; col++) {
@@ -116,10 +121,6 @@ class HexGrid {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#070707';
     ctx.fillRect(0, 0, W, H);
-    // Tilt the grid to match the lobby background (rotate around screen centre)
-    ctx.translate(W / 2, H / 2);
-    ctx.rotate(-0.285);
-    ctx.translate(-W / 2, -H / 2);
     ctx.drawImage(cc, -cc.width / 2 + W / 2 - dx, -cc.height / 2 + H / 2 - dy);
     ctx.restore();
   }
