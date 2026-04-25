@@ -209,9 +209,16 @@ function interpolateState(now) {
   for (const snakeAfter of after.state.snakes) {
     const snakeBefore = interpBeforeMap.get(snakeAfter.id);
     if (!snakeBefore) { interpSnakeBuf.push(snakeAfter); continue; }
-    const len = Math.min(snakeBefore.segs.length, snakeAfter.segs.length);
-    const segs = new Float32Array(len);
-    for (let i = 0; i < len; i++) segs[i] = snakeBefore.segs[i] + (snakeAfter.segs[i] - snakeBefore.segs[i]) * alpha;
+    // Head-anchored: slide the "after" body toward the "before" head position.
+    // Per-index lerp stretches the body when boosting (2-3 new segs per tick shift
+    // the index mapping), so we translate the whole body as a rigid unit instead.
+    const shiftX = (snakeBefore.segs[0] - snakeAfter.segs[0]) * (1 - alpha);
+    const shiftY = (snakeBefore.segs[1] - snakeAfter.segs[1]) * (1 - alpha);
+    const segs = new Float32Array(snakeAfter.segs.length);
+    for (let i = 0; i < segs.length; i += 2) {
+      segs[i]   = snakeAfter.segs[i]   + shiftX;
+      segs[i+1] = snakeAfter.segs[i+1] + shiftY;
+    }
     interpSnakeBuf.push({ ...snakeAfter, segs, angle: lerpAngle(snakeBefore.angle, snakeAfter.angle, alpha) });
   }
   displayState.snakes = interpSnakeBuf;
@@ -721,9 +728,40 @@ sendPing();
 let fpsFrames = 0, fpsLast = performance.now(), fpsDisplay = 0;
 const fpsEl = document.getElementById('fps-counter');
 
+// For the local player's snake only: extrapolate from the latest snapshot to "now"
+// instead of using the 50ms-delayed interpolation buffer. Other snakes stay buffered.
+function injectLocalSnakeNow(now) {
+  if (!myId || isDead || cashedOut) return;
+  if (snapBuffer.length === 0 || clockOffset === null) return;
+  const latest = snapBuffer[snapBuffer.length - 1];
+  const s = latest.state.snakes.find(sn => sn.id === myId);
+  if (!s || !s.segs || s.segs.length < 2) return;
+
+  // ms elapsed since the latest server snapshot (accounts for clock offset)
+  const extraMs = Math.max(0, Math.min((now + clockOffset) - latest.t, 100));
+  const speed = CONSTANTS.SNAKE_BASE_SPEED * (1 + (s.boostRamp || 0) * 2) * (s.speedMult || 1);
+  const dist  = speed * extraMs / (1000 / CONSTANTS.TICK_RATE);
+  const dx = Math.cos(s.angle) * dist;
+  const dy = Math.sin(s.angle) * dist;
+
+  const segs = new Float32Array(s.segs.length);
+  for (let i = 0; i < segs.length; i += 2) {
+    segs[i]   = s.segs[i]   + dx;
+    segs[i+1] = s.segs[i+1] + dy;
+  }
+  const localSnake = { ...s, segs };
+
+  let found = false;
+  for (let i = 0; i < displayState.snakes.length; i++) {
+    if (displayState.snakes[i].id === myId) { displayState.snakes[i] = localSnake; found = true; break; }
+  }
+  if (!found) displayState.snakes.push(localSnake);
+}
+
 // Main render loop — runs at monitor refresh rate (60/144/240Hz)
 function gameLoop(now) {
   interpolateState(now);
+  injectLocalSnakeNow(now); // override own snake with lag-free extrapolated position
 
   let spectateSnake = null;
   if (spectating) {
