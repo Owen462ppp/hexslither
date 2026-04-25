@@ -116,6 +116,10 @@ class HexGrid {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#070707';
     ctx.fillRect(0, 0, W, H);
+    // Tilt the grid to match the lobby background (rotate around screen centre)
+    ctx.translate(W / 2, H / 2);
+    ctx.rotate(-0.285);
+    ctx.translate(-W / 2, -H / 2);
     ctx.drawImage(cc, -cc.width / 2 + W / 2 - dx, -cc.height / 2 + H / 2 - dy);
     ctx.restore();
   }
