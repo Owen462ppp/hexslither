@@ -209,9 +209,16 @@ function interpolateState(now) {
   for (const snakeAfter of after.state.snakes) {
     const snakeBefore = interpBeforeMap.get(snakeAfter.id);
     if (!snakeBefore) { interpSnakeBuf.push(snakeAfter); continue; }
-    const len = Math.min(snakeBefore.segs.length, snakeAfter.segs.length);
-    const segs = new Float32Array(len);
-    for (let i = 0; i < len; i++) segs[i] = snakeBefore.segs[i] + (snakeAfter.segs[i] - snakeBefore.segs[i]) * alpha;
+    // Head-anchored interpolation: translate the entire "after" body by the interpolated
+    // head offset instead of lerping per-index. Per-index lerp stretches the body when
+    // boosting (3 new segs/tick shift the index alignment), causing visible shake.
+    const shiftX = (snakeBefore.segs[0] - snakeAfter.segs[0]) * (1 - alpha);
+    const shiftY = (snakeBefore.segs[1] - snakeAfter.segs[1]) * (1 - alpha);
+    const segs = new Float32Array(snakeAfter.segs.length);
+    for (let i = 0; i < segs.length; i += 2) {
+      segs[i]   = snakeAfter.segs[i]   + shiftX;
+      segs[i+1] = snakeAfter.segs[i+1] + shiftY;
+    }
     interpSnakeBuf.push({ ...snakeAfter, segs, angle: lerpAngle(snakeBefore.angle, snakeAfter.angle, alpha) });
   }
   displayState.snakes = interpSnakeBuf;
