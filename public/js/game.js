@@ -108,7 +108,6 @@ socket.on(CONSTANTS.EVENTS.GAME_JOINED, ({ playerId, worldRadius, snakeColor, fo
   clockOffset = null;
   spawnTime = performance.now();
   displayState = { snakes: snake ? [snake] : [], food: food || [], worldRadius, leaderboard: [] };
-  if (snake) initLocalSim(snake);
   document.getElementById('death-screen').classList.remove('active');
   document.getElementById('cashout-screen').classList.remove('active');
   playJoinSound();
@@ -127,29 +126,12 @@ socket.on(CONSTANTS.EVENTS.SNAPSHOT, (snap) => {
   }
   snapBuffer.push({ t: snap.t, state: snap });
   if (snapBuffer.length > 20) snapBuffer.shift();
-  // Sync score/worth from server (authoritative), and trigger growth for food eaten
-  if (localSim.active && myId) {
-    const ss = snap.snakes.find(s => s.id === myId);
-    if (ss) {
-      const scoreDiff = ss.score - localSim.score;
-      if (scoreDiff > 0) localSim.pendingGrowth += Math.round(scoreDiff * CONSTANTS.SEGMENTS_PER_FOOD);
-      localSim.score = ss.score;
-      localSim.worth = ss.worth;
-      // Hard resync if head drifted too far (lag spike / determinism divergence)
-      if (localSim.segments.length > 0 && ss.segs && ss.segs.length >= 2) {
-        const drift = Math.hypot(localSim.segments[0].x - ss.segs[0],
-                                 localSim.segments[0].y - ss.segs[1]);
-        if (drift > 80) initLocalSim(ss);
-      }
-    }
-  }
   updateHUD(snap);
   updateLeaderboard(snap);
 });
 
 socket.on(CONSTANTS.EVENTS.PLAYER_DIED, ({ score, length }) => {
   isDead = true;
-  localSim.active = false;
   const earnedEl = document.getElementById('cashout-earned-inline');
   if (earnedEl) earnedEl.textContent = '';
   const deathH2 = document.querySelector('#death-screen h2');
@@ -227,125 +209,12 @@ function interpolateState(now) {
   for (const snakeAfter of after.state.snakes) {
     const snakeBefore = interpBeforeMap.get(snakeAfter.id);
     if (!snakeBefore) { interpSnakeBuf.push(snakeAfter); continue; }
-    // Head-anchored interpolation: translate the entire "after" body by the interpolated
-    // head offset instead of lerping per-index. Per-index lerp stretches the body when
-    // boosting (3 new segs/tick shift the index alignment), causing visible shake.
-    const shiftX = (snakeBefore.segs[0] - snakeAfter.segs[0]) * (1 - alpha);
-    const shiftY = (snakeBefore.segs[1] - snakeAfter.segs[1]) * (1 - alpha);
-    const segs = new Float32Array(snakeAfter.segs.length);
-    for (let i = 0; i < segs.length; i += 2) {
-      segs[i]   = snakeAfter.segs[i]   + shiftX;
-      segs[i+1] = snakeAfter.segs[i+1] + shiftY;
-    }
+    const len = Math.min(snakeBefore.segs.length, snakeAfter.segs.length);
+    const segs = new Float32Array(len);
+    for (let i = 0; i < len; i++) segs[i] = snakeBefore.segs[i] + (snakeAfter.segs[i] - snakeBefore.segs[i]) * alpha;
     interpSnakeBuf.push({ ...snakeAfter, segs, angle: lerpAngle(snakeBefore.angle, snakeAfter.angle, alpha) });
   }
   displayState.snakes = interpSnakeBuf;
-}
-
-// ─── Client-side snake simulation ────────────────────────────────────────────
-// Mirrors Snake.js tick-for-tick so the local snake renders at the display
-// frame rate with zero network lag. Other snakes stay on the interpolation path.
-const SIM_TICK_MS  = 1000 / CONSTANTS.TICK_RATE;
-const SIM_MIN_SEGS = CONSTANTS.SNAKE_MIN_SEGMENTS * 2;
-
-const localSim = {
-  active: false, segments: [], angle: 0, targetAngle: 0,
-  boosting: false, speedMult: 1, pendingGrowth: 0,
-  _boostAge: 0, _boostTick: 0, _moveAccum: 0, boostRamp: 0,
-  score: 0, worth: 0, color: '', hatId: 'none', boostId: 'default', name: '',
-  _accumMs: 0,
-};
-
-function initLocalSim(snakeData) {
-  const { segs } = snakeData;
-  localSim.segments = [];
-  // Expand every-other serialized segs back to a full segment list
-  for (let i = 0; i < segs.length - 2; i += 2) {
-    localSim.segments.push({ x: segs[i], y: segs[i + 1] });
-    localSim.segments.push({ x: (segs[i] + segs[i + 2]) * 0.5,
-                              y: (segs[i + 1] + segs[i + 3]) * 0.5 });
-  }
-  if (segs.length >= 2)
-    localSim.segments.push({ x: segs[segs.length - 2], y: segs[segs.length - 1] });
-  localSim.angle = localSim.targetAngle = snakeData.angle || 0;
-  localSim.boosting = false; localSim.speedMult = 1; localSim.pendingGrowth = 0;
-  localSim._boostAge = 0; localSim._boostTick = 0;
-  localSim._moveAccum = 0; localSim.boostRamp = 0; localSim._accumMs = 0;
-  localSim.score   = snakeData.score  || 0;
-  localSim.worth   = snakeData.worth  || 0;
-  localSim.color   = snakeData.color  || snakeColor;
-  localSim.hatId   = snakeData.hatId  || 'none';
-  localSim.boostId = snakeData.boostId || 'default';
-  localSim.name    = snakeData.name   || playerName;
-  localSim.active  = true;
-}
-
-function stepLocalSim() {
-  const segs = localSim.segments;
-  // Turn
-  let delta = localSim.targetAngle - localSim.angle;
-  while (delta >  Math.PI) delta -= Math.PI * 2;
-  while (delta < -Math.PI) delta += Math.PI * 2;
-  const tr = CONSTANTS.MAX_TURN_RATE * (1 - Math.min(0.55, (segs.length - SIM_MIN_SEGS) / 500));
-  if (Math.abs(delta) > tr) localSim.angle += Math.sign(delta) * tr;
-  else localSim.angle = localSim.targetAngle;
-
-  // Boost ramp (mirrors Snake.js exactly)
-  const fuel = Math.max(0, segs.length - SIM_MIN_SEGS);
-  localSim.boosting = boostActive && fuel > 0 && !qHoldStart;
-  let steps = 1;
-  if (localSim.boosting) {
-    localSim._boostAge++;  localSim._boostTick++;
-    steps = localSim._boostAge <= 6 ? 1 : localSim._boostAge <= 12 ? 2 : 3;
-    localSim.boostRamp = localSim._boostAge <=  6 ? localSim._boostAge /  6 * 0.5
-                       : localSim._boostAge <= 12 ? 0.5 + (localSim._boostAge - 6) / 6 * 0.5
-                       : 1;
-    if (localSim._boostTick >= 24) {
-      localSim._boostTick = 0;
-      if (segs.length > SIM_MIN_SEGS) segs.pop();
-    }
-  } else {
-    localSim._boostAge = 0; localSim._boostTick = 0; localSim.boostRamp = 0;
-  }
-
-  // Speed-mult accumulator
-  localSim._moveAccum += localSim.speedMult;
-  if (localSim._moveAccum < 1) return;
-  localSim._moveAccum -= 1;
-
-  const speed = CONSTANTS.SNAKE_BASE_SPEED;
-  for (let s = 0; s < steps; s++) {
-    segs.unshift({ x: segs[0].x + Math.cos(localSim.angle) * speed,
-                   y: segs[0].y + Math.sin(localSim.angle) * speed });
-    if (localSim.pendingGrowth > 0) localSim.pendingGrowth--;
-    else segs.pop();
-  }
-}
-
-function serializeLocalSim(subTickFraction) {
-  const raw = localSim.segments;
-  // Sub-tick extrapolation: translate whole body forward by the fractional tick distance
-  // so movement is smooth between sim ticks (same principle as camera delta-time fix).
-  const spd = CONSTANTS.SNAKE_BASE_SPEED * (1 + localSim.boostRamp * 2) * (localSim.speedMult || 1);
-  const dx = Math.cos(localSim.angle) * spd * (subTickFraction || 0);
-  const dy = Math.sin(localSim.angle) * spd * (subTickFraction || 0);
-
-  const segs = new Float32Array(Math.ceil(raw.length / 2) * 2);
-  let j = 0;
-  for (let i = 0; i < raw.length; i += 2) {
-    segs[j++] = raw[i].x + dx;
-    segs[j++] = raw[i].y + dy;
-  }
-  const fuel = Math.max(0, raw.length - SIM_MIN_SEGS);
-  const max  = Math.max(1, fuel + localSim.pendingGrowth);
-  return {
-    id: myId, name: localSim.name, color: localSim.color, segs,
-    angle: localSim.angle, boosting: localSim.boosting, boostRamp: localSim.boostRamp,
-    hatId: localSim.hatId, boostId: localSim.boostId,
-    score: Math.floor(localSim.score), length: raw.length,
-    boostRatio: Math.min(1, fuel / max), worth: localSim.worth,
-    speedMult: localSim.speedMult,
-  };
 }
 
 // Per-snake smooth-position state — eliminates skip-tick vibration during cashout slowdown
@@ -416,11 +285,6 @@ function lerpAngle(a, b, t) {
 canvas.addEventListener('mousemove', (e) => {
   mousePos.x = e.clientX;
   mousePos.y = e.clientY;
-  // Update sim target angle every mouse move — not just every 60Hz sendInput tick
-  if (localSim.active && !isDead && lockedAngle === null && localSim.segments.length > 0) {
-    const w = renderer.camera.screenToWorld(e.clientX, e.clientY, canvas.width, canvas.height);
-    localSim.targetAngle = Math.atan2(w.y - localSim.segments[0].y, w.x - localSim.segments[0].x);
-  }
 });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('mousedown', (e) => { if (e.button === 0 || e.button === 2) boostActive = true; });
@@ -767,22 +631,10 @@ window.addEventListener('resize', resize);
 // Send input at 60Hz (matches server tick rate)
 function sendInput() {
   if (!myId || isDead) return;
+  const mySnake = displayState.snakes.find(s => s.id === myId);
+  if (!mySnake) return;
 
-  // Use local sim head when active — more accurate than interpolated displayState
-  let headX, headY, currentAngle;
-  if (localSim.active && localSim.segments.length > 0) {
-    headX = localSim.segments[0].x;
-    headY = localSim.segments[0].y;
-    currentAngle = localSim.angle;
-  } else {
-    const mySnake = displayState.snakes.find(s => s.id === myId);
-    if (!mySnake) return;
-    headX = mySnake.segs[0];
-    headY = mySnake.segs[1];
-    currentAngle = mySnake.angle;
-  }
-
-  if (qHoldStart !== null && lockedAngle === null) lockedAngle = currentAngle;
+  if (qHoldStart !== null && lockedAngle === null) lockedAngle = mySnake.angle;
 
   const joy = window._joystick;
   const angle = lockedAngle !== null
@@ -790,12 +642,9 @@ function sendInput() {
     : (joy && joy.active && joy.angle !== null)
     ? joy.angle
     : Math.atan2(
-        renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).y - headY,
-        renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).x - headX
+        renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).y - mySnake.segs[1],
+        renderer.camera.screenToWorld(mousePos.x, mousePos.y, canvas.width, canvas.height).x - mySnake.segs[0]
       );
-
-  // Push target angle into sim immediately — no waiting for network round-trip
-  if (localSim.active) localSim.targetAngle = angle;
 
   // Q held: ramp speed down to 0.2x. Released: instant full speed (no lag to clear).
   if (qHoldStart) {
@@ -804,7 +653,6 @@ function sendInput() {
   } else {
     cashoutSpeedMult = 1;
   }
-  if (localSim.active) localSim.speedMult = cashoutSpeedMult;
   socket.emit(CONSTANTS.EVENTS.INPUT, { angle, boost: boostActive && !qHoldStart, speedMult: cashoutSpeedMult });
 }
 setInterval(sendInput, 1000 / 60);
@@ -873,33 +721,9 @@ sendPing();
 let fpsFrames = 0, fpsLast = performance.now(), fpsDisplay = 0;
 const fpsEl = document.getElementById('fps-counter');
 
-let _lastFrameTime = 0;
 // Main render loop — runs at monitor refresh rate (60/144/240Hz)
 function gameLoop(now) {
-  const dt = _lastFrameTime ? now - _lastFrameTime : 16.67;
-  _lastFrameTime = now;
-
-  // Step local sim at fixed 60Hz; sub-tick fraction smooths between ticks
-  if (localSim.active && !isDead) {
-    localSim._accumMs += dt;
-    while (localSim._accumMs >= SIM_TICK_MS) {
-      localSim._accumMs -= SIM_TICK_MS;
-      stepLocalSim();
-    }
-  }
-
   interpolateState(now);
-
-  // Inject simulated local snake — replaces interpolated server copy
-  if (localSim.active && !isDead && !cashedOut) {
-    const subFrac = localSim._accumMs / SIM_TICK_MS;
-    const simSnake = serializeLocalSim(subFrac);
-    let found = false;
-    for (let i = 0; i < displayState.snakes.length; i++) {
-      if (displayState.snakes[i].id === myId) { displayState.snakes[i] = simSnake; found = true; break; }
-    }
-    if (!found) displayState.snakes.push(simSnake);
-  }
 
   let spectateSnake = null;
   if (spectating) {
@@ -909,7 +733,7 @@ function gameLoop(now) {
   const renderState = cashedOut
     ? { ...displayState, snakes: displayState.snakes.filter(s => s.id !== myId) }
     : displayState;
-  renderer.render(renderState, cashedOut ? null : myId, mousePos, spectateSnake, cashoutRings, dt);
+  renderer.render(renderState, cashedOut ? null : myId, mousePos, spectateSnake, cashoutRings);
 
   if (minimapCtx) renderer.drawMinimap(minimapCtx, displayState, myId);
 
