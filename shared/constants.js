@@ -14,6 +14,7 @@ const CONSTANTS = {
   SNAKE_SEGMENT_SPACING: 6,
   SNAKE_HEAD_RADIUS: 10,
   SNAKE_MIN_SEGMENTS: 5,
+  SNAKE_SPAWN_SEGMENTS: 2,
   MAX_TURN_RATE: 0.16, // radians per tick (doubled to keep same turn rate at 30Hz)
 
   // Food

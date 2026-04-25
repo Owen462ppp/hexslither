@@ -22,7 +22,8 @@ class Snake {
     this.score = 0;
 
     this.segments = [];
-    for (let i = 0; i < MIN_SEGMENTS * 2; i++) {
+    const spawnLen = Math.max(MIN_SEGMENTS, C.SNAKE_SPAWN_SEGMENTS * 2);
+    for (let i = 0; i < spawnLen; i++) {
       this.segments.push({
         x: x - Math.cos(this.angle) * i * C.SNAKE_SEGMENT_SPACING,
         y: y - Math.sin(this.angle) * i * C.SNAKE_SEGMENT_SPACING,
