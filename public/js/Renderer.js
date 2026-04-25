@@ -80,7 +80,7 @@ class Renderer {
 
   _drawMinimap(ctx, state, myId, W, H) {
     const PAD    = 16;
-    const R      = 70;
+    const R      = 110;
     const cx     = PAD + R;
     const cy     = H - PAD - R;
     const scale  = R / state.worldRadius;
