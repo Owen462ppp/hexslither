@@ -256,7 +256,7 @@ app.post('/wallet/entry-fee', express.json(), async (req, res) => {
   const newBalance = await db.recordWithdrawal(req.user.googleId, null, feeSol, 'entry_fee');
   req.user.balance = newBalance;
   // Deduct entry fee from net earnings so leaderboard shows true profit/loss
-  await db.addEarnings(req.user.googleId, -feeSol);
+  await db.addEarnings(req.user.googleId, -feeSol, -feeCad);
   res.json({ ok: true, feeSol, balance: newBalance });
 });
 
@@ -344,10 +344,10 @@ app.get('/api/profile/:name', async (req, res) => {
 
 app.get('/api/stats/winnings', async (req, res) => {
   try {
-    const total = await db.getGlobalWinnings();
-    res.json({ totalSol: total });
+    const totalCad = await db.getGlobalWinnings();
+    res.json({ totalCad });
   } catch (e) {
-    res.json({ totalSol: 0 });
+    res.json({ totalCad: 0 });
   }
 });
 
@@ -487,7 +487,8 @@ io.on('connection', (socket) => {
       try {
         // Credit player their 90%
         newBalance = await db.recordDeposit(socket._googleId, 'cashout_' + Date.now() + '_' + socket.id, playerShare, 'cashout');
-        await db.addEarnings(socket._googleId, playerShare);
+        const playerShareCad = playerShare * prices.getSolCadRate();
+        await db.addEarnings(socket._googleId, playerShare, playerShareCad);
         console.log(`[CASHOUT] ${snake.name} cashed out ${playerShare.toFixed(6)} SOL (owner cut: ${ownerShare.toFixed(6)} SOL)`);
       } catch (e) {
         console.error('[CASHOUT] Error crediting player:', e.message);

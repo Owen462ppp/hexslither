@@ -504,9 +504,8 @@ function showLobby() {
 function fetchGlobalWinnings() {
   fetch('/api/stats/winnings')
     .then(r => r.json())
-    .then(({ totalSol }) => {
-      const cad = (totalSol * (_solCadRate || 200)).toFixed(2);
-      const display = `C$${cad}`;
+    .then(({ totalCad }) => {
+      const display = `C$${(totalCad || 0).toFixed(2)}`;
       const el  = document.getElementById('stat-global-winnings');
       const el2 = document.getElementById('stat-global-winnings-2');
       if (el)  el.textContent  = display;

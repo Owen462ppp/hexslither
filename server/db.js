@@ -63,6 +63,7 @@ async function init() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
     CREATE INDEX IF NOT EXISTS idx_eh_gid ON earnings_history(google_id, created_at);
+    ALTER TABLE earnings_history ADD COLUMN IF NOT EXISTS cad_amount NUMERIC(18,4) DEFAULT 0;
 
     ALTER TABLE accounts ADD COLUMN IF NOT EXISTS name_history TEXT[] DEFAULT '{}';
   `);
@@ -156,10 +157,10 @@ async function recordWithdrawal(googleId, txSig, amount, toAddress) {
   return parseFloat(res.rows[0].balance);
 }
 
-async function addEarnings(googleId, sol) {
+async function addEarnings(googleId, sol, cadAmount = 0) {
   await Promise.all([
     pool.query(`UPDATE accounts SET total_earnings = total_earnings + $2 WHERE google_id = $1`, [googleId, sol]),
-    pool.query(`INSERT INTO earnings_history (google_id, amount) VALUES ($1, $2)`, [googleId, sol]),
+    pool.query(`INSERT INTO earnings_history (google_id, amount, cad_amount) VALUES ($1, $2, $3)`, [googleId, sol, cadAmount]),
   ]);
 }
 
@@ -178,9 +179,9 @@ async function getTopEarners(n) {
 
 async function getGlobalWinnings() {
   const res = await pool.query(
-    `SELECT COALESCE(SUM(amount), 0) AS total FROM earnings_history WHERE amount > 0`
+    `SELECT COALESCE(SUM(cad_amount), 0) AS total FROM earnings_history WHERE cad_amount > 0`
   );
-  return parseFloat(res.rows[0].total);
+  return parseFloat(res.rows[0].total); // already in CAD
 }
 
 async function searchPlayerNames(query, limit = 8) {
